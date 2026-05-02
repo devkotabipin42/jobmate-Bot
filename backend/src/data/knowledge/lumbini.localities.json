@@ -1,0 +1,134 @@
+{
+  "bardaghat": {
+    "canonical": "Bardaghat",
+    "district": "Nawalparasi West",
+    "province": "Lumbini",
+    "aliases": [
+      "bardaghat",
+      "bhardaghat",
+      "bhardghat",
+      "bardghat",
+      "bhardaght"
+    ]
+  },
+  "dhanewa": {
+    "canonical": "Dhanewa, Bardaghat",
+    "district": "Nawalparasi West",
+    "province": "Lumbini",
+    "aliases": [
+      "dhanewa",
+      "dhaneva",
+      "dhanewa bardaghat",
+      "bhardghat dhanewa",
+      "bhardaghat dhanewa"
+    ]
+  },
+  "jamuniya": {
+    "canonical": "Jamuniya",
+    "district": "Nawalparasi West",
+    "province": "Lumbini",
+    "aliases": [
+      "jamuniya",
+      "jamunia",
+      "jamuniya nawalparasi",
+      "jamunia nawalparasi"
+    ]
+  },
+  "jimirbar": {
+    "canonical": "Jimirbar",
+    "district": "Nawalparasi West",
+    "province": "Lumbini",
+    "aliases": [
+      "jimirbar",
+      "jibirbar",
+      "jhimirbar",
+      "jimirebhar"
+    ]
+  },
+  "gopigunj": {
+    "canonical": "Gopigunj",
+    "district": "Nawalparasi West",
+    "province": "Lumbini",
+    "aliases": [
+      "gopigunj",
+      "gopigung",
+      "gopiganj",
+      "gopi gunj",
+      "gopi ganj"
+    ]
+  },
+  "parasi": {
+    "canonical": "Nawalparasi West",
+    "district": "Nawalparasi West",
+    "province": "Lumbini",
+    "aliases": [
+      "parasi",
+      "nawalparasi",
+      "nawal parasi",
+      "nawalparasi west",
+      "parsi"
+    ]
+  },
+  "butwal": {
+    "canonical": "Butwal",
+    "district": "Rupandehi",
+    "province": "Lumbini",
+    "aliases": [
+      "butwal",
+      "butwl",
+      "btwl"
+    ]
+  },
+  "bhairahawa": {
+    "canonical": "Bhairahawa",
+    "district": "Rupandehi",
+    "province": "Lumbini",
+    "aliases": [
+      "bhairahawa",
+      "bhairwa",
+      "bhairawa",
+      "siddharthanagar"
+    ]
+  },
+  "manigram": {
+    "canonical": "Manigram",
+    "district": "Rupandehi",
+    "province": "Lumbini",
+    "aliases": [
+      "manigram",
+      "mani gram"
+    ]
+  },
+  "tilottama": {
+    "canonical": "Tilottama",
+    "district": "Rupandehi",
+    "province": "Lumbini",
+    "aliases": [
+      "tilottama",
+      "tilotama"
+    ]
+  },
+  "bhumehi": {
+    "canonical": "Bhumahi",
+    "district": "Nawalparasi West",
+    "province": "Lumbini",
+    "aliases": [
+      "bhumahi",
+      "bhumehi",
+      "bhumai"
+    ]
+  },
+  "bhatauliya": {
+    "canonical": "Bhatauliya, Bardaghat",
+    "district": "Nawalparasi West",
+    "province": "Lumbini",
+    "aliases": [
+      "bhatauliya",
+      "bhatauliya bardaghat",
+      "bardaghat 13 bhatauliya",
+      "bhardghat 13 bhatauliya",
+      "bhardaghat 13 bhatauliya",
+      "bhardghat bhatauliya"
+    ]
+  }
+}

@@ -1,0 +1,183 @@
+{
+  "marketing_staff": {
+    "label": "Marketing Staff",
+    "category": "sales_marketing",
+    "aliases": [
+      "marketing",
+      "marketting",
+      "marketing boy",
+      "marketing staff",
+      "field marketing",
+      "sales marketing",
+      "market ma jane",
+      "customer khojne"
+    ]
+  },
+  "sales_staff": {
+    "label": "Sales Staff",
+    "category": "sales_marketing",
+    "aliases": [
+      "sales",
+      "salesman",
+      "sales boy",
+      "sales staff",
+      "pasal sales",
+      "counter sales"
+    ]
+  },
+  "house_helper": {
+    "label": "House Helper",
+    "category": "domestic_work",
+    "aliases": [
+      "ghar ma kam",
+      "ghar ko kam",
+      "ghar kaam",
+      "ghar ma kaam",
+      "ghar ko kaam",
+      "home helper",
+      "house helper",
+      "domestic helper",
+      "maid",
+      "cleaning",
+      "cooking",
+      "cook",
+      "ghar samhalne",
+      "ghar ma kam garni"
+    ]
+  },
+  "content_creator": {
+    "label": "TikTok Content Creator",
+    "category": "media",
+    "aliases": [
+      "tiktok",
+      "tik tok",
+      "content creator",
+      "video creator",
+      "reels creator",
+      "social media creator",
+      "video banaune",
+      "reel banaune"
+    ]
+  },
+  "frontend_developer": {
+    "label": "Frontend Developer",
+    "category": "it",
+    "aliases": [
+      "frontend",
+      "front end",
+      "frontend developer",
+      "react developer",
+      "web developer",
+      "website developer",
+      "ui developer"
+    ]
+  },
+  "backend_developer": {
+    "label": "Backend Developer",
+    "category": "it",
+    "aliases": [
+      "backend",
+      "backend developer",
+      "node developer",
+      "api developer",
+      "express developer"
+    ]
+  },
+  "fullstack_developer": {
+    "label": "Full Stack Developer",
+    "category": "it",
+    "aliases": [
+      "fullstack",
+      "full stack",
+      "mern",
+      "mern developer",
+      "full stack developer"
+    ]
+  },
+  "driver": {
+    "label": "Driver",
+    "category": "transport",
+    "aliases": [
+      "driver",
+      "gadi chalak",
+      "truck driver",
+      "bus driver",
+      "delivery driver",
+      "license bhako manxe"
+    ]
+  },
+  "security_guard": {
+    "label": "Security Guard",
+    "category": "security",
+    "aliases": [
+      "security",
+      "guard",
+      "security guard",
+      "watchman",
+      "gate guard"
+    ]
+  },
+  "kitchen_helper": {
+    "label": "Kitchen Helper",
+    "category": "hospitality",
+    "aliases": [
+      "kitchen helper",
+      "kitchen staff",
+      "cook helper",
+      "hotel helper",
+      "restaurant helper"
+    ]
+  },
+  "waiter": {
+    "label": "Waiter",
+    "category": "hospitality",
+    "aliases": [
+      "waiter",
+      "hotel waiter",
+      "restaurant waiter",
+      "service staff"
+    ]
+  },
+  "shop_helper": {
+    "label": "Shop Helper",
+    "category": "retail",
+    "aliases": [
+      "shop helper",
+      "pasal ko manxe",
+      "pasal staff",
+      "retail staff",
+      "counter staff"
+    ]
+  },
+  "helper": {
+    "label": "General Helper",
+    "category": "general",
+    "aliases": [
+      "helper",
+      "sahayogi",
+      "general helper",
+      "kam garne manxe",
+      "manxe chahiyo",
+      "manxe chayako",
+      "worker chahiyo",
+      "staff chahiyo"
+    ]
+  },
+  "mill_worker": {
+    "label": "Mill Worker",
+    "category": "factory_industry",
+    "aliases": [
+      "mill",
+      "mill ma kam",
+      "mill ma kaam",
+      "mill worker",
+      "mill helper",
+      "rice mill",
+      "flour mill",
+      "atta mill",
+      "mill ma kam garne",
+      "mill ma kam garni",
+      "paila aru mill ma ni kam gareko"
+    ]
+  }
+}

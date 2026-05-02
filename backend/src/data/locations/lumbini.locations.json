@@ -1,0 +1,334 @@
+[
+  {
+    "canonical": "Lumbini",
+    "type": "province",
+    "scope": "province",
+    "province": "Lumbini",
+    "district": "",
+    "aliases": [
+      "lumbini",
+      "lumbni",
+      "लुम्बिनी"
+    ],
+    "allowedCanonicalLocations": []
+  },
+  {
+    "canonical": "Nawalparasi West",
+    "type": "district",
+    "scope": "district",
+    "province": "Lumbini",
+    "district": "Nawalparasi West",
+    "aliases": [
+      "nawalparasi",
+      "nawal parasi",
+      "nawalparasi west",
+      "parasi district",
+      "नवलपरासी",
+      "नवलपरासी पश्चिम"
+    ],
+    "allowedCanonicalLocations": [
+      "Bardaghat",
+      "Parasi",
+      "Sunwal"
+    ]
+  },
+  {
+    "canonical": "Rupandehi",
+    "type": "district",
+    "scope": "district",
+    "province": "Lumbini",
+    "district": "Rupandehi",
+    "aliases": [
+      "rupandehi",
+      "रुपन्देही"
+    ],
+    "allowedCanonicalLocations": [
+      "Butwal",
+      "Bhairahawa",
+      "Tilottama",
+      "Devdaha"
+    ]
+  },
+  {
+    "canonical": "Dang",
+    "type": "district",
+    "scope": "district",
+    "province": "Lumbini",
+    "district": "Dang",
+    "aliases": [
+      "dang",
+      "दाङ"
+    ],
+    "allowedCanonicalLocations": [
+      "Ghorahi",
+      "Tulsipur"
+    ]
+  },
+  {
+    "canonical": "Kapilvastu",
+    "type": "district",
+    "scope": "district",
+    "province": "Lumbini",
+    "district": "Kapilvastu",
+    "aliases": [
+      "kapilvastu",
+      "kapilbastu",
+      "कपिलवस्तु"
+    ],
+    "allowedCanonicalLocations": [
+      "Taulihawa",
+      "Banaganga",
+      "Chandrauta"
+    ]
+  },
+  {
+    "canonical": "Palpa",
+    "type": "district",
+    "scope": "district",
+    "province": "Lumbini",
+    "district": "Palpa",
+    "aliases": [
+      "palpa",
+      "पाल्पा"
+    ],
+    "allowedCanonicalLocations": [
+      "Tansen"
+    ]
+  },
+  {
+    "canonical": "Banke",
+    "type": "district",
+    "scope": "district",
+    "province": "Lumbini",
+    "district": "Banke",
+    "aliases": [
+      "banke",
+      "बाँके"
+    ],
+    "allowedCanonicalLocations": [
+      "Nepalgunj"
+    ]
+  },
+  {
+    "canonical": "Bardaghat",
+    "type": "local",
+    "scope": "local",
+    "district": "Nawalparasi West",
+    "province": "Lumbini",
+    "aliases": [
+      "bardaghat",
+      "bhardaghat",
+      "bardghat",
+      "bardaght",
+      "bardghaat",
+      "bhardaght",
+      "bhardghat",
+      "bardagat",
+      "bardaaghat",
+      "bharaghat",
+      "बर्दघाट"
+    ],
+    "allowedCanonicalLocations": [
+      "Bardaghat"
+    ]
+  },
+  {
+    "canonical": "Parasi",
+    "type": "local",
+    "scope": "local",
+    "district": "Nawalparasi West",
+    "province": "Lumbini",
+    "aliases": [
+      "parasi",
+      "parsi",
+      "ramgram",
+      "परासी"
+    ],
+    "allowedCanonicalLocations": [
+      "Parasi"
+    ]
+  },
+  {
+    "canonical": "Sunwal",
+    "type": "local",
+    "scope": "local",
+    "district": "Nawalparasi West",
+    "province": "Lumbini",
+    "aliases": [
+      "sunwal",
+      "sunal",
+      "सुनवल"
+    ],
+    "allowedCanonicalLocations": [
+      "Sunwal"
+    ]
+  },
+  {
+    "canonical": "Butwal",
+    "type": "local",
+    "scope": "local",
+    "district": "Rupandehi",
+    "province": "Lumbini",
+    "aliases": [
+      "butwal",
+      "butwl",
+      "butawal",
+      "buthal",
+      "बुटवल"
+    ],
+    "allowedCanonicalLocations": [
+      "Butwal"
+    ]
+  },
+  {
+    "canonical": "Bhairahawa",
+    "type": "local",
+    "scope": "local",
+    "district": "Rupandehi",
+    "province": "Lumbini",
+    "aliases": [
+      "bhairahawa",
+      "bhairawa",
+      "bhairwa",
+      "bhirawa",
+      "siddharthanagar",
+      "भैरहवा"
+    ],
+    "allowedCanonicalLocations": [
+      "Bhairahawa"
+    ]
+  },
+  {
+    "canonical": "Tilottama",
+    "type": "local",
+    "scope": "local",
+    "district": "Rupandehi",
+    "province": "Lumbini",
+    "aliases": [
+      "tilottama",
+      "tilotama",
+      "manigram",
+      "तिलोत्तमा"
+    ],
+    "allowedCanonicalLocations": [
+      "Tilottama"
+    ]
+  },
+  {
+    "canonical": "Devdaha",
+    "type": "local",
+    "scope": "local",
+    "district": "Rupandehi",
+    "province": "Lumbini",
+    "aliases": [
+      "devdaha",
+      "devdah",
+      "देवदह"
+    ],
+    "allowedCanonicalLocations": [
+      "Devdaha"
+    ]
+  },
+  {
+    "canonical": "Taulihawa",
+    "type": "local",
+    "scope": "local",
+    "district": "Kapilvastu",
+    "province": "Lumbini",
+    "aliases": [
+      "taulihawa",
+      "taulihwa",
+      "तौलिहवा"
+    ],
+    "allowedCanonicalLocations": [
+      "Taulihawa"
+    ]
+  },
+  {
+    "canonical": "Banaganga",
+    "type": "local",
+    "scope": "local",
+    "district": "Kapilvastu",
+    "province": "Lumbini",
+    "aliases": [
+      "banaganga",
+      "बाणगंगा"
+    ],
+    "allowedCanonicalLocations": [
+      "Banaganga"
+    ]
+  },
+  {
+    "canonical": "Chandrauta",
+    "type": "local",
+    "scope": "local",
+    "district": "Kapilvastu",
+    "province": "Lumbini",
+    "aliases": [
+      "chandrauta",
+      "चन्द्रौटा"
+    ],
+    "allowedCanonicalLocations": [
+      "Chandrauta"
+    ]
+  },
+  {
+    "canonical": "Tansen",
+    "type": "local",
+    "scope": "local",
+    "district": "Palpa",
+    "province": "Lumbini",
+    "aliases": [
+      "tansen",
+      "तानसेन"
+    ],
+    "allowedCanonicalLocations": [
+      "Tansen"
+    ]
+  },
+  {
+    "canonical": "Nepalgunj",
+    "type": "local",
+    "scope": "local",
+    "district": "Banke",
+    "province": "Lumbini",
+    "aliases": [
+      "nepalgunj",
+      "nepalganj",
+      "नेपालगञ्ज"
+    ],
+    "allowedCanonicalLocations": [
+      "Nepalgunj"
+    ]
+  },
+  {
+    "canonical": "Ghorahi",
+    "type": "local",
+    "scope": "local",
+    "district": "Dang",
+    "province": "Lumbini",
+    "aliases": [
+      "ghorahi",
+      "ghorai",
+      "घोराही"
+    ],
+    "allowedCanonicalLocations": [
+      "Ghorahi"
+    ]
+  },
+  {
+    "canonical": "Tulsipur",
+    "type": "local",
+    "scope": "local",
+    "district": "Dang",
+    "province": "Lumbini",
+    "aliases": [
+      "tulsipur",
+      "tulsipr",
+      "तुलसीपुर"
+    ],
+    "allowedCanonicalLocations": [
+      "Tulsipur"
+    ]
+  }
+]
