@@ -17,12 +17,13 @@ export function buildReplyMessage({
     conversation?.currentState === "human_paused" ||
     contact?.botMode === "human_paused"
   ) {
-    return `Namaste ${name} 🙏
+    return `Hunchha 🙏 Tapai lai kun kura ma sahayog chahiyeko ho?
 
-Tapai ko details hamro team le receive gareko chha.
-Hamro team le review garera awasyak paryo bhane tapailai contact garnecha.
+Kaam khojna ho ki staff/worker khojna ho?
 
-Naya request start garna "START" lekhnuhola.`;
+Sajilo ko lagi yesto lekhna saknuhunchha:
+- "malai kaam chahiyo"
+- "malai staff chahiyo"`;
   }
 
   switch (intentResult?.intent) {

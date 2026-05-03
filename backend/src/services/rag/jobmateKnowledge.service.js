@@ -38,7 +38,7 @@ function includesPhrase(text, phrase) {
 export function extractQuantity(text = "") {
   const value = normalizeText(text);
 
-  const digitMatch = value.match(/\b(\d{1,3})\s*(jana|ota|wota|staff|manxe|manche|worker|employee|kt|kto)\b/i);
+  const digitMatch = value.match(/\b(\d{1,3})\s*(jana|jna|ota|wota|staff|manxe|manche|worker|employee|kt|kto)\b/i);
   if (digitMatch) return Number(digitMatch[1]);
 
   const wordMap = {
@@ -47,7 +47,9 @@ export function extractQuantity(text = "") {
     euta: 1,
     ek: 1,
     dui: 2,
+    due: 2,
     duita: 2,
+    dueta: 2,
     tin: 3,
     tinta: 3,
     char: 4,
@@ -72,6 +74,8 @@ export function normalizeCompanyName(text = "") {
   value = value
     .replace(/^ma\s+/i, "")
     .replace(/^mah\s+/i, "")
+    .replace(/^mero\s+company\s+ko\s+name\s+chai\s+/i, "")
+    .replace(/^company\s+ko\s+name\s+chai\s+/i, "")
     .replace(/^mero\s+chai\s+/i, "")
     .replace(/^mero\s+/i, "")
     .replace(/^hamro\s+chai\s+/i, "")
@@ -116,6 +120,8 @@ export function cleanLocationQuery(text = "") {
   return normalizeText(text)
     .replace(/^mero\s+address\s+chai\s+/i, "")
     .replace(/^mero\s+address\s+/i, "")
+    .replace(/^mero\s+company\s+ko\s+name\s+chai\s+/i, "")
+    .replace(/^company\s+ko\s+name\s+chai\s+/i, "")
     .replace(/^mero\s+chai\s+/i, "")
     .replace(/^malai\s+/i, "")
     .replace(/\b(bhanni|bhanne|thau|ma|parxa|parcha|ho|chai|address)\b/g, " ")
@@ -125,6 +131,21 @@ export function cleanLocationQuery(text = "") {
 
 export function findRole(text = "") {
   const clean = cleanRoleQuery(text);
+
+  // Multi-role hiring request: one marketing staff and one cooking/kitchen staff.
+  if (
+    /(marketing|parchar|promotion|field marketing)/i.test(clean) &&
+    /(cooking|cook|khana pakaune|kitchen|khana banaune)/i.test(clean)
+  ) {
+    return {
+      found: true,
+      key: "marketing_kitchen_staff",
+      label: "Marketing Staff + Kitchen Staff",
+      category: "multi_role",
+      matchedAlias: "marketing + cooking"
+    };
+  }
+
   let best = null;
 
   for (const [key, role] of Object.entries(roles)) {
@@ -132,7 +153,19 @@ export function findRole(text = "") {
 
     for (const alias of candidates) {
       if (includesPhrase(clean, alias) || includesPhrase(text, alias)) {
-        const score = normalizeText(alias).length;
+        const isGenericRole = ["helper", "general_helper", "staff", "house_helper"].includes(key);
+        const highPriorityRole = [
+          "cook",
+          "kitchen_staff",
+          "field_promoter",
+          "marketing_staff",
+          "street_food_vendor",
+          "garage_worker"
+        ].includes(key);
+
+        const rolePriority = highPriorityRole ? 250 : isGenericRole ? -100 : 100;
+        const score = normalizeText(alias).length + rolePriority;
+
         if (!best || score > best.score) {
           best = {
             key,

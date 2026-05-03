@@ -74,7 +74,7 @@ async function callGeminiJSON({ prompt, timeoutMs }) {
       generationConfig: {
         temperature: 0.1,
         topP: 0.8,
-        maxOutputTokens: 350,
+        maxOutputTokens: 800,
         responseMimeType: "application/json",
       },
     },

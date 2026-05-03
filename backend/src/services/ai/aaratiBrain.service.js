@@ -70,6 +70,12 @@ Rules:
 - Extract company from phrases like "mero company ko name xyz ho", "mero chai xyz".
 - Extract role from phrases like "mill ma kam garne manxe", "ghar ma kam garni", "marketing boy", "tiktok content creator".
 - Extract location from phrases like "mero address chai bhardghat dhanewa ho", "nawalparasi jamuniya", "bhardghat 13 bhatauliya".
+- If a message contains district + smaller place, choose the smaller place as canonicalLocation.
+  Example: "nawalparasi ko semari bhanni thau ma ho" → canonicalLocation = "Semari", district = "Nawalparasi West".
+  Example: "nawalparasi jamuniya" → canonicalLocation = "Jamuniya", district = "Nawalparasi West".
+  Example: "bhardghat punarbas" → canonicalLocation = "Punarbas, Bardaghat", district = "Nawalparasi West".
+- Do not return district as canonicalLocation when a smaller locality is present.
+- For location_info state, focus only on extracting location. Do not classify as job_search.
 - If unsure, keep raw text in rawRole/rawLocation and use lower confidence.
 
 Return JSON only:
@@ -111,7 +117,7 @@ async function callAIExtractor({ text, state, step }) {
   }
 }
 
-function normalizeWithRAG({ text, ai = {} }) {
+function normalizeWithRAG({ text, ai = {}, state = "", step = 0 }) {
   const roleQuery = [ai.rawRole, ai.roleLabel, text].filter(Boolean).join(" ");
   const locationQuery = [ai.rawLocation, ai.canonicalLocation, text].filter(Boolean).join(" ");
 
@@ -126,26 +132,63 @@ function normalizeWithRAG({ text, ai = {} }) {
     ? roleResult.label
     : titleCase(aiRoleLabel || "Staff");
 
-  const quantity = safeNumber(ai.quantity, extractQuantity(text));
+  let finalRoleKey = roleKey;
+  let finalRoleLabel = roleLabel;
 
-  const companyName = ai.companyName
+  if (isGenericStaffRole(finalRoleKey, finalRoleLabel)) {
+    finalRoleKey = "helper";
+    finalRoleLabel = "General Helper";
+  }
+
+  // If RAG found a specific role, RAG is the source of truth.
+  // This prevents labels like "Marketing Staff + Kitchen Staff" from being treated as generic
+  // just because they contain the word "staff".
+  if (roleResult.found) {
+    finalRoleKey = roleResult.key;
+    finalRoleLabel = roleResult.label;
+  }
+
+  let quantity = safeNumber(ai.quantity, extractQuantity(text));
+
+  if (finalRoleKey === "marketing_kitchen_staff") {
+    quantity = 2;
+  }
+
+  const finalIntent =
+    ["ask_vacancy", "ask_vacancy_role"].includes(String(state || "")) &&
+    finalRoleKey &&
+    finalRoleKey !== "helper"
+      ? "employer_lead"
+      : ai.intent || "unknown";
+
+  const shouldKeepCompany =
+    ["ask_business_name", "ask_business_name_after_ai"].includes(String(arguments?.[0]?.state || "")) ||
+    /\b(company|business|traders|trade|pasal|shop|store|pvt|ltd|firm)\b/i.test(String(ai.companyName || ""));
+
+  const companyName = shouldKeepCompany && ai.companyName
     ? normalizeCompanyName(ai.companyName)
     : "";
 
-  const location = locationResult.found
-    ? locationResult.canonical
-    : String(ai.canonicalLocation || ai.rawLocation || "").trim();
+  const isBusinessNameState = ["ask_business_name", "ask_business_name_after_ai"].includes(String(state || ""));
 
-  const district = locationResult.found
-    ? locationResult.district
-    : String(ai.district || "").trim();
+  const location = isBusinessNameState
+    ? ""
+    : locationResult.found
+      ? locationResult.canonical
+      : cleanGenericLocation(ai.canonicalLocation || ai.rawLocation || "");
+
+  const district = isBusinessNameState
+    ? ""
+    : locationResult.found
+      ? locationResult.district
+      : cleanGenericLocation(ai.district || "");
 
   return {
-    intent: ai.intent || "unknown",
+    intent: finalIntent,
     confidence: safeNumber(ai.confidence, 0),
     companyName,
-    role: roleKey,
-    roleLabel,
+    role: finalRoleKey,
+    roleLabel: finalRoleLabel,
     quantity,
     location,
     district,
@@ -162,6 +205,70 @@ function normalizeWithRAG({ text, ai = {} }) {
     }
   };
 }
+
+
+
+function isGenericStaffRole(role = "", roleLabel = "") {
+  const value = `${role} ${roleLabel}`.toLowerCase().trim();
+
+  if (!value) return true;
+
+  if (/\b(dua|dui|two|2)\s*jana\s*staff\b/i.test(value)) return true;
+  if (/\b\d+\s*jana\s*staff\b/i.test(value)) return true;
+  if (/\bstaff\s*chayako\b/i.test(value)) return true;
+
+  return [
+    "staff",
+    "helper",
+    "general helper",
+    "worker",
+    "manxe",
+    "manche",
+    "dua_jana_staff",
+    "dui_jana_staff",
+    "two_staff",
+    "2_staff"
+  ].some((item) => value === item || value.includes(item));
+}
+
+
+function cleanGenericLocation(value = "") {
+  const text = String(value || "").trim();
+  const lower = text.toLowerCase();
+
+  const genericLocations = [
+    "lumbini",
+    "lumbini province",
+    "nepal",
+    "nawalparasi west",
+    "rupandehi",
+    "kapilvastu",
+    "dang",
+    "banke",
+    "bardiya",
+    "palpa",
+    "gau gau",
+    "gau gau ma",
+    "gaun gaun",
+    "gaun gaun ma",
+    "field",
+    "market",
+    "area",
+    "local area"
+  ];
+
+  if (genericLocations.includes(lower)) {
+    return "";
+  }
+
+  // Reject phrases that describe movement, not a fixed location.
+  if (/gau\s+gau|gaun\s+gaun|hidne|hidni|jane|didai/i.test(lower)) {
+    return "";
+  }
+
+  return text;
+}
+
 
 function detectExperience(text = "") {
   const value = String(text || "").toLowerCase();
@@ -198,27 +305,33 @@ function fallbackUnderstanding({ text, state = "", step = 0 }) {
   const roleResult = findRole(text);
   const locationResult = findLocation(text);
 
+  const isBusinessNameState = ["ask_business_name", "ask_business_name_after_ai"].includes(String(state || ""));
+  const isLocationState = String(state || "") === "ask_location";
+
+  const shouldKeepLocation = !isBusinessNameState;
+  const shouldKeepCompany = shouldExtractCompanyName({ text, state, step }) && !isLocationState;
+
   return {
     intent: /(staff|manxe|manche|worker|hired|chahiyo|chayako|chaiyo)/i.test(text)
       ? "employer_lead"
       : "unknown",
     confidence: roleResult.found || locationResult.found ? 0.65 : 0.35,
-    companyName: shouldExtractCompanyName({ text, state, step }) ? normalizeCompanyName(text) : "",
+    companyName: shouldKeepCompany ? normalizeCompanyName(text) : "",
     role: roleResult.key,
     roleLabel: roleResult.label,
     quantity: extractQuantity(text),
-    location: locationResult.canonical,
-    district: locationResult.district,
-    province: locationResult.province,
-    isInsideLumbini: locationResult.isInsideLumbini,
+    location: shouldKeepLocation ? locationResult.canonical : "",
+    district: shouldKeepLocation ? locationResult.district : "",
+    province: shouldKeepLocation ? locationResult.province : "",
+    isInsideLumbini: shouldKeepLocation ? locationResult.isInsideLumbini : false,
     experienceRequired: detectExperience(text),
     urgency: "unknown",
     source: "rag_fallback",
     matched: {
       roleFound: roleResult.found,
       roleAlias: roleResult.matchedAlias,
-      locationFound: locationResult.found,
-      locationAlias: locationResult.matchedAlias
+      locationFound: shouldKeepLocation ? locationResult.found : false,
+      locationAlias: shouldKeepLocation ? locationResult.matchedAlias : null
     }
   };
 }
@@ -248,7 +361,7 @@ export async function understandEmployerMessage({ text = "", state = "", step = 
     };
   }
 
-  const normalized = normalizeWithRAG({ text: cleanText, ai });
+  const normalized = normalizeWithRAG({ text: cleanText, ai, state, step });
 
   if (!normalized.intent || normalized.intent === "unknown") {
     const fallback = fallbackUnderstanding({ text: cleanText, state, step });

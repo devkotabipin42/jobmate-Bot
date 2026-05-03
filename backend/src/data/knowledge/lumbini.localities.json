@@ -58,15 +58,14 @@
     ]
   },
   "parasi": {
-    "canonical": "Nawalparasi West",
+    "canonical": "Parasi",
     "district": "Nawalparasi West",
     "province": "Lumbini",
     "aliases": [
       "parasi",
-      "nawalparasi",
-      "nawal parasi",
-      "nawalparasi west",
-      "parsi"
+      "parsi",
+      "nawalparasi parasi",
+      "parasi bazar"
     ]
   },
   "butwal": {
@@ -129,6 +128,16 @@
       "bhardghat 13 bhatauliya",
       "bhardaghat 13 bhatauliya",
       "bhardghat bhatauliya"
+    ]
+  },
+  "nawalparasi_west": {
+    "canonical": "Nawalparasi West",
+    "district": "Nawalparasi West",
+    "province": "Lumbini",
+    "aliases": [
+      "nawalparasi",
+      "nawal parasi",
+      "nawalparasi west"
     ]
   }
 }

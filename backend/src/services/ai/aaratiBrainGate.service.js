@@ -39,7 +39,19 @@ function isSimpleLocationAnswer(text = "", state = "", step = 0) {
   if (state !== "ask_location" && Number(step) !== 3) return false;
 
   const result = findLocation(text);
-  return result.found && wordCount(text) <= 6;
+  if (!result.found) return false;
+
+  const isDistrictOnly =
+    String(result.canonical || "").toLowerCase().trim() ===
+    String(result.district || "").toLowerCase().trim();
+
+  // If only district matched but user wrote extra locality words,
+  // let AI extract the smaller place.
+  if (isDistrictOnly && wordCount(text) >= 3) {
+    return false;
+  }
+
+  return wordCount(text) <= 6;
 }
 
 function isSimpleVacancyAnswer(text = "", state = "", step = 0) {
@@ -62,8 +74,23 @@ export function shouldUseAaratiAI({ text = "", state = "", step = 0 } = {}) {
     return { useAI: false, reason: "restart_or_greeting" };
   }
 
+  if (
+    /\bhelp\b|sahayog|madat|help gar|help garnu/i.test(value) &&
+    !/human|agent|phone|call|team sanga|manche sanga|manxe sanga|staff|worker|kaam|kam|job/i.test(value)
+  ) {
+    return { useAI: false, reason: "generic_help_clarification" };
+  }
+
   if (SIMPLE_NUMBER_RE.test(value)) {
     return { useAI: false, reason: "simple_number" };
+  }
+
+  if (
+    /\b(due|dui|two|2|tin|3|char|4|panch|5)\b/i.test(value) &&
+    /\b(staff|manxe|manche|worker)\b/i.test(value) &&
+    !/(marketing|cooking|cook|driver|guard|security|developer|kitchen|garage|shop|pasal|promoter|field|sales|helper|house|ghar)/i.test(value)
+  ) {
+    return { useAI: false, reason: "quantity_only_staff_request" };
   }
 
   if (isSimpleCompanyName(value, state, step)) {

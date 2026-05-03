@@ -117,7 +117,7 @@ const INTENT_KEYWORDS = {
     "human",
     "agent",
     "support",
-    "help",
+    
   ],
 
   opt_out: [

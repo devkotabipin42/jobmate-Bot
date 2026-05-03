@@ -52,11 +52,26 @@ import {
 } from "../services/telegram/telegramAlert.service.js";
 
 import { env } from "../config/env.js";
+import { applyJobMateRoutingGuards } from "../services/automation/jobmateRoutingGuards.service.js";
 
 /**
  * Meta WhatsApp webhook verification.
  * Meta calls this GET endpoint when setting up webhook.
  */
+
+function isGenericHelpRequest(text = "") {
+  const value = String(text || "").toLowerCase().trim();
+
+  if (!value) return false;
+
+  const hasHelpWord = /\bhelp\b|sahayog|madat|help gar|help garnu/i.test(value);
+  const hasClearHumanRequest = /human|agent|phone|call|team sanga|manche sanga|manxe sanga|staff sanga/i.test(value);
+  const hasClearJobMateIntent = /staff|worker|kaam|kam|job|jagir|company|salary|register|apply/i.test(value);
+
+  return hasHelpWord && !hasClearHumanRequest && !hasClearJobMateIntent;
+}
+
+
 export async function verifyWhatsAppWebhook(req, res) {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -78,7 +93,6 @@ export async function verifyWhatsAppWebhook(req, res) {
 export async function receiveWhatsAppWebhook(req, res) {
   const normalized = MetaPayloadNormalizer.normalize(req.body);
 
-  // Meta may send status events without user message.
   if (!normalized.ok) {
     return res.status(200).json({
       success: true,
@@ -114,104 +128,101 @@ export async function receiveWhatsAppWebhook(req, res) {
       channel: "whatsapp",
     });
 
-      // BUSINESS RECEPTIONIST MODE:
-      // Skip JobMate hiring classifier completely in this mode.
-      // This prevents menu replies like "2" from triggering employer hiring flow.
-      if (env.BOT_MODE === "business_receptionist") {
-        const businessIntentResult = {
-          intent: "unknown",
-          needsHuman: false,
-          priority: "low",
-          reason: "Business receptionist mode",
-        };
+    if (env.BOT_MODE === "business_receptionist") {
+      const businessIntentResult = {
+        intent: "unknown",
+        needsHuman: false,
+        priority: "low",
+        reason: "Business receptionist mode",
+      };
 
-        const inboundMessage = await saveInboundMessage({
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: businessIntentResult,
+      });
+
+      const flowResult = await handleBusinessReceptionistMessage({
+        contact,
+        conversation,
+        normalizedMessage: normalized,
+      });
+
+      const businessLead = await upsertBusinessLeadFromReceptionist({
+        contact,
+        conversation,
+        normalizedMessage: normalized,
+        flowResult,
+      });
+
+      let handoff = null;
+
+      if (flowResult?.needsHuman) {
+        handoff = await createHandoffRequest({
           contact,
           conversation,
-          normalized,
-          intentResult: businessIntentResult,
+          reason:
+            flowResult.intent === "human_request"
+              ? "user_requested_human"
+              : flowResult.intent === "discount_request"
+                ? "call_required"
+                : "unknown",
+          lastUserMessage: normalized.message.text || "",
+          priority: flowResult.priority || "medium",
+          callRequired: flowResult.priority === "high",
+          metadata: {
+            intent: "unknown",
+            source: "business_receptionist",
+            reason: flowResult.reason || "",
+            lead: flowResult.lead || {},
+          },
         });
 
-        const flowResult = await handleBusinessReceptionistMessage({
-          contact,
-          conversation,
-          normalizedMessage: normalized,
-        });
-
-        const businessLead = await upsertBusinessLeadFromReceptionist({
-          contact,
-          conversation,
-          normalizedMessage: normalized,
-          flowResult,
-        });
-
-        let handoff = null;
-
-        if (flowResult?.needsHuman) {
-          handoff = await createHandoffRequest({
-            contact,
-            conversation,
-            reason:
-              flowResult.intent === "human_request"
-                ? "user_requested_human"
-                : flowResult.intent === "discount_request"
-                  ? "call_required"
-                  : "unknown",
-            lastUserMessage: normalized.message.text || "",
-            priority: flowResult.priority || "medium",
-            callRequired: flowResult.priority === "high",
-            metadata: {
-              intent: "unknown",
-              source: "business_receptionist",
-              reason: flowResult.reason || "",
-              lead: flowResult.lead || {},
-            },
-          });
-
-          await sendTelegramAlert(
-            `📞 BUSINESS RECEPTIONIST HANDOFF\n\n` +
-              `Contact: ${contact.displayName || "Unknown"}\n` +
-              `Phone: ${contact.phone}\n` +
-              `Intent: ${flowResult.intent}\n` +
-              `Message: ${normalized.message.text || ""}`
-          );
-        }
-
-        const replyText = flowResult.messageToSend;
-
-        const sendResult = await sendWhatsAppTextMessage({
-          to: contact.phone,
-          text: replyText,
-        });
-
-        const outboundMessage = await saveOutboundMessage({
-          contact,
-          conversation,
-          text: replyText,
-          providerMessageId: sendResult.providerMessageId,
-          status: sendResult.skipped ? "sent" : "sent",
-        });
-
-        await updateConversationIntent({
-          conversation,
-          intent: "unknown",
-          lastInboundMessageId: inboundMessage._id,
-          lastOutboundMessageId: outboundMessage._id,
-        });
-
-        await markMessageProcessed(processedMessageId);
-
-        return res.status(200).json({
-          success: true,
-          mode: "business_receptionist",
-          message: "Business receptionist webhook processed",
-          intent: flowResult.intent,
-          replied: true,
-          handoffCreated: Boolean(handoff),
-          businessLeadId: businessLead?.id || null,
-          sendSkipped: sendResult.skipped || false,
-        });
+        await sendTelegramAlert(
+          `📞 BUSINESS RECEPTIONIST HANDOFF\n\n` +
+            `Contact: ${contact.displayName || "Unknown"}\n` +
+            `Phone: ${contact.phone}\n` +
+            `Intent: ${flowResult.intent}\n` +
+            `Message: ${normalized.message.text || ""}`
+        );
       }
+
+      const replyText = flowResult.messageToSend;
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: replyText,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation,
+        text: replyText,
+        providerMessageId: sendResult.providerMessageId,
+        status: sendResult.skipped ? "sent" : "sent",
+      });
+
+      await updateConversationIntent({
+        conversation,
+        intent: "unknown",
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        mode: "business_receptionist",
+        message: "Business receptionist webhook processed",
+        intent: flowResult.intent,
+        replied: true,
+        handoffCreated: Boolean(handoff),
+        businessLeadId: businessLead?.id || null,
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
 
     let intentResult = classifyIntent({
       phone: normalized.contact.phone,
@@ -233,6 +244,16 @@ export async function receiveWhatsAppWebhook(req, res) {
       conversation,
     });
 
+    intentResult = aiBrain.intentResult || intentResult;
+
+    applyJobMateRoutingGuards({
+      intentResult,
+      aiBrain,
+      conversation,
+      normalized,
+      env,
+    });
+
     console.log("🧠 AI BRAIN RESULT:", {
       source: aiBrain.source,
       usedAI: aiBrain.usedAI,
@@ -242,12 +263,10 @@ export async function receiveWhatsAppWebhook(req, res) {
       aiRole: aiBrain.ai?.role,
       aiQuantity: aiBrain.ai?.quantity,
       aiSalaryMin: aiBrain.ai?.salaryMin,
-      finalIntent: aiBrain.intentResult?.intent,
+      finalIntent: intentResult.intent,
       state: conversation?.currentState,
       step: conversation?.metadata?.qualificationStep,
     });
-
-    intentResult = aiBrain.intentResult;
 
     const inboundMessage = await saveInboundMessage({
       contact,
@@ -266,42 +285,42 @@ export async function receiveWhatsAppWebhook(req, res) {
 
     let flowResult = null;
 
+    if (intentResult.intent === "restart") {
+      await resetConversationForRestart(conversation);
 
-      if (env.BOT_MODE === "business_receptionist") {
-        flowResult = await handleBusinessReceptionistMessage({
-          contact,
-          conversation,
-          normalizedMessage: normalized,
-        });
-      } else if (
-        env.BOT_MODE === "jobmate_hiring" &&
-        intentResult.intent === "employer_lead"
-      ) {
-        console.log("🧠 EMPLOYER FLOW:", {
-          intent: intentResult.intent,
-          state: conversation?.currentState,
-          step: conversation?.metadata?.qualificationStep,
-        });
+      flowResult = {
+        intent: "restart",
+        messageToSend: AARATI_SAMPLE_REPLIES.greeting,
+      };
+    } else if (
+      env.BOT_MODE === "jobmate_hiring" &&
+      intentResult.intent === "employer_lead"
+    ) {
+      console.log("🧠 EMPLOYER FLOW:", {
+        intent: intentResult.intent,
+        state: conversation?.currentState,
+        step: conversation?.metadata?.qualificationStep,
+      });
 
-        flowResult = await handleEmployerLead({
-          contact,
-          conversation,
-          normalizedMessage: normalized,
-          aiExtraction: aiBrain?.ai || null,
-        });
-      } else if (
-        env.BOT_MODE === "jobmate_hiring" &&
-        (
-          ["worker_registration", "job_search"].includes(intentResult.intent) ||
-          Boolean(conversation?.metadata?.lastAskedField)
-        )
-      ) {
-        flowResult = await handleWorkerRegistration({
-          contact,
-          conversation,
-          normalizedMessage: normalized,
-        });
-      }
+      flowResult = await handleEmployerLead({
+        contact,
+        conversation,
+        normalizedMessage: normalized,
+        aiExtraction: aiBrain?.ai || null,
+      });
+    } else if (
+      env.BOT_MODE === "jobmate_hiring" &&
+      (
+        ["worker_registration", "job_search"].includes(intentResult.intent) ||
+        Boolean(conversation?.metadata?.lastAskedField)
+      )
+    ) {
+      flowResult = await handleWorkerRegistration({
+        contact,
+        conversation,
+        normalizedMessage: normalized,
+      });
+    }
 
     if (!flowResult && intentResult.intent === "job_search") {
       const selected = getSelectedJobFromConversation({
@@ -331,6 +350,7 @@ export async function receiveWhatsAppWebhook(req, res) {
           location: aiBrain?.ai?.location || parsedQuery.location,
           category: aiBrain?.ai?.category || parsedQuery.category,
         };
+
         const jobSearchResult = await searchJobMateJobs(query);
 
         const jobsForMemory = jobSearchResult.jobs.map((job) => ({
@@ -375,72 +395,55 @@ export async function receiveWhatsAppWebhook(req, res) {
       }
     }
 
-      else if (intentResult.intent === "restart") {
-        await resetConversationForRestart(conversation);
-
-        if (env.BOT_MODE === "business_receptionist") {
-          flowResult = await handleBusinessReceptionistMessage({
-            contact,
-            conversation,
-            normalizedMessage: normalized,
-          });
-        } else {
-          flowResult = {
-            intent: "restart",
-            messageToSend: AARATI_SAMPLE_REPLIES.greeting,
-          };
-        }
-      }
-
     if (intentResult.intent === "opt_out") {
       await markConversationOptedOut(conversation);
     }
 
-   let handoff = null;
+    let handoff = null;
 
-if (shouldCreateHandoff({ intentResult, flowResult })) {
-  handoff = await createHandoffRequest({
-    contact,
-    conversation,
-    reason: resolveHandoffReason({ intentResult, flowResult }),
-    lastUserMessage: normalized.message.text || "",
-    priority: resolveHandoffPriority({ intentResult, flowResult }),
-    callRequired:
-      intentResult.intent === "human_handoff" ||
-      flowResult?.handoffReason === "high_value_employer",
-    metadata: {
-      intent: intentResult.intent,
-      source: "whatsapp_webhook",
-    },
-  });
+    if (shouldCreateHandoff({ intentResult, flowResult })) {
+      handoff = await createHandoffRequest({
+        contact,
+        conversation,
+        reason: resolveHandoffReason({ intentResult, flowResult }),
+        lastUserMessage: normalized.message.text || "",
+        priority: resolveHandoffPriority({ intentResult, flowResult }),
+        callRequired:
+          intentResult.intent === "human_handoff" ||
+          flowResult?.handoffReason === "high_value_employer",
+        metadata: {
+          intent: intentResult.intent,
+          source: "whatsapp_webhook",
+        },
+      });
 
-  if (flowResult?.employerLead) {
-    const alertText = buildEmployerLeadAlert({
-      contact,
-      employerLead: flowResult.employerLead,
-      handoff,
-    });
+      if (flowResult?.employerLead) {
+        const alertText = buildEmployerLeadAlert({
+          contact,
+          employerLead: flowResult.employerLead,
+          handoff,
+        });
 
-    await sendTelegramAlert(alertText);
-  }
+        await sendTelegramAlert(alertText);
+      }
 
-  if (flowResult?.worker) {
-    const alertText = buildWorkerQualifiedAlert({
-      contact,
-      worker: flowResult.worker,
-      handoff,
-    });
+      if (flowResult?.worker) {
+        const alertText = buildWorkerQualifiedAlert({
+          contact,
+          worker: flowResult.worker,
+          handoff,
+        });
 
-    await sendTelegramAlert(alertText);
-  }
-}
+        await sendTelegramAlert(alertText);
+      }
+    }
 
     const replyText = buildReplyMessage({
-  contact,
-  intentResult,
-  flowResult,
-  conversation: flowResult?.conversation || conversation,
-});
+      contact,
+      intentResult,
+      flowResult,
+      conversation: flowResult?.conversation || conversation,
+    });
 
     const sendResult = await sendWhatsAppTextMessage({
       to: contact.phone,
@@ -482,6 +485,7 @@ if (shouldCreateHandoff({ intentResult, flowResult })) {
     });
   }
 }
+
 function applyConversationIntentOverride({ intentResult, conversation, normalized }) {
   const text = normalized?.message?.normalizedText || "";
 

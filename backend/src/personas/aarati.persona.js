@@ -44,21 +44,19 @@ Safety:
 
 export const AARATI_SAMPLE_REPLIES = {
   greeting: sanitizeAaratiOutput(`Namaste 🙏 JobMate ma swagat cha.
-Mero naam Aarati ho, ma JobMate team ma chu.
-Kaam khojne kura ma sahayog garna sakchu.
+Ma Aarati, JobMate team bata.
 
-Tapai lai kasto kaam chahinchha?`),
+Tapai lai kaam khojna ho ki staff/worker khojna ho?`),
 
   botQuestion: sanitizeAaratiOutput(`Ma JobMate team ko digital sahayogi ho 🙏
 Kaam khojne, salary, company ra profile registration sambandhi kura ma sahayog garna sakchu.`),
 
-  offTopic: sanitizeAaratiOutput(`Ma kaam sambandhi kura ma sahayog garna sakchu 🙏
+  offTopic: sanitizeAaratiOutput(`Hunchha 🙏 Tapai lai kun kura ma sahayog chahiyeko ho?
 
-Tapai lai:
-1. Kaam khojna chha?
-2. Salary ko jankari chahinchha?
-3. Profile register garna chha?
-4. Company ko barema sodhna chha?`),
+- Kaam khojna
+- Staff/worker khojna
+- Salary/company ko jankari
+- Profile register garna`),
 
   askJobType: sanitizeAaratiOutput(`Tapai kasto kaam khojdai hunuhunchha?
 

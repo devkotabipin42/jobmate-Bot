@@ -3,14 +3,18 @@
     "label": "Marketing Staff",
     "category": "sales_marketing",
     "aliases": [
+      "customer khojne",
+      "field marketing",
+      "market ma jane",
       "marketing",
-      "marketting",
       "marketing boy",
       "marketing staff",
-      "field marketing",
+      "marketting",
+      "parchar",
+      "parchar garne",
+      "promotion",
       "sales marketing",
-      "market ma jane",
-      "customer khojne"
+      "sticker batne"
     ]
   },
   "sales_staff": {
@@ -39,8 +43,6 @@
       "domestic helper",
       "maid",
       "cleaning",
-      "cooking",
-      "cook",
       "ghar samhalne",
       "ghar ma kam garni"
     ]
@@ -98,12 +100,14 @@
     "label": "Driver",
     "category": "transport",
     "aliases": [
-      "driver",
-      "gadi chalak",
-      "truck driver",
       "bus driver",
+      "chalak",
       "delivery driver",
-      "license bhako manxe"
+      "driver",
+      "driving",
+      "gadi chalak",
+      "license bhako manxe",
+      "truck driver"
     ]
   },
   "security_guard": {
@@ -178,6 +182,90 @@
       "mill ma kam garne",
       "mill ma kam garni",
       "paila aru mill ma ni kam gareko"
+    ]
+  },
+  "shopkeeper": {
+    "label": "Shopkeeper",
+    "category": "retail",
+    "aliases": [
+      "dokan ma saman bechni",
+      "dokan ma saman bechne",
+      "pasal ma saman bechne",
+      "shopkeeper",
+      "shop keeper",
+      "sales counter",
+      "book shop staff",
+      "pustak pasal staff"
+    ]
+  },
+  "field_promoter": {
+    "label": "Field Promoter",
+    "category": "sales_marketing",
+    "aliases": [
+      "field promoter",
+      "promotion staff",
+      "promoter",
+      "parchar parchar",
+      "parchar garera hidne",
+      "parchar garera hidni",
+      "parchar garne manxe",
+      "poster batne",
+      "sticker batne",
+      "print sticker",
+      "print sticker haru",
+      "print sticker didai",
+      "aru lai didai",
+      "didai hindxa",
+      "gau gau jane",
+      "gau gau ma jane",
+      "gau gau hidne",
+      "pasal ko parchar",
+      "pustak pasal ko parchar"
+    ]
+  },
+  "cook": {
+    "label": "Cook",
+    "category": "hospitality",
+    "aliases": [
+      "cook",
+      "khana pakaune",
+      "khana pakauni",
+      "khana pakaaune",
+      "khana banane",
+      "khana banaune",
+      "cooking staff",
+      "kitchen cook",
+      "hotel cook",
+      "restaurant cook"
+    ]
+  },
+  "kitchen_staff": {
+    "label": "Kitchen Staff",
+    "category": "hospitality",
+    "aliases": [
+      "cook",
+      "cooking",
+      "hotel kitchen",
+      "khana pakaune",
+      "khana pakaune manxe",
+      "khana pakaune staff",
+      "kitchen",
+      "kitchen helper",
+      "kitchen staff",
+      "sab kam garos"
+    ]
+  },
+  "marketing_kitchen_staff": {
+    "label": "Marketing Staff + Kitchen Staff",
+    "category": "multi_role",
+    "aliases": [
+      "marketing ani cooking",
+      "marketing ra cooking",
+      "aauta marketing ani arko cooking",
+      "auta marketing arko cooking",
+      "marketing staff ani cooking staff",
+      "marketing ra khana pakaune",
+      "marketing ani kitchen"
     ]
   }
 }
