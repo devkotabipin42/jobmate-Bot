@@ -9,9 +9,12 @@ import {
 } from "../rag/jobmateKnowledge.service.js";
 import {
   parseHiringNeeds,
-  formatHiringNeedsSummary,
 } from "../rag/hiringNeedParser.service.js";
 import { EMPLOYER_MESSAGES as MESSAGES } from "./employer/employerLeadMessages.js";
+import {
+  buildEmployerLeadSummary,
+  formatEmployerRoleLabel,
+} from "./employer/employerLeadSummary.service.js";
 
 const URGENCY_MAP = {
   "1": {
@@ -611,23 +614,11 @@ Aba company/business ko naam pathaunu hola.`;
         ? leadBeforeUrgency.hiringNeeds
         : [];
 
-      const staffSummary = allNeeds.length > 1
-        ? formatHiringNeedsSummary(allNeeds)
-        : `${Number(latestNeed.quantity || 1)} jana ${formatRoleLabel(latestNeed.role || "staff")}`;
-
-      const areaLabel = leadBeforeUrgency?.location?.area || "-";
-      const districtLabel = leadBeforeUrgency?.location?.district || "-";
-
-      const summary = allNeeds.length > 1
-        ? `✅ Staff:
-${staffSummary}
-✅ Location: ${areaLabel}, ${districtLabel}
-✅ Urgency: ${urgency.urgency}
-✅ Priority: ${urgency.urgencyLevel}`
-        : `✅ Staff: ${staffSummary}
-✅ Location: ${areaLabel}, ${districtLabel}
-✅ Urgency: ${urgency.urgency}
-✅ Priority: ${urgency.urgencyLevel}`;
+      const summary = buildEmployerLeadSummary({
+        hiringNeeds: allNeeds.length ? allNeeds : [latestNeed],
+        location: leadBeforeUrgency?.location || {},
+        urgency,
+      });
 
       messageToSend = MESSAGES.completed(displayName, summary);
       nextStep = 5;
@@ -1096,28 +1087,7 @@ function includesAny(text, keywords = []) {
 
 
 function formatRoleLabel(role) {
-  const value = String(role || "staff").toLowerCase().trim();
-
-  const labels = {
-    frontend_developer: "Frontend Developer",
-    backend_developer: "Backend Developer",
-    fullstack_developer: "Full Stack Developer",
-    security_guard: "Security Guard",
-    hotel_staff: "Hotel Staff",
-    sales_staff: "Sales Staff",
-    kitchen_staff: "Kitchen Staff",
-    driver: "Driver",
-    waiter: "Waiter",
-    helper: "Helper",
-    cleaner: "Cleaner",
-    staff: "Staff",
-  };
-
-  if (labels[value]) return labels[value];
-
-  return value
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+  return formatEmployerRoleLabel(role);
 }
 
 
