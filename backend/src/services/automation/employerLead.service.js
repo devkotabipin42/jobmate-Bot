@@ -15,6 +15,11 @@ import {
   buildEmployerLeadSummary,
   formatEmployerRoleLabel,
 } from "./employer/employerLeadSummary.service.js";
+import {
+  addHiringNeedIfNotDuplicate as repoAddHiringNeedIfNotDuplicate,
+  upsertEmployerLead as repoUpsertEmployerLead,
+  findActiveEmployerLead,
+} from "./employer/employerLeadRepository.service.js";
 
 const URGENCY_MAP = {
   "1": {
@@ -86,7 +91,7 @@ export async function handleEmployerLead({
     const vacancy = buildVacancyFromBrain(aaratiBrain, rawText);
     const location = buildLocationFromBrain(aaratiBrain, rawText);
 
-    const duplicateCheck = await addHiringNeedIfNotDuplicate({
+    const duplicateCheck = await repoAddHiringNeedIfNotDuplicate({
       contactId: contact._id,
       vacancy,
     });
@@ -178,10 +183,9 @@ Aba company/business ko naam pathaunu hola.`;
     } else {
       const businessName = aaratiBrain.companyName || normalizeCompanyName(rawText) || "Name not provided";
 
-      const existingLeadForPending = await EmployerLead.findOne({
+      const existingLeadForPending = await findActiveEmployerLead({
         contactId: contact._id,
-        leadStatus: { $nin: ["paid", "closed", "invalid"] },
-      }).lean();
+      });
 
       const pendingVacancy =
         conversation?.metadata?.pendingVacancy ||
@@ -269,10 +273,9 @@ Aba company/business ko naam pathaunu hola.`;
   } else if (step === 10) {
     const businessName = aaratiBrain.companyName || normalizeCompanyName(rawText) || "Name not provided";
 
-    const existingLeadForPending = await EmployerLead.findOne({
+    const existingLeadForPending = await findActiveEmployerLead({
       contactId: contact._id,
-      leadStatus: { $nin: ["paid", "closed", "invalid"] },
-    }).lean();
+    });
 
     const pending = getPendingHiringRequest(conversation, existingLeadForPending);
 
@@ -351,10 +354,9 @@ Aba company/business ko naam pathaunu hola.`;
       scoreAdd = 10;
     }
   } else if (step === 2) {
-    const existingLeadForPending = await EmployerLead.findOne({
+    const existingLeadForPending = await findActiveEmployerLead({
       contactId: contact._id,
-      leadStatus: { $nin: ["paid", "closed", "invalid"] },
-    }).lean();
+    });
 
     const pending = getPendingHiringRequest(conversation, existingLeadForPending);
 
@@ -566,10 +568,9 @@ Aba company/business ko naam pathaunu hola.`;
     currentState = "ask_urgency";
     scoreAdd = 10;
   } else if (step === 4) {
-    const leadBeforeUrgency = await EmployerLead.findOne({
+    const leadBeforeUrgency = await findActiveEmployerLead({
       contactId: contact._id,
-      leadStatus: { $nin: ["paid", "closed", "invalid"] },
-    }).lean();
+    });
 
     const latestNeed =
       leadBeforeUrgency?.hiringNeeds?.[leadBeforeUrgency.hiringNeeds.length - 1];
@@ -637,7 +638,7 @@ Aba company/business ko naam pathaunu hola.`;
     currentState = conversation.currentState || "completed";
   }
 
-  const employerLead = await upsertEmployerLead({
+  const employerLead = await repoUpsertEmployerLead({
     contact,
     leadUpdate,
   });
@@ -665,60 +666,6 @@ Aba company/business ko naam pathaunu hola.`;
   };
 }
 
-async function addHiringNeedIfNotDuplicate({ contactId, vacancy }) {
-  if (!contactId || !vacancy) return;
-
-  const existingLead = await EmployerLead.findOne({
-    contactId,
-    leadStatus: { $nin: ["paid", "closed", "invalid"] },
-  }).lean();
-
-  const alreadyExists = existingLead?.hiringNeeds?.some((need) => {
-    return (
-      String(need.role || "") === String(vacancy.role || "") &&
-      Number(need.quantity || 1) === Number(vacancy.quantity || 1) &&
-      Number(need.salaryMin || 0) === Number(vacancy.salaryMin || 0) &&
-      Number(need.salaryMax || 0) === Number(vacancy.salaryMax || 0)
-    );
-  });
-
-  if (alreadyExists) {
-    return {
-      shouldPush: false,
-    };
-  }
-
-  return {
-    shouldPush: true,
-  };
-}
-
-async function upsertEmployerLead({ contact, leadUpdate }) {
-  const baseSet = {
-    contactId: contact._id,
-    phone: contact.phone,
-    whatsapp: contact.phone,
-    source: "whatsapp",
-  };
-
-  const update = {
-    $setOnInsert: baseSet,
-    ...(leadUpdate || {}),
-  };
-
-  return EmployerLead.findOneAndUpdate(
-    {
-      contactId: contact._id,
-      leadStatus: { $nin: ["paid", "closed", "invalid"] },
-    },
-    update,
-    {
-      returnDocument: "after",
-      upsert: true,
-      setDefaultsOnInsert: true,
-    }
-  );
-}
 
 function buildVacancyFromAI(ai) {
   return {
