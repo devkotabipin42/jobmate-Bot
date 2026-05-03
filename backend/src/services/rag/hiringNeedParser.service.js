@@ -35,7 +35,7 @@ const ROLE_PATTERNS = [
     role: "driver",
     roleLabel: "Driver",
     category: "transport",
-    pattern: "(?:driver|driving|gadi\\s+chalak|chalak)",
+    pattern: "(?:driver|drivers|driving|gadi\\s+chalak|chalak)",
   },
   {
     role: "marketing_staff",
@@ -48,6 +48,12 @@ const ROLE_PATTERNS = [
     roleLabel: "Security Guard",
     category: "security",
     pattern: "(?:security|guard|security\\s+guard|watchman)",
+  },
+  {
+    role: "waiter",
+    roleLabel: "Waiter",
+    category: "hospitality",
+    pattern: "(?:waiter|waiters|service\\s+staff|hotel\\s+waiter|restaurant\\s+waiter)",
   },
   {
     role: "field_promoter",
