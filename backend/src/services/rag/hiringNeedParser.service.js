@@ -59,7 +59,7 @@ const ROLE_PATTERNS = [
     role: "shopkeeper",
     roleLabel: "Shopkeeper",
     category: "retail",
-    pattern: "(?:shopkeeper|shop\\s+keeper|seller|selling\\s+garne|bechne|bechni|pasal\\s+ma\\s+saman\\s+bechne|dokan\\s+ma\\s+saman\\s+bechni|counter\\s+staff)",
+    pattern: "(?:shopkeeper|shop\\s+keeper|seller|selling|selling\\s+garne|sale\\s+garne|sales\\s+garne|bechne|bechni|bechna|saman\\s+bechne|pasal\\s+ma\\s+saman\\s+bechne|dokan\\s+ma\\s+saman\\s+bechni|counter\\s+staff)",
   },
 ];
 

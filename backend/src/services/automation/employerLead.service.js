@@ -11,6 +11,7 @@ import {
   parseHiringNeeds,
   formatHiringNeedsSummary,
 } from "../rag/hiringNeedParser.service.js";
+import { EMPLOYER_MESSAGES as MESSAGES } from "./employer/employerLeadMessages.js";
 
 const URGENCY_MAP = {
   "1": {
@@ -33,77 +34,6 @@ const URGENCY_MAP = {
     urgencyLevel: "low",
     scoreAdd: 3,
   },
-};
-
-const MESSAGES = {
-  welcome: (name) =>
-    `Hunchha ${name || "Mitra"} ji 🙏
-
-Staff/worker khojna ma sahayog garchhu.
-Suruma tapai ko company/business ko naam pathaunu hola.`,
-
-  askBusinessNameWithSummary: ({ name, ai }) =>
-    `Dhanyabaad ${name || "Mitra"} ji 🙏
-
-Tapai ko hiring requirement note bhayo:
-
-👥 Role: ${ai.role || ai.keyword || "staff"}
-🔢 Quantity: ${ai.quantity || 1}
-📍 Location: ${ai.location || "-"}
-💰 Salary: ${formatSalary(ai)}
-
-Aba tapai ko business/company name ke ho?`,
-
-  askVacancy: (businessName) =>
-    `Dhanyabaad 🙏
-${businessName || "Tapai ko business"} ko details note gariyo.
-
-Tapai lai kun role ko lagi kati jana staff chahinchha?
-
-Example:
-- 1 jana Frontend Developer
-- 3 jana Driver
-- 5 jana Security Guard
-- 2 jana Kitchen Helper`,
-
-  askRoleAfterQuantity: (quantity) =>
-    `${quantity || 1} jana staff note gariyo 🙏
-
-Kun role ko staff chahinchha?
-Example:
-- Frontend Developer
-- Driver
-- Security Guard
-- Kitchen Helper`,
-
-  askLocation: `Thik chha, details note gariyo. ✅
-
-Tapai ko business kun area wa district ma chha?
-Example: Bardaghat, Butwal, Bhairahawa, Parasi`,
-
-  askUrgency: `Dhanyabaad. 👍
-
-Tapailai employees kahile dekhi chahinchha?
-
-1. Immediate / yo hapta
-2. 1-2 hapta bhitra
-3. Yo mahina bhitra
-4. Exploring / bujhdai`,
-
-  completed: (name, summary) =>
-    `Dhanyabaad ${name || "Mitra"} ji! 🙏
-
-Tapai ko hiring details receive bhayo.
-
-${summary}
-
-Phone on rakhnu hola, hamro team le chhittai sampark garchha. 📞`,
-
-  returning: (name) =>
-    `Namaste ${name || "Mitra"} ji! 😊
-
-Tapai ko business details hami sanga safe chha.
-Yedi thap vacancy wa new information dinu chha bhane yahin message pathaunu hola.`,
 };
 
 export async function handleEmployerLead({
