@@ -1,3 +1,4 @@
+import { env } from "../../config/env.js";
 import {
   listDueFollowups,
   markFollowupSent,
@@ -5,6 +6,7 @@ import {
 } from "./followupScheduler.service.js";
 import { buildFollowupMessage } from "./followupTemplates.js";
 import { createNotification } from "../notifications/notification.service.js";
+import { sendWhatsAppTextMessage } from "../whatsapp/whatsappClient.service.js";
 
 function resolveEntityType(targetType = "") {
   if (["WorkerProfile", "EmployerLead", "JobApplication"].includes(targetType)) {
@@ -44,6 +46,20 @@ export async function processDueFollowups({ limit = 25, dryRun = false } = {}) {
         throw new Error(`Missing follow-up template: ${followup.templateName}`);
       }
 
+      let deliveryMode = "dashboard_notification";
+      let whatsappResult = null;
+
+      if (!dryRun && env.FOLLOWUP_WHATSAPP_SEND_ENABLED) {
+        whatsappResult = await sendWhatsAppTextMessage({
+          to: followup.phone,
+          text: message,
+        });
+
+        deliveryMode = whatsappResult?.skipped
+          ? "whatsapp_skipped_dashboard_notification"
+          : "whatsapp_and_dashboard_notification";
+      }
+
       if (!dryRun) {
         await createNotification({
           type: "follow_up_due",
@@ -58,7 +74,15 @@ export async function processDueFollowups({ limit = 25, dryRun = false } = {}) {
             triggerType: followup.triggerType,
             templateName: followup.templateName,
             templateData: followup.templateData || {},
-            deliveryMode: "dashboard_notification",
+            deliveryMode,
+            whatsapp: whatsappResult
+              ? {
+                  skipped: Boolean(whatsappResult.skipped),
+                  reason: whatsappResult.reason || "",
+                  provider: whatsappResult.provider || "",
+                  providerMessageId: whatsappResult.providerMessageId || "",
+                }
+              : null,
           },
         });
 
@@ -72,6 +96,7 @@ export async function processDueFollowups({ limit = 25, dryRun = false } = {}) {
         phone: followup.phone,
         triggerType: followup.triggerType,
         templateName: followup.templateName,
+        deliveryMode: dryRun ? "dry_run" : deliveryMode,
       });
     } catch (error) {
       results.failed += 1;

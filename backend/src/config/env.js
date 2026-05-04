@@ -9,6 +9,19 @@ function clean(value) {
   return trimmed === "" ? undefined : trimmed;
 }
 
+function cleanBoolean(value, fallback = false) {
+  const cleaned = clean(value);
+
+  if (cleaned === undefined) return fallback;
+
+  const normalized = String(cleaned).toLowerCase();
+
+  if (["true", "1", "yes", "on"].includes(normalized)) return true;
+  if (["false", "0", "no", "off"].includes(normalized)) return false;
+
+  return fallback;
+}
+
 const rawEnv = {
   NODE_ENV: clean(process.env.NODE_ENV) || "development",
   PORT: clean(process.env.PORT) || "5000",
@@ -38,10 +51,16 @@ const rawEnv = {
 
   BOT_MODE: clean(process.env.BOT_MODE) || "jobmate_hiring",
 
-  FOLLOWUP_PROCESSOR_ENABLED:
-    clean(process.env.FOLLOWUP_PROCESSOR_ENABLED) || "false",
+  FOLLOWUP_PROCESSOR_ENABLED: cleanBoolean(
+    process.env.FOLLOWUP_PROCESSOR_ENABLED,
+    false
+  ),
   FOLLOWUP_PROCESSOR_INTERVAL_MS:
     clean(process.env.FOLLOWUP_PROCESSOR_INTERVAL_MS) || "60000",
+  FOLLOWUP_WHATSAPP_SEND_ENABLED: cleanBoolean(
+    process.env.FOLLOWUP_WHATSAPP_SEND_ENABLED,
+    false
+  ),
 };
 
 const envSchema = z.object({
@@ -73,8 +92,9 @@ const envSchema = z.object({
 
   BOT_MODE: z.enum(["jobmate_hiring", "business_receptionist"]),
 
-  FOLLOWUP_PROCESSOR_ENABLED: z.coerce.boolean().default(false),
+  FOLLOWUP_PROCESSOR_ENABLED: z.boolean().default(false),
   FOLLOWUP_PROCESSOR_INTERVAL_MS: z.coerce.number().int().min(30000),
+  FOLLOWUP_WHATSAPP_SEND_ENABLED: z.boolean().default(false),
 });
 
 const parsed = envSchema.safeParse(rawEnv);
