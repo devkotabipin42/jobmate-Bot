@@ -205,6 +205,35 @@ const employerLeadSchema = new mongoose.Schema(
       default: "",
     },
 
+    verificationStatus: {
+      type: String,
+      enum: ["unverified", "needs_call", "called", "verified", "rejected"],
+      default: "needs_call",
+      index: true,
+    },
+
+    salaryVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    phoneVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    needsCall: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+
+    hrNotes: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
     lastQualifiedAt: {
       type: Date,
       default: null,
