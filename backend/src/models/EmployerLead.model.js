@@ -29,6 +29,18 @@ const hiringNeedSchema = new mongoose.Schema(
       default: "NPR",
     },
 
+    workType: {
+      type: String,
+      enum: ["full_time", "part_time", "shift", "flexible", "unknown"],
+      default: "unknown",
+    },
+
+    workingHours: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
     experienceRequired: {
       type: String,
       enum: ["none", "basic", "experienced", "skilled", "unknown"],

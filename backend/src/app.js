@@ -8,6 +8,7 @@ import { connectDB } from "./config/db.js";
 import whatsappRoutes from "./routes/whatsapp.routes.js";
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler.js";
 import adminRoutes from "./routes/admin.routes.js";
+import adminPendingKnowledgeRoutes from "./routes/adminPendingKnowledge.routes.js";
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.get("/health", (req, res) => {
 
 app.use("/api/whatsapp", whatsappRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin/pending-knowledge", adminPendingKnowledgeRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

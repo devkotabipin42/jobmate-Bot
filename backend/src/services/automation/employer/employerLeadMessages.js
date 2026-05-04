@@ -73,6 +73,20 @@ Tapailai employees kahile dekhi chahinchha?
 3. Yo mahina bhitra
 4. Exploring / bujhdai`,
 
+  askSalaryRange: `Salary range kati samma dinu huncha?
+
+Example:
+- 15000-20000
+- 18000 samma
+- company anusar`,
+
+  askWorkType: `Kaam type kasto ho?
+
+1. Full-time
+2. Part-time
+3. Shift
+4. Flexible`,
+
   completed: (name, summary) =>
     `Dhanyabaad ${greetingName(name)} 🙏
 

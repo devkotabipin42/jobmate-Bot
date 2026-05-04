@@ -8,6 +8,8 @@ const ACTIVE_EMPLOYER_STATES = new Set([
   "ask_vacancy_role",
   "ask_location",
   "ask_urgency",
+      "ask_salary_range",
+      "ask_work_type",
 ]);
 
 const NON_OVERRIDABLE_INTENTS = new Set([

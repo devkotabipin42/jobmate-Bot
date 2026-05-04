@@ -16,12 +16,43 @@ const ROLE_LABELS = {
   garage_worker: "Garage Worker",
   street_food_vendor: "Street Food Vendor",
   house_helper: "House Helper",
+  helper_staff: "Helper",
   waiter: "Waiter",
   cleaner: "Cleaner",
-  helper_staff: "Helper",
   helper: "General Helper",
-  staff: "Staff"
+  staff: "Staff",
 };
+
+function formatSalaryRange({ salaryMin = null, salaryMax = null } = {}) {
+  const min = Number(salaryMin || 0);
+  const max = Number(salaryMax || 0);
+
+  if (min && max && min !== max) {
+    return `Rs ${min.toLocaleString("en-IN")} - ${max.toLocaleString("en-IN")}`;
+  }
+
+  if (max && !min) {
+    return `Rs ${max.toLocaleString("en-IN")} samma`;
+  }
+
+  if (min || max) {
+    return `Rs ${Number(min || max).toLocaleString("en-IN")}`;
+  }
+
+  return "-";
+}
+
+function formatWorkType(workType = "unknown") {
+  const labels = {
+    full_time: "Full-time",
+    part_time: "Part-time",
+    shift: "Shift",
+    flexible: "Flexible",
+    unknown: "-",
+  };
+
+  return labels[workType] || "-";
+}
 
 export function formatEmployerRoleLabel(role = "") {
   const value = String(role || "").trim();
@@ -64,7 +95,7 @@ export function formatEmployerHiringNeeds(needs = []) {
 export function buildEmployerLeadSummary({
   hiringNeeds = [],
   location = {},
-  urgency = {}
+  urgency = {},
 } = {}) {
   const staffSummary = formatEmployerHiringNeeds(hiringNeeds);
   const areaLabel = location?.area || "-";
@@ -72,16 +103,34 @@ export function buildEmployerLeadSummary({
   const urgencyValue = urgency?.urgency || "unknown";
   const urgencyLevel = urgency?.urgencyLevel || "unknown";
 
-  if (Array.isArray(hiringNeeds) && hiringNeeds.length > 1) {
-    return `✅ Staff:
+  const firstNeed =
+    Array.isArray(hiringNeeds) && hiringNeeds.length ? hiringNeeds[0] : {};
+
+  const salaryText = formatSalaryRange({
+    salaryMin: firstNeed.salaryMin,
+    salaryMax: firstNeed.salaryMax,
+  });
+
+  const workTypeText = formatWorkType(firstNeed.workType);
+
+  const extraLines = [
+    salaryText !== "-" ? `✅ Salary: ${salaryText}` : "",
+    workTypeText !== "-" ? `✅ Work Type: ${workTypeText}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const base =
+    Array.isArray(hiringNeeds) && hiringNeeds.length > 1
+      ? `✅ Staff:
 ${staffSummary}
 ✅ Location: ${areaLabel}, ${districtLabel}
 ✅ Urgency: ${urgencyValue}
-✅ Priority: ${urgencyLevel}`;
-  }
-
-  return `✅ Staff: ${staffSummary}
+✅ Priority: ${urgencyLevel}`
+      : `✅ Staff: ${staffSummary}
 ✅ Location: ${areaLabel}, ${districtLabel}
 ✅ Urgency: ${urgencyValue}
 ✅ Priority: ${urgencyLevel}`;
+
+  return extraLines ? `${base}\n${extraLines}` : base;
 }

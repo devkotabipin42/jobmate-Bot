@@ -513,6 +513,8 @@ function applyConversationIntentOverride({ intentResult, conversation, normalize
     "ask_vacancy_role",
     "ask_location",
     "ask_urgency",
+      "ask_salary_range",
+      "ask_work_type",
   ];
 
   const safeContinuationIntents = [

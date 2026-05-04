@@ -34,11 +34,6 @@ import {
 } from "./employer/employerLeadMapper.service.js";
 
 import { learnFromEmployerBrain } from "../rag/knowledgeLearning.service.js";
-import {
-  parseSalaryRange as mapperParseSalaryRange,
-  parseWorkType as mapperParseWorkType,
-} from "./employer/employerLeadMapper.service.js";
-
 const URGENCY_MAP = {
   "1": {
     urgency: "this_week",
@@ -596,81 +591,70 @@ Aba company/business ko naam pathaunu hola.`;
     currentState = "ask_urgency";
     scoreAdd = 10;
   } else if (step === 4) {
-    const urgency = mapperParseUrgency(text || aiExtraction?.urgency || "");
-
-    leadUpdate = {
-      $set: {
-        "hiringNeeds.$[].urgency": urgency.urgency,
-        leadStatus: urgency.urgencyLevel === "urgent" ? "hot" : "interested",
-        urgencyLevel: urgency.urgencyLevel,
-        lastQualifiedAt: new Date(),
-      },
-      $inc: {
-        score: urgency.scoreAdd,
-      },
-    };
-
-    messageToSend = MESSAGES.askSalaryRange;
-    nextStep = 5;
-    currentState = "ask_salary_range";
-    scoreAdd = urgency.scoreAdd;
-    urgencyLevel = urgency.urgencyLevel;
-    isComplete = false;
-  } else if (step === 5) {
-    const salary = mapperParseSalaryRange(rawText || text);
-
-    leadUpdate = {
-      $set: {
-        "hiringNeeds.$[].salaryMin": salary.salaryMin,
-        "hiringNeeds.$[].salaryMax": salary.salaryMax,
-        "hiringNeeds.$[].salaryCurrency": salary.salaryCurrency || "NPR",
-        "metadata.salaryRawText": rawText || text,
-      },
-    };
-
-    messageToSend = MESSAGES.askWorkType;
-    nextStep = 6;
-    currentState = "ask_work_type";
-    isComplete = false;
-  } else if (step === 6) {
-    const workType = mapperParseWorkType(rawText || text);
-
-    const leadBeforeComplete = await findActiveEmployerLead({
+    const leadBeforeUrgency = await findActiveEmployerLead({
       contactId: contact._id,
     });
 
-    const updatedNeeds = Array.isArray(leadBeforeComplete?.hiringNeeds)
-      ? leadBeforeComplete.hiringNeeds.map((need) => ({
-          ...need,
-          workType,
-        }))
-      : [];
+    const latestNeed =
+      leadBeforeUrgency?.hiringNeeds?.[leadBeforeUrgency.hiringNeeds.length - 1];
 
-    leadUpdate = {
-      $set: {
-        "hiringNeeds.$[].workType": workType,
-        "metadata.workTypeRawText": rawText || text,
-      },
-    };
+    if (!latestNeed || isGenericRole(latestNeed.role)) {
+      const qty =
+        latestNeed?.quantity ||
+        conversation?.metadata?.pendingQuantity ||
+        1;
 
-    const summary = buildEmployerLeadSummary({
-      hiringNeeds: updatedNeeds.length ? updatedNeeds : leadBeforeComplete?.hiringNeeds || [],
-      location: leadBeforeComplete?.location || {},
-      urgency: {
-        urgency: leadBeforeComplete?.hiringNeeds?.[0]?.urgency || "unknown",
-        urgencyLevel: leadBeforeComplete?.urgencyLevel || "unknown",
-      },
-    });
+      leadUpdate = {
+        $set: {
+          leadStatus: "qualifying",
+          "metadata.pendingQuantity": qty,
+        },
+      };
 
-    messageToSend = MESSAGES.completed(displayName, summary);
-    nextStep = 7;
-    currentState = "completed";
-    isComplete = true;
-    urgencyLevel = leadBeforeComplete?.urgencyLevel || "unknown";
-    handoffReason =
-      urgencyLevel === "urgent"
-        ? "high_value_employer"
-        : "qualified_employer";
+      messageToSend = MESSAGES.askRoleAfterQuantity
+        ? MESSAGES.askRoleAfterQuantity(qty)
+        : `${qty} jana staff note gariyo 🙏\n\nKun role ko staff chahinchha?`;
+
+      nextStep = 20;
+      currentState = "ask_vacancy_role";
+      scoreAdd = 0;
+      isComplete = false;
+    } else {
+      const urgency = mapperParseUrgency(text || aiExtraction?.urgency || "");
+
+      leadUpdate = {
+        $set: {
+          "hiringNeeds.$[].urgency": urgency.urgency,
+          leadStatus: urgency.urgencyLevel === "urgent" ? "hot" : "interested",
+          urgencyLevel: urgency.urgencyLevel,
+          lastQualifiedAt: new Date(),
+        },
+        $inc: {
+          score: urgency.scoreAdd,
+        },
+      };
+
+      const allNeeds = Array.isArray(leadBeforeUrgency?.hiringNeeds)
+        ? leadBeforeUrgency.hiringNeeds
+        : [];
+
+      const summary = buildEmployerLeadSummary({
+        hiringNeeds: allNeeds.length ? allNeeds : [latestNeed],
+        location: leadBeforeUrgency?.location || {},
+        urgency,
+      });
+
+      messageToSend = MESSAGES.completed(displayName, summary);
+      nextStep = 5;
+      currentState = "completed";
+      scoreAdd = urgency.scoreAdd;
+      urgencyLevel = urgency.urgencyLevel;
+      isComplete = true;
+      handoffReason =
+        urgency.urgencyLevel === "urgent"
+          ? "high_value_employer"
+          : "qualified_employer";
+    }
   } else {
     messageToSend = MESSAGES.returning(displayName);
     nextStep = step;

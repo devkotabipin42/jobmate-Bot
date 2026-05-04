@@ -672,6 +672,42 @@ Aba company/business ko naam pathaunu hola.`;
         ? "high_value_employer"
         : "qualified_employer";
   } else {
+      const urgency = mapperParseUrgency(text || aiExtraction?.urgency || "");
+
+      leadUpdate = {
+        $set: {
+          "hiringNeeds.$[].urgency": urgency.urgency,
+          leadStatus: urgency.urgencyLevel === "urgent" ? "hot" : "interested",
+          urgencyLevel: urgency.urgencyLevel,
+          lastQualifiedAt: new Date(),
+        },
+        $inc: {
+          score: urgency.scoreAdd,
+        },
+      };
+
+      const allNeeds = Array.isArray(leadBeforeUrgency?.hiringNeeds)
+        ? leadBeforeUrgency.hiringNeeds
+        : [];
+
+      const summary = buildEmployerLeadSummary({
+        hiringNeeds: allNeeds.length ? allNeeds : [latestNeed],
+        location: leadBeforeUrgency?.location || {},
+        urgency,
+      });
+
+      messageToSend = MESSAGES.completed(displayName, summary);
+      nextStep = 5;
+      currentState = "completed";
+      scoreAdd = urgency.scoreAdd;
+      urgencyLevel = urgency.urgencyLevel;
+      isComplete = true;
+      handoffReason =
+        urgency.urgencyLevel === "urgent"
+          ? "high_value_employer"
+          : "qualified_employer";
+    }
+  } else {
     messageToSend = MESSAGES.returning(displayName);
     nextStep = step;
     currentState = conversation.currentState || "completed";

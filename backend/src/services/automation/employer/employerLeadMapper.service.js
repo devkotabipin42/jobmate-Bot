@@ -334,3 +334,92 @@ export function formatBrainSummary(brain = {}) {
 
   return lines.length ? lines.join("\n") : "";
 }
+
+
+export function parseSalaryRange(text = "") {
+  const value = String(text || "").toLowerCase();
+
+  const numbers = [...value.matchAll(/\d{4,6}/g)].map((match) => Number(match[0]));
+
+  if (numbers.length >= 2) {
+    return {
+      salaryMin: Math.min(numbers[0], numbers[1]),
+      salaryMax: Math.max(numbers[0], numbers[1]),
+      salaryCurrency: "NPR",
+    };
+  }
+
+  if (numbers.length === 1) {
+    const n = numbers[0];
+
+    if (/samma| samma|up to|maximum|max/i.test(value)) {
+      return {
+        salaryMin: null,
+        salaryMax: n,
+        salaryCurrency: "NPR",
+      };
+    }
+
+    return {
+      salaryMin: n,
+      salaryMax: n,
+      salaryCurrency: "NPR",
+    };
+  }
+
+  return {
+    salaryMin: null,
+    salaryMax: null,
+    salaryCurrency: "NPR",
+  };
+}
+
+export function parseWorkType(text = "") {
+  const value = String(text || "").toLowerCase().trim();
+
+  if (/^1$|full|fulltime|full-time|din bhari|dinvari/i.test(value)) {
+    return "full_time";
+  }
+
+  if (/^2$|part|parttime|part-time|aadha|adha/i.test(value)) {
+    return "part_time";
+  }
+
+  if (/^3$|shift|night|day shift|night shift/i.test(value)) {
+    return "shift";
+  }
+
+  if (/^4$|flexible|milayera|jun sukai|junsukai/i.test(value)) {
+    return "flexible";
+  }
+
+  return "unknown";
+}
+
+export function formatSalaryRange({ salaryMin = null, salaryMax = null } = {}) {
+  if (salaryMin && salaryMax && salaryMin !== salaryMax) {
+    return `Rs ${Number(salaryMin).toLocaleString("en-IN")} - ${Number(salaryMax).toLocaleString("en-IN")}`;
+  }
+
+  if (salaryMax && !salaryMin) {
+    return `Rs ${Number(salaryMax).toLocaleString("en-IN")} samma`;
+  }
+
+  if (salaryMin || salaryMax) {
+    return `Rs ${Number(salaryMin || salaryMax).toLocaleString("en-IN")}`;
+  }
+
+  return "-";
+}
+
+export function formatWorkType(workType = "unknown") {
+  const labels = {
+    full_time: "Full-time",
+    part_time: "Part-time",
+    shift: "Shift",
+    flexible: "Flexible",
+    unknown: "-",
+  };
+
+  return labels[workType] || "-";
+}
