@@ -110,3 +110,23 @@ export async function markFollowupFailed(id, errorMessage = "") {
     }
   );
 }
+
+
+export async function cancelFollowup(id, reason = "") {
+  return ScheduledFollowup.findOneAndUpdate(
+    {
+      _id: id,
+      status: "pending",
+    },
+    {
+      $set: {
+        status: "cancelled",
+        lastError: reason ? String(reason) : "Cancelled by admin",
+      },
+    },
+    {
+      returnDocument: "after",
+      runValidators: false,
+    }
+  ).lean();
+}

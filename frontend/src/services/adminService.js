@@ -242,6 +242,14 @@ export const adminService = {
   },
 
 
+  cancelFollowup(id, payload = {}) {
+    return request(`/api/admin/followups/${id}/cancel`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
+
   getConversations(params = {}) {
     const query = new URLSearchParams(params).toString();
     return request(`/api/admin/conversations${query ? `?${query}` : ""}`);

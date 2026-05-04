@@ -7,6 +7,7 @@ import {
   Phone,
   RefreshCw,
   Send,
+  Trash2,
   XCircle,
 } from "lucide-react";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
@@ -44,6 +45,7 @@ export default function FollowupsPage() {
   const [status, setStatus] = useState("pending");
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [cancellingId, setCancellingId] = useState("");
   const [processResult, setProcessResult] = useState(null);
   const [error, setError] = useState("");
 
@@ -87,6 +89,26 @@ export default function FollowupsPage() {
       setError(err.message || "Failed to process follow-ups");
     } finally {
       setProcessing(false);
+    }
+  }
+
+  async function handleCancelFollowup(item) {
+    const id = item?._id || item?.id;
+    if (!id || item?.status !== "pending") return;
+
+    try {
+      setCancellingId(id);
+      setError("");
+
+      await adminService.cancelFollowup(id, {
+        reason: "Cancelled from follow-ups dashboard",
+      });
+
+      await loadFollowups();
+    } catch (err) {
+      setError(err.message || "Failed to cancel follow-up");
+    } finally {
+      setCancellingId("");
     }
   }
 
@@ -172,7 +194,12 @@ export default function FollowupsPage() {
               <StateCard text="No follow-ups found for this status." />
             ) : (
               items.map((item) => (
-                <FollowupCard key={item._id || item.id} item={item} />
+                <FollowupCard
+                  key={item._id || item.id}
+                  item={item}
+                  cancelling={cancellingId === (item._id || item.id)}
+                  onCancel={handleCancelFollowup}
+                />
               ))
             )}
           </div>
@@ -182,7 +209,7 @@ export default function FollowupsPage() {
   );
 }
 
-function FollowupCard({ item }) {
+function FollowupCard({ item, cancelling, onCancel }) {
   return (
     <div className="rounded-3xl border border-slate-100 bg-slate-50/70 p-5 transition hover:border-emerald-100 hover:bg-emerald-50/40 dark:border-slate-800 dark:bg-slate-950/50 dark:hover:border-emerald-500/20 dark:hover:bg-emerald-500/5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -215,13 +242,26 @@ function FollowupCard({ item }) {
           </div>
         </div>
 
-        <div className="rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300 lg:w-80">
+        <div className="flex flex-col gap-3 lg:w-80">
+          {item.status === "pending" ? (
+            <button
+              onClick={() => onCancel?.(item)}
+              disabled={cancelling}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-white px-4 py-2 text-sm font-black text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-500/20 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-500/10"
+            >
+              <Trash2 size={16} />
+              {cancelling ? "Cancelling..." : "Cancel Follow-up"}
+            </button>
+          ) : null}
+
+          <div className="rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
             Template data
           </p>
           <pre className="mt-2 max-h-44 overflow-auto whitespace-pre-wrap break-words text-xs">
             {JSON.stringify(item.templateData || {}, null, 2)}
           </pre>
+          </div>
         </div>
       </div>
     </div>
