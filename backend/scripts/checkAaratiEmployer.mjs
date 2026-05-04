@@ -21,6 +21,7 @@ const checks = [
   ["node", ["scripts/testAaratiEmployerCore.mjs"]],
   ["node", ["scripts/testHiringNeedParser.mjs"]],
   ["node", ["scripts/testJobseekerCore.mjs"]],
+  ["node", ["scripts/testJobseekerSafety.mjs"]],
   ["node", ["scripts/testEmployerLeadFlowV2.mjs"]],
 ];
 

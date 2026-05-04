@@ -3,6 +3,7 @@
 // returns formatted reply or null if no jobs.
 
 import { searchJobMateJobs, formatJobsForWhatsApp } from "./jobmateJobsClient.service.js";
+import { filterSafeJobMatches } from "./jobSearchSafety.service.js";
 
 /**
  * Run job search if location is set and not yet searched.
@@ -36,17 +37,23 @@ export async function runJobSearchStep(profile, text = "") {
   // Mark as searched so we don't search again on every message
   const updates = { jobSearchDone: true };
 
-  if (result.ok && result.jobs.length > 0) {
-    // Jobs found — show them
+  const safeJobs = result.ok
+    ? filterSafeJobMatches({
+        jobs: result.jobs,
+        requestedLocation: profile.location,
+      })
+    : [];
+
+  if (safeJobs.length > 0) {
     const jobsList = formatJobsForWhatsApp({
-      jobs: result.jobs,
+      jobs: safeJobs,
       location: profile.location,
       keyword: profile.jobType || "",
     });
 
     return {
-      messageToSend: `${jobsList}\n\nYa profile register garna chahanchu bhane "register" lekhnu hola.`,
-      profileUpdates: { ...updates, jobSearchResults: result.jobs },
+      messageToSend: `${jobsList}\n\nProfile register garna chahanu huncha bhane "register" lekhnu hola.`,
+      profileUpdates: { ...updates, jobSearchResults: safeJobs },
       state: "showed_jobs",
     };
   }
