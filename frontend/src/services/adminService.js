@@ -143,6 +143,11 @@ export const adminService = {
     });
   },
 
+  getEmployerLeadMatches(id, params = {}) {
+    const query = new URLSearchParams(params).toString();
+    return request(`/api/admin/employer-leads/${id}/matches${query ? `?${query}` : ""}`);
+  },
+
   getWorkers(params = {}) {
     const query = new URLSearchParams(params).toString();
     return request(`/api/admin/workers${query ? `?${query}` : ""}`);

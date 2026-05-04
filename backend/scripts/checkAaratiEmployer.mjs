@@ -2,6 +2,9 @@ import { spawnSync } from "child_process";
 
 const checks = [
   ["node", ["--check", "src/controllers/whatsapp.controller.js"]],
+  ["node", ["--check", "src/routes/adminWorkerMatch.routes.js"]],
+  ["node", ["--check", "src/controllers/adminWorkerMatch.controller.js"]],
+  ["node", ["--check", "src/services/matching/workerMatching.service.js"]],
   ["node", ["--check", "src/routes/adminJobApplication.routes.js"]],
   ["node", ["--check", "src/controllers/adminJobApplication.controller.js"]],
   ["node", ["--check", "src/routes/adminEmployerLeadVerification.routes.js"]],

@@ -8,6 +8,7 @@ import { connectDB } from "./config/db.js";
 import whatsappRoutes from "./routes/whatsapp.routes.js";
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler.js";
 import adminRoutes from "./routes/admin.routes.js";
+import adminWorkerMatchRoutes from "./routes/adminWorkerMatch.routes.js";
 import adminJobApplicationRoutes from "./routes/adminJobApplication.routes.js";
 import adminEmployerLeadVerificationRoutes from "./routes/adminEmployerLeadVerification.routes.js";
 import adminPendingKnowledgeRoutes from "./routes/adminPendingKnowledge.routes.js";
@@ -43,6 +44,7 @@ app.get("/health", (req, res) => {
 
 app.use("/api/whatsapp", whatsappRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin/employer-leads", adminWorkerMatchRoutes);
 app.use("/api/admin/job-applications", adminJobApplicationRoutes);
 app.use("/api/admin/employer-leads", adminEmployerLeadVerificationRoutes);
 app.use("/api/admin/pending-knowledge", adminPendingKnowledgeRoutes);
