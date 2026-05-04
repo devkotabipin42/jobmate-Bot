@@ -229,6 +229,19 @@ export const adminService = {
     });
   },
 
+  getFollowups(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    return request(`/api/admin/followups${query ? `?${query}` : ""}`);
+  },
+
+  processFollowups(payload = {}) {
+    return request("/api/admin/followups/process", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+
   getConversations(params = {}) {
     const query = new URLSearchParams(params).toString();
     return request(`/api/admin/conversations${query ? `?${query}` : ""}`);
