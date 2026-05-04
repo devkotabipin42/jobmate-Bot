@@ -9,6 +9,8 @@ const checks = [
   ["node", ["--check", "src/services/automation/employer/employerLeadMapper.service.js"]],
   ["node", ["--check", "src/services/automation/jobmateRoutingGuards.service.js"]],
   ["node", ["--check", "src/services/rag/hiringNeedParser.service.js"]],
+  ["node", ["--check", "src/models/PendingKnowledge.model.js"]],
+  ["node", ["--check", "src/services/rag/pendingKnowledge.service.js"]],
   ["node", ["--check", "src/services/rag/jobmateKnowledge.service.js"]],
   ["node", ["--check", "src/services/ai/aaratiBrain.service.js"]],
   ["node", ["--check", "src/services/ai/aaratiBrainGate.service.js"]],
