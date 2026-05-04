@@ -10,6 +10,7 @@ import { runJobSearchStep } from "../services/jobmate/jobSearchStep.js";
 import { findLocation } from "../services/rag/jobmateKnowledge.service.js";
 import { WorkerProfile } from "../models/WorkerProfile.model.js";
 import { buildWorkerProfileUpdateFromAaratiProfile } from "../services/jobmate/workerProfileMapper.service.js";
+import { upsertJobApplicationFromWorkerProfile } from "../services/jobmate/jobApplication.service.js";
 import { generateJSONWithAI } from "../services/ai/aiProvider.service.js";
 import {
   AARATI_SAMPLE_REPLIES,
@@ -649,6 +650,21 @@ export const jobmateConfig = {
         availability: saved.availability,
         documentStatus: saved.documentStatus,
       });
+
+      const application = await upsertJobApplicationFromWorkerProfile({
+        contact,
+        worker: saved,
+        profile,
+      });
+
+      if (application) {
+        console.log("JobApplication saved:", {
+          id: application._id,
+          jobId: application.jobId,
+          jobTitle: application.jobTitle,
+          status: application.status,
+        });
+      }
     } catch (error) {
       console.error("WorkerProfile save failed:", error?.message);
     }
