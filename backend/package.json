@@ -14,7 +14,8 @@
     "test:jobseeker-safety": "node scripts/testJobseekerSafety.mjs",
     "test:worker-profile-mapper": "node scripts/testWorkerProfileMapper.mjs",
     "test:jobseeker-application": "node scripts/testJobseekerApplicationFlow.mjs",
-    "test:jobseeker-refinement": "node scripts/testJobseekerSearchRefinement.mjs"
+    "test:jobseeker-refinement": "node scripts/testJobseekerSearchRefinement.mjs",
+    "test:followup-templates": "node scripts/testFollowupTemplates.mjs"
   },
   "keywords": [],
   "author": "JobMate",
