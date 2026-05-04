@@ -7,6 +7,13 @@ const cases = [
   ["1", "true"],
 ];
 
+const jobmateFastSearchCases = [
+  ["false", "false"],
+  ["true", "true"],
+  ["0", "false"],
+  ["1", "true"],
+];
+
 let failed = 0;
 
 for (const [input, expected] of cases) {

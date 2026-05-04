@@ -34,6 +34,10 @@ const rawEnv = {
   TELEGRAM_ADMIN_CHAT_ID: clean(process.env.TELEGRAM_ADMIN_CHAT_ID),
 
   JOBMATE_API_BASE_URL: clean(process.env.JOBMATE_API_BASE_URL),
+  JOBMATE_API_TIMEOUT_MS: clean(process.env.JOBMATE_API_TIMEOUT_MS) || "5000",
+  JOBMATE_JOB_CACHE_TTL_MS:
+    clean(process.env.JOBMATE_JOB_CACHE_TTL_MS) || "300000",
+  JOBMATE_FAST_SEARCH: cleanBoolean(process.env.JOBMATE_FAST_SEARCH, true),
 
   GEMINI_API_KEY: clean(process.env.GEMINI_API_KEY),
   GEMINI_MODEL: clean(process.env.GEMINI_MODEL) || "gemini-1.5-flash",
@@ -75,6 +79,9 @@ const envSchema = z.object({
   TELEGRAM_ADMIN_CHAT_ID: z.string().optional(),
 
   JOBMATE_API_BASE_URL: z.string().url().optional(),
+  JOBMATE_API_TIMEOUT_MS: z.coerce.number().int().min(1000).max(15000),
+  JOBMATE_JOB_CACHE_TTL_MS: z.coerce.number().int().min(30000).max(3600000),
+  JOBMATE_FAST_SEARCH: z.boolean().default(true),
 
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().optional(),

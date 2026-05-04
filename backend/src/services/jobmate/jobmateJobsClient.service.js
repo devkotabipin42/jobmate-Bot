@@ -7,9 +7,9 @@ import {
 } from "./lumbiniLocation.service.js";
 
 
-const JOBMATE_API_TIMEOUT_MS = Number(process.env.JOBMATE_API_TIMEOUT_MS || 2500);
-const JOBMATE_FAST_SEARCH = process.env.JOBMATE_FAST_SEARCH !== "false";
-const JOBMATE_JOB_CACHE_TTL_MS = Number(process.env.JOBMATE_JOB_CACHE_TTL_MS || 5 * 60 * 1000);
+const JOBMATE_API_TIMEOUT_MS = Number(env.JOBMATE_API_TIMEOUT_MS || 5000);
+const JOBMATE_FAST_SEARCH = Boolean(env.JOBMATE_FAST_SEARCH);
+const JOBMATE_JOB_CACHE_TTL_MS = Number(env.JOBMATE_JOB_CACHE_TTL_MS || 5 * 60 * 1000);
 const JOBMATE_JOB_CACHE = new Map();
 
 const SUSPICIOUS_KEYWORDS = [
