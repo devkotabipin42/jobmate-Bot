@@ -35,13 +35,13 @@ function getCategoryTerms(jobType = "") {
   if (!value || /other|jun sukai|any/.test(value)) return [];
 
   const groups = {
-    "it/tech": ["it", "tech", "frontend", "backend", "developer", "software", "computer", "web", "react"],
-    "driver/transport": ["driver", "transport", "delivery", "truck", "bus", "bike", "gadi", "vehicle"],
+    "it tech": ["it", "tech", "frontend", "backend", "developer", "software", "computer", "web", "react"],
+    "driver transport": ["driver", "transport", "delivery", "truck", "bus", "bike", "gadi", "vehicle"],
     hospitality: ["hotel", "restaurant", "waiter", "kitchen", "cook", "hospitality", "cafe"],
-    "shop/retail": ["shop", "retail", "sales", "seller", "counter", "pasal", "store"],
+    "shop retail": ["shop", "retail", "sales", "seller", "counter", "pasal", "store"],
     security: ["security", "guard", "watchman"],
-    "construction/labor": ["construction", "labor", "labour", "helper", "mistri", "worker"],
-    "farm/agriculture": ["farm", "agriculture", "krishi", "kheti"],
+    "construction labor": ["construction", "labor", "labour", "helper", "mistri", "worker"],
+    "farm agriculture": ["farm", "agriculture", "krishi", "kheti"],
   };
 
   return groups[value] || value.split(/\s+/).filter(Boolean);

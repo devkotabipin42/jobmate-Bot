@@ -7,6 +7,11 @@ import {
 } from "./lumbiniLocation.service.js";
 
 
+const JOBMATE_API_TIMEOUT_MS = Number(process.env.JOBMATE_API_TIMEOUT_MS || 2500);
+const JOBMATE_FAST_SEARCH = process.env.JOBMATE_FAST_SEARCH !== "false";
+const JOBMATE_JOB_CACHE_TTL_MS = Number(process.env.JOBMATE_JOB_CACHE_TTL_MS || 5 * 60 * 1000);
+const JOBMATE_JOB_CACHE = new Map();
+
 const SUSPICIOUS_KEYWORDS = [
   "registration fee",
   "security deposit",
@@ -40,20 +45,33 @@ export async function searchJobMateJobs({
 
   // If user asked for a specific location, never show jobs from other locations.
   // Wrong-location jobs destroy trust, so keep search strict by location.
-  const attempts = hasRequestedLocation
+  const attempts = JOBMATE_FAST_SEARCH
     ? [
-        { keyword, location, category, type, label: "strict" },
-        { keyword: "", location, category, type, label: "location_category" },
-        { keyword: "", location, category: "", type, label: "location_only" },
+        // Fast mode: fetch by location only, then apply local safety filters.
+        // This avoids API keyword/category mismatch while still preventing wrong jobs.
+        { keyword: "", location, category: "", type: "", label: "location_fast" },
       ]
-    : [
-        { keyword, location, category, type, label: "strict" },
-        { keyword, location: "", category: "", type, label: "keyword_only" },
-        { keyword: "", location: "", category, type, label: "category_only" },
-      ];
+    : hasRequestedLocation
+      ? [
+          { keyword, location, category, type, label: "strict" },
+          { keyword: "", location, category, type, label: "location_category" },
+          { keyword: "", location, category: "", type, label: "location_only" },
+        ]
+      : [
+          { keyword, location, category, type, label: "strict" },
+          { keyword, location: "", category: "", type, label: "keyword_only" },
+          { keyword: "", location: "", category, type, label: "category_only" },
+        ];
+
+  let lastError = null;
 
   for (const attempt of attempts) {
-    const rawJobs = await fetchJobs(attempt);
+    const fetchResult = await fetchJobs(attempt);
+    const rawJobs = fetchResult.jobs || [];
+
+    if (fetchResult.error) {
+      lastError = fetchResult.error;
+    }
 
     const safeJobs = rawJobs
       .filter((job) => job?.is_active === true)
@@ -80,15 +98,48 @@ export async function searchJobMateJobs({
   }
 
   return {
-    ok: true,
+    ok: !lastError,
+    reason: lastError ? "JOBMATE_API_FAILED_OR_TIMEOUT" : "NO_SAFE_MATCH",
     count: 0,
-    strategy: "no_match",
+    strategy: lastError ? "api_failed_or_timeout" : "no_match",
     jobs: [],
   };
 }
 
+function makeJobCacheKey({ keyword = "", location = "", category = "", type = "" } = {}) {
+  return JSON.stringify({
+    keyword: String(keyword || "").toLowerCase().trim(),
+    location: String(location || "").toLowerCase().trim(),
+    category: String(category || "").toLowerCase().trim(),
+    type: String(type || "").toLowerCase().trim(),
+  });
+}
+
+function getCachedJobs(key) {
+  const cached = JOBMATE_JOB_CACHE.get(key);
+
+  if (!cached) return null;
+
+  if (cached.expiresAt <= Date.now()) {
+    JOBMATE_JOB_CACHE.delete(key);
+    return null;
+  }
+
+  return cached.jobs || [];
+}
+
+function setCachedJobs(key, jobs = []) {
+  JOBMATE_JOB_CACHE.set(key, {
+    jobs,
+    expiresAt: Date.now() + JOBMATE_JOB_CACHE_TTL_MS,
+  });
+}
+
 async function fetchJobs({ keyword = "", location = "", category = "", type = "" }) {
   const url = `${env.JOBMATE_API_BASE_URL.replace(/\/$/, "")}/api/jobs`;
+  const cacheKey = makeJobCacheKey({ keyword, location, category, type });
+
+  const cachedBeforeRequest = getCachedJobs(cacheKey);
 
   try {
     const response = await axios.get(url, {
@@ -98,11 +149,34 @@ async function fetchJobs({ keyword = "", location = "", category = "", type = ""
         category: category || undefined,
         type: type || undefined,
       },
-      timeout: 4000,
+      timeout: JOBMATE_API_TIMEOUT_MS,
     });
 
-    return Array.isArray(response.data?.jobs) ? response.data.jobs : [];
+    const jobs = Array.isArray(response.data?.jobs) ? response.data.jobs : [];
+    setCachedJobs(cacheKey, jobs);
+
+    return {
+      jobs,
+      error: null,
+      cached: false,
+    };
   } catch (error) {
+    if (cachedBeforeRequest) {
+      console.warn("⚠️ JobMate jobs API failed, using cached jobs:", {
+        message: error?.message,
+        keyword,
+        location,
+        category,
+        type,
+      });
+
+      return {
+        jobs: cachedBeforeRequest,
+        error: null,
+        cached: true,
+      };
+    }
+
     console.error("❌ JobMate jobs API failed:", {
       status: error?.response?.status,
       message: error?.message,
@@ -112,7 +186,14 @@ async function fetchJobs({ keyword = "", location = "", category = "", type = ""
       type,
     });
 
-    return [];
+    return {
+      jobs: [],
+      error: {
+        status: error?.response?.status,
+        message: error?.message,
+      },
+      cached: false,
+    };
   }
 }
 

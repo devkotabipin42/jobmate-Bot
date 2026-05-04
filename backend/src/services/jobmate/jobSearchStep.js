@@ -83,16 +83,22 @@ export async function runJobSearchStep(profile, text = "") {
     };
   }
 
-  // No jobs found — offer registration
+  // No jobs found or API slow — offer registration.
   const loc = profile.location;
+  const jobTypeText = profile.jobType ? `${profile.jobType} ko ` : "";
+  const apiSlowText = result.ok === false
+    ? `${loc} ma ${jobTypeText}job check garna ali time lagyo 🙏`
+    : `${loc} ma aile ${jobTypeText}verified job listing bhetiyena 🙏`;
+
   return {
-    messageToSend: `${loc} ma ahile JobMate ko verified job listing bhetiyena 🙏
+    messageToSend: `${apiSlowText}
 
-Tara tension nalinu. Tapai ko detail save garchu, naya kaam aayo bhane hamro team le 24-48 ghanta vitra contact garcha.
+Tara naya kaam aune sambhavana chha.
+Tapai ko vivaran save garna milchha bhane suitable kaam aayepachhi JobMate team le sampark garchha.
 
-Profile register garna chahanu huncha?
-1. Haan, register garchu
-2. Pachi try garchu`,
+Profile register garna chahanu hunchha?
+1. Ho, register garchhu
+2. Pachhi try garchhu`,
     profileUpdates: { ...updates, noJobsFound: true },
     state: "asked_register",
   };
