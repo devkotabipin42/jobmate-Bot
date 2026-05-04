@@ -26,6 +26,12 @@ const NUMBER_PATTERN = "(?:\\d+|aauta|auta|euta|ek|one|dui|due|two|tin|three|cha
 
 const ROLE_PATTERNS = [
   {
+    role: "frontend_developer",
+    roleLabel: "Frontend Developer",
+    category: "it",
+    pattern: "(?:frontend|front\\s*end|frontend\\s+developer|react\\s+developer|web\\s+developer|website\\s+developer|ui\\s+developer)",
+  },
+  {
     role: "kitchen_staff",
     roleLabel: "Kitchen Staff",
     category: "hospitality",
@@ -60,6 +66,12 @@ const ROLE_PATTERNS = [
     roleLabel: "Field Promoter",
     category: "sales_marketing",
     pattern: "(?:field\\s+promoter|promoter|sticker\\s+batne|print\\s+sticker|gau\\s+gau\\s+jane)",
+  },
+  {
+    role: "helper_staff",
+    roleLabel: "Helper",
+    category: "general",
+    pattern: "(?:helper|helpers|general\\s+helper|worker\\s+helper|sahayogi|kamdar|kaamdar|labour|labor)",
   },
   {
     role: "shopkeeper",

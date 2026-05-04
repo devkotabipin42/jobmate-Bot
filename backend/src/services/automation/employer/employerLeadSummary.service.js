@@ -18,6 +18,7 @@ const ROLE_LABELS = {
   house_helper: "House Helper",
   waiter: "Waiter",
   cleaner: "Cleaner",
+  helper_staff: "Helper",
   helper: "General Helper",
   staff: "Staff"
 };

@@ -19,6 +19,19 @@ import {
   upsertEmployerLead as repoUpsertEmployerLead,
   findActiveEmployerLead,
 } from "./employer/employerLeadRepository.service.js";
+import {
+  buildVacancyFromAI as mapperBuildVacancyFromAI,
+  buildVacancyFromBrain as mapperBuildVacancyFromBrain,
+  buildLocationFromBrain as mapperBuildLocationFromBrain,
+  hasUsefulBrainEmployerDetails as mapperHasUsefulBrainEmployerDetails,
+  isVacancyOrLocationGivenInsteadOfCompany as mapperIsVacancyOrLocationGivenInsteadOfCompany,
+  parseVacancy as mapperParseVacancy,
+  parseUrgency as mapperParseUrgency,
+  mapBusinessType as mapperMapBusinessType,
+  isUsefulVacancy as mapperIsUsefulVacancy,
+  isUsefulLocation as mapperIsUsefulLocation,
+  formatBrainSummary as mapperFormatBrainSummary,
+} from "./employer/employerLeadMapper.service.js";
 
 const URGENCY_MAP = {
   "1": {
@@ -86,9 +99,9 @@ export async function handleEmployerLead({
     aiExtraction?.confidence >= 0.75 &&
     (aiExtraction?.role || aiExtraction?.keyword || aiExtraction?.quantity || aiExtraction?.location);
 
-  if (step === 0 && hasUsefulBrainEmployerDetails(aaratiBrain) && (aaratiBrain.role || aaratiBrain.location || aaratiBrain.companyName)) {
-    const vacancy = buildVacancyFromBrain(aaratiBrain, rawText);
-    const location = buildLocationFromBrain(aaratiBrain, rawText);
+  if (step === 0 && mapperHasUsefulBrainEmployerDetails(aaratiBrain) && (aaratiBrain.role || aaratiBrain.location || aaratiBrain.companyName)) {
+    const vacancy = mapperBuildVacancyFromBrain(aaratiBrain, rawText);
+    const location = mapperBuildLocationFromBrain(aaratiBrain, rawText);
 
     const duplicateCheck = await repoAddHiringNeedIfNotDuplicate({
       contactId: contact._id,
@@ -98,7 +111,7 @@ export async function handleEmployerLead({
     leadUpdate = {
       $set: {
         contactPerson: displayName,
-        businessType: mapBusinessType(aaratiBrain.role || aiExtraction?.businessType || aiExtraction?.category),
+        businessType: mapperMapBusinessType(aaratiBrain.role || aiExtraction?.businessType || aiExtraction?.category),
         "location.area": location.area,
         "location.district": location.district,
         "location.province": "Lumbini",
@@ -153,10 +166,10 @@ export async function handleEmployerLead({
     nextStep = 1;
     currentState = "ask_business_name";
   } else if (step === 1) {
-    if (isVacancyOrLocationGivenInsteadOfCompany(aaratiBrain)) {
-      const vacancy = buildVacancyFromBrain(aaratiBrain, rawText);
-      const location = buildLocationFromBrain(aaratiBrain, rawText);
-      const summary = formatBrainSummary(aaratiBrain);
+    if (mapperIsVacancyOrLocationGivenInsteadOfCompany(aaratiBrain)) {
+      const vacancy = mapperBuildVacancyFromBrain(aaratiBrain, rawText);
+      const location = mapperBuildLocationFromBrain(aaratiBrain, rawText);
+      const summary = mapperFormatBrainSummary(aaratiBrain);
 
       leadUpdate = {
         $set: {
@@ -209,7 +222,7 @@ Aba company/business ko naam pathaunu hola.`;
                 }
               : {}),
           },
-          ...(isUsefulVacancy(pendingVacancy)
+          ...(mapperIsUsefulVacancy(pendingVacancy)
             ? {
                 $push: {
                   hiringNeeds: pendingVacancy,
@@ -226,7 +239,7 @@ Aba company/business ko naam pathaunu hola.`;
           },
         };
 
-        if (!isUsefulVacancy(pendingVacancy)) {
+        if (!mapperIsUsefulVacancy(pendingVacancy)) {
           const qty = pendingVacancy?.quantity || 1;
 
           leadUpdate.$set = {
@@ -240,7 +253,7 @@ Aba company/business ko naam pathaunu hola.`;
 
           nextStep = 20;
           currentState = "ask_vacancy_role";
-        } else if (isUsefulLocation(pendingLocation)) {
+        } else if (mapperIsUsefulLocation(pendingLocation)) {
           messageToSend = MESSAGES.askUrgency;
           nextStep = 4;
           currentState = "ask_urgency";
@@ -284,12 +297,12 @@ Aba company/business ko naam pathaunu hola.`;
           businessName,
           contactPerson: displayName,
           leadStatus: "qualifying",
-          ...(!isUsefulVacancy(pending.vacancy)
+          ...(!mapperIsUsefulVacancy(pending.vacancy)
             ? {
                 "metadata.pendingQuantity": pending?.vacancy?.quantity || 1,
               }
             : {}),
-          ...(isUsefulLocation(pending.location)
+          ...(mapperIsUsefulLocation(pending.location)
             ? {
                 "location.area": pending.location.area,
                 "location.district": pending.location.district,
@@ -298,7 +311,7 @@ Aba company/business ko naam pathaunu hola.`;
               }
             : {}),
         },
-        ...(isUsefulVacancy(pending.vacancy)
+        ...(mapperIsUsefulVacancy(pending.vacancy)
           ? {
               $push: {
                 hiringNeeds: pending.vacancy,
@@ -315,7 +328,7 @@ Aba company/business ko naam pathaunu hola.`;
         },
       };
 
-      if (!isUsefulVacancy(pending.vacancy)) {
+      if (!mapperIsUsefulVacancy(pending.vacancy)) {
         const qty = pending?.vacancy?.quantity || 1;
 
         messageToSend = MESSAGES.askRoleAfterQuantity
@@ -324,7 +337,7 @@ Aba company/business ko naam pathaunu hola.`;
 
         nextStep = 20;
         currentState = "ask_vacancy_role";
-      } else if (isUsefulLocation(pending.location)) {
+      } else if (mapperIsUsefulLocation(pending.location)) {
         messageToSend = MESSAGES.askUrgency;
         nextStep = 4;
         currentState = "ask_urgency";
@@ -363,7 +376,7 @@ Aba company/business ko naam pathaunu hola.`;
       leadUpdate = {
         $set: {
           leadStatus: "qualifying",
-          ...(isUsefulLocation(pending.location)
+          ...(mapperIsUsefulLocation(pending.location)
             ? {
                 "location.area": pending.location.area,
                 "location.district": pending.location.district,
@@ -372,7 +385,7 @@ Aba company/business ko naam pathaunu hola.`;
               }
             : {}),
         },
-        ...(isUsefulVacancy(pending.vacancy)
+        ...(mapperIsUsefulVacancy(pending.vacancy)
           ? {
               $push: {
                 hiringNeeds: pending.vacancy,
@@ -389,7 +402,7 @@ Aba company/business ko naam pathaunu hola.`;
         },
       };
 
-      if (isUsefulLocation(pending.location)) {
+      if (mapperIsUsefulLocation(pending.location)) {
         messageToSend = MESSAGES.askUrgency;
         nextStep = 4;
         currentState = "ask_urgency";
@@ -423,11 +436,11 @@ Aba company/business ko naam pathaunu hola.`;
       } else {
         const parsedNeeds = parseHiringNeeds(rawText);
 
-        const vacancy = hasUsefulBrainEmployerDetails(aaratiBrain)
-          ? buildVacancyFromBrain(aaratiBrain, rawText)
+        const vacancy = mapperHasUsefulBrainEmployerDetails(aaratiBrain)
+          ? mapperBuildVacancyFromBrain(aaratiBrain, rawText)
           : hasAIEmployerDetails
-            ? buildVacancyFromAI(aiExtraction)
-            : parseVacancy(rawText);
+            ? mapperBuildVacancyFromAI(aiExtraction)
+            : mapperParseVacancy(rawText);
 
         const pendingQuantity = Number(conversation?.metadata?.pendingQuantity || 0);
         if (pendingQuantity && (!vacancy.quantity || vacancy.quantity === 1)) {
@@ -437,7 +450,7 @@ Aba company/business ko naam pathaunu hola.`;
         const needsToSave =
           parsedNeeds.length
             ? parsedNeeds
-            : isUsefulVacancy(vacancy)
+            : mapperIsUsefulVacancy(vacancy)
               ? [vacancy]
               : [];
 
@@ -489,9 +502,9 @@ Aba company/business ko naam pathaunu hola.`;
   } else if (step === 20) {
     const parsedNeeds = parseHiringNeeds(rawText);
 
-    const vacancy = hasUsefulBrainEmployerDetails(aaratiBrain)
-      ? buildVacancyFromBrain(aaratiBrain, rawText)
-      : parseVacancy(rawText);
+    const vacancy = mapperHasUsefulBrainEmployerDetails(aaratiBrain)
+      ? mapperBuildVacancyFromBrain(aaratiBrain, rawText)
+      : mapperParseVacancy(rawText);
 
     const pendingQuantity = Number(conversation?.metadata?.pendingQuantity || 1);
     if (!parsedNeeds.length) {
@@ -501,7 +514,7 @@ Aba company/business ko naam pathaunu hola.`;
     const needsToSave =
       parsedNeeds.length
         ? parsedNeeds
-        : isUsefulVacancy(vacancy)
+        : mapperIsUsefulVacancy(vacancy)
           ? [vacancy]
           : [];
 
@@ -548,7 +561,7 @@ Aba company/business ko naam pathaunu hola.`;
 
     scoreAdd = scoreValue;
   } else if (step === 3) {
-    const location = buildLocationFromBrain(aaratiBrain, rawText);
+    const location = mapperBuildLocationFromBrain(aaratiBrain, rawText);
 
     leadUpdate = {
       $set: {
@@ -596,7 +609,7 @@ Aba company/business ko naam pathaunu hola.`;
       scoreAdd = 0;
       isComplete = false;
     } else {
-      const urgency = parseUrgency(text || aiExtraction?.urgency || "");
+      const urgency = mapperParseUrgency(text || aiExtraction?.urgency || "");
 
       leadUpdate = {
         $set: {
