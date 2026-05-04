@@ -5,6 +5,7 @@ import {
   MessageCircle,
   ArrowUpRight,
   RefreshCw,
+  BellRing,
 } from "lucide-react";
 import { useState } from "react";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
@@ -78,6 +79,13 @@ export default function AdminDashboard() {
                 tone="amber"
               />
               <MetricCard
+                title="Aarati Follow-ups"
+                value={metrics.pendingFollowups || 0}
+                subtitle={`${metrics.failedFollowups || 0} failed`}
+                icon={BellRing}
+                tone="blue"
+              />
+              <MetricCard
                 title="Booked"
                 value={metrics.bookedBusinessLeads || 0}
                 subtitle="confirmed bookings"
@@ -93,7 +101,7 @@ export default function AdminDashboard() {
               />
             </section>
           ) : (
-            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-7">
               <MetricCard
                 title="Employer Leads"
                 value={metrics.totalEmployerLeads}
@@ -135,6 +143,13 @@ export default function AdminDashboard() {
                 subtitle={`${metrics.contactedBusinessLeads || 0} contacted`}
                 icon={PhoneCall}
                 tone="amber"
+              />
+              <MetricCard
+                title="Aarati Follow-ups"
+                value={metrics.pendingFollowups || 0}
+                subtitle={`${metrics.failedFollowups || 0} failed`}
+                icon={BellRing}
+                tone="blue"
               />
             </section>
           )}

@@ -3,6 +3,7 @@ import { EmployerLead } from "../../models/EmployerLead.model.js";
 import { WorkerProfile } from "../../models/WorkerProfile.model.js";
 import { HandoffRequest } from "../../models/HandoffRequest.model.js";
 import { Message } from "../../models/Message.model.js";
+import { ScheduledFollowup } from "../../models/ScheduledFollowup.model.js";
 
 export async function getDashboardSummary() {
   const startOfToday = new Date();
@@ -17,6 +18,8 @@ export async function getDashboardSummary() {
     openHandoffs,
     urgentHandoffs,
     todayMessages,
+    pendingFollowups,
+    failedFollowups,
     latestEmployerLeads,
     latestWorkers,
     latestHandoffs,
@@ -38,6 +41,9 @@ export async function getDashboardSummary() {
     Message.countDocuments({
       createdAt: { $gte: startOfToday },
     }),
+
+    ScheduledFollowup.countDocuments({ status: "pending" }),
+    ScheduledFollowup.countDocuments({ status: "failed" }),
 
     EmployerLead.find({})
       .sort({ createdAt: -1 })
@@ -65,6 +71,8 @@ export async function getDashboardSummary() {
       openHandoffs,
       urgentHandoffs,
       todayMessages,
+      pendingFollowups,
+      failedFollowups,
     },
     latest: {
       employerLeads: latestEmployerLeads.map(formatEmployerLead),
