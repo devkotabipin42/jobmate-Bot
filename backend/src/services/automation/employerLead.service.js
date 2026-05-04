@@ -10,6 +10,7 @@ import {
   parseHiringNeeds,
 } from "../rag/hiringNeedParser.service.js";
 import { EMPLOYER_MESSAGES as MESSAGES } from "./employer/employerLeadMessages.js";
+import { createNotification } from "../notifications/notification.service.js";
 import {
   buildEmployerLeadSummary,
   formatEmployerRoleLabel,
@@ -663,6 +664,30 @@ Aba company/business ko naam pathaunu hola.`;
     });
 
     messageToSend = MESSAGES.completed(displayName, summary);
+
+    if (!leadBeforeUrgency?.metadata?.employerLeadNotificationSent) {
+      await createNotification({
+        type: "employer_lead_created",
+        title: `Employer lead qualified: ${leadBeforeUrgency?.businessName || "Business"}`,
+        message: `${leadBeforeUrgency?.businessName || "Business"} needs staff in ${leadBeforeUrgency?.location?.area || leadBeforeUrgency?.location?.district || "Lumbini"}.`,
+        priority: urgency.urgencyLevel === "urgent" ? "urgent" : "high",
+        entityType: "EmployerLead",
+        entityId: leadBeforeUrgency?._id,
+        phone: leadBeforeUrgency?.phone || "",
+        metadata: {
+          businessName: leadBeforeUrgency?.businessName || "",
+          location: leadBeforeUrgency?.location || {},
+          hiringNeeds: leadBeforeUrgency?.hiringNeeds || [],
+          urgency: urgency.urgency,
+          urgencyLevel: urgency.urgencyLevel,
+        },
+      });
+
+      leadUpdate.$set = {
+        ...(leadUpdate.$set || {}),
+        "metadata.employerLeadNotificationSent": true,
+      };
+    }
     nextStep = 7;
     currentState = "completed";
     isComplete = true;
