@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { PendingKnowledge } from "../../models/PendingKnowledge.model.js";
+import { createNotification } from "../notifications/notification.service.js";
 
 function normalizeText(text = "") {
   return String(text || "")
@@ -55,7 +56,12 @@ async function savePendingKnowledge({
     seenAt: new Date(),
   };
 
-  return PendingKnowledge.findOneAndUpdate(
+  const existing = await PendingKnowledge.findOne({
+    type,
+    normalizedKey,
+  }).lean();
+
+  const item = await PendingKnowledge.findOneAndUpdate(
     {
       type,
       normalizedKey,
@@ -90,6 +96,26 @@ async function savePendingKnowledge({
       setDefaultsOnInsert: true,
     }
   );
+
+  if (!existing) {
+    await createNotification({
+      type: "pending_knowledge_created",
+      title: `New ${type} knowledge suggestion`,
+      message: `${suggestedLabel || suggestedKey || rawText} needs review.`,
+      priority: "medium",
+      entityType: "PendingKnowledge",
+      entityId: item._id,
+      phone,
+      metadata: {
+        type,
+        rawText,
+        suggestedKey,
+        suggestedLabel,
+      },
+    });
+  }
+
+  return item;
 }
 
 export async function savePendingRoleSuggestion({
