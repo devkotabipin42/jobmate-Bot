@@ -32,6 +32,7 @@ const jobMateNavItems = [
   { label: "Applications", fullLabel: "Job Applications", icon: FileCheck2, to: "/admin/job-applications" },
   { label: "Matches", fullLabel: "Job Matches", icon: Handshake, to: "/admin/matches" },
   { label: "Knowledge", fullLabel: "Pending Knowledge", icon: Brain, to: "/admin/pending-knowledge" },
+  { label: "Follow-ups", icon: Bell, to: "/admin/followups" },
   { label: "Calls", fullLabel: "Handoffs", icon: PhoneCall, to: "/admin/handoffs" },
   { label: "Chats", fullLabel: "Conversations", icon: MessageCircle, to: "/admin/conversations" },
   { label: "Analytics", icon: BarChart3, to: "/admin/analytics" },
@@ -94,6 +95,11 @@ const pageTitles = {
     label: "Insights",
     title: "Analytics",
     description: "Understand conversion, lead quality and bot performance.",
+  },
+  "/admin/followups": {
+    label: "Aarati Follow-ups",
+    title: "Follow-ups",
+    description: "Review scheduled, sent and failed follow-ups before enabling automation.",
   },
   "/admin/settings": {
     label: "System",
