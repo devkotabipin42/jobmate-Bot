@@ -11,6 +11,7 @@ import ConversationsPage from "./pages/ConversationsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import SettingsPage from "./pages/SettingsPage";
 import BusinessLeadsPage from "./pages/BusinessLeadsPage";
+import JobApplicationsPage from "./pages/JobApplicationsPage";
 
 function Protected({ children }) {
   return <ProtectedRoute>{children}</ProtectedRoute>;
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/admin" element={<Protected><AdminDashboard /></Protected>} />
           <Route path="/admin/employer-leads" element={<Protected><EmployerLeadsPage /></Protected>} />
           <Route path="/admin/workers" element={<Protected><WorkersPage /></Protected>} />
+          <Route path="/admin/job-applications" element={<Protected><JobApplicationsPage /></Protected>} />
           <Route path="/admin/handoffs" element={<Protected><HandoffsPage /></Protected>} />
           <Route path="/admin/conversations" element={<Protected><ConversationsPage /></Protected>} />
           <Route path="/admin/analytics" element={<Protected><AnalyticsPage /></Protected>} />

@@ -10,6 +10,7 @@ import {
   Bot,
   Search,
   Bell,
+  FileCheck2,
   Moon,
   Sun,
 } from "lucide-react";
@@ -25,6 +26,7 @@ const jobMateNavItems = [
   { label: "Leads", fullLabel: "Employer Leads", icon: Building2, to: "/admin/employer-leads" },
   { label: "Business", fullLabel: "Business Leads", icon: ClipboardList, to: "/admin/business-leads" },
   { label: "Workers", icon: Users, to: "/admin/workers" },
+  { label: "Applications", fullLabel: "Job Applications", icon: FileCheck2, to: "/admin/job-applications" },
   { label: "Calls", fullLabel: "Handoffs", icon: PhoneCall, to: "/admin/handoffs" },
   { label: "Chats", fullLabel: "Conversations", icon: MessageCircle, to: "/admin/conversations" },
   { label: "Analytics", icon: BarChart3, to: "/admin/analytics" },
