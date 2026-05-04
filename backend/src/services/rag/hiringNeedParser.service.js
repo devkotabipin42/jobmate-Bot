@@ -1,6 +1,6 @@
 // Deterministic parser for employer multi-role hiring requests.
-// AI may understand the sentence, but this parser preserves separate roles:
-// "1 cooking 2 driver 1 marketing" => 3 hiringNeeds.
+// One quantity segment should produce one best role.
+// Example: "1 marketing 2 cooking helpers 1 driver" => 3 hiringNeeds.
 
 import { findRole, extractQuantity } from "./jobmateKnowledge.service.js";
 
@@ -22,62 +22,84 @@ const NUMBER_WORDS = {
   five: 5,
 };
 
-const NUMBER_PATTERN = "(?:\\d+|aauta|auta|euta|ek|one|dui|due|two|tin|three|char|chaar|four|panch|five)";
+const NUMBER_PATTERN =
+  "(?:\\d+|aauta|auta|euta|ek|one|dui|due|two|tin|three|char|chaar|four|panch|five)";
 
 const ROLE_PATTERNS = [
+  {
+    role: "street_food_vendor",
+    roleLabel: "Street Food Vendor",
+    category: "sales_food",
+    priority: 100,
+    pattern:
+      "(?:chaumin|chowmein|momo|street\\s+food|food\\s+seller|bajar\\s+bajar\\s+ma\\s+bechna|market\\s+market\\s+ma\\s+bechna|momo\\s+bechne|chaumin\\s+bechne)",
+  },
   {
     role: "frontend_developer",
     roleLabel: "Frontend Developer",
     category: "it",
-    pattern: "(?:frontend|front\\s*end|frontend\\s+developer|react\\s+developer|web\\s+developer|website\\s+developer|ui\\s+developer)",
+    priority: 95,
+    pattern:
+      "(?:frontend|front\\s*end|frontend\\s+developer|react\\s+developer|web\\s+developer|website\\s+developer|ui\\s+developer)",
   },
   {
     role: "kitchen_staff",
     roleLabel: "Kitchen Staff",
     category: "hospitality",
-    pattern: "(?:cooking|cook|kitchen|khana\\s+pakaune|khana\\s+banaune|khana\\s+pakauni)",
+    priority: 90,
+    pattern:
+      "(?:cooking|cook|cooks|kitchen|kitchen\\s+helper|kitchen\\s+helpers|cooking\\s+helper|cooking\\s+helpers|khana\\s+pakaune|khana\\s+banaune|khana\\s+pakauni)",
   },
   {
     role: "driver",
     roleLabel: "Driver",
     category: "transport",
+    priority: 85,
     pattern: "(?:driver|drivers|driving|gadi\\s+chalak|chalak)",
   },
   {
     role: "marketing_staff",
     roleLabel: "Marketing Staff",
     category: "sales_marketing",
+    priority: 80,
     pattern: "(?:marketing|marketting|field\\s+marketing|parchar|promotion)",
-  },
-  {
-    role: "security_guard",
-    roleLabel: "Security Guard",
-    category: "security",
-    pattern: "(?:security|guard|security\\s+guard|watchman)",
   },
   {
     role: "waiter",
     roleLabel: "Waiter",
     category: "hospitality",
+    priority: 75,
     pattern: "(?:waiter|waiters|service\\s+staff|hotel\\s+waiter|restaurant\\s+waiter)",
+  },
+  {
+    role: "security_guard",
+    roleLabel: "Security Guard",
+    category: "security",
+    priority: 70,
+    pattern: "(?:security|guard|guards|security\\s+guard|watchman)",
   },
   {
     role: "field_promoter",
     roleLabel: "Field Promoter",
     category: "sales_marketing",
-    pattern: "(?:field\\s+promoter|promoter|sticker\\s+batne|print\\s+sticker|gau\\s+gau\\s+jane)",
-  },
-  {
-    role: "helper_staff",
-    roleLabel: "Helper",
-    category: "general",
-    pattern: "(?:helper|helpers|general\\s+helper|worker\\s+helper|sahayogi|kamdar|kaamdar|labour|labor)",
+    priority: 65,
+    pattern:
+      "(?:field\\s+promoter|promoter|sticker\\s+batne|print\\s+sticker|gau\\s+gau\\s+jane|gaun\\s+gaun\\s+jane|didai\\s+hindxa)",
   },
   {
     role: "shopkeeper",
     roleLabel: "Shopkeeper",
     category: "retail",
-    pattern: "(?:shopkeeper|shop\\s+keeper|seller|selling|selling\\s+garne|sale\\s+garne|sales\\s+garne|bechne|bechni|bechna|saman\\s+bechne|pasal\\s+ma\\s+saman\\s+bechne|dokan\\s+ma\\s+saman\\s+bechni|counter\\s+staff)",
+    priority: 60,
+    pattern:
+      "(?:shopkeeper|shop\\s+keeper|seller|selling|selling\\s+garne|sale\\s+garne|sales\\s+garne|bechne|bechni|bechna|saman\\s+bechne|pasal\\s+ma\\s+saman\\s+bechne|dokan\\s+ma\\s+saman\\s+bechni|counter\\s+staff)",
+  },
+  {
+    role: "helper_staff",
+    roleLabel: "Helper",
+    category: "general",
+    priority: 10,
+    pattern: "(?:helper|helpers|general\\s+helper|worker\\s+helper|sahayogi|kamdar|kaamdar|labour|labor)",
   },
 ];
 
@@ -99,7 +121,10 @@ function normalizeQuantity(raw = "") {
 function removeTotalCountPrefix(text = "") {
   return normalizeText(text)
     .replace(
-      new RegExp(`\\b${NUMBER_PATTERN}\\s*(?:jana|jna)?\\s*(?:staff)?\\s*(?:ma|maa|madhye|vittra|bhitra)\\b`, "gi"),
+      new RegExp(
+        `\\b${NUMBER_PATTERN}\\s*(?:jana|jna)?\\s*(?:staff)?\\s*(?:ma|maa|madhye|vittra|bhitra)\\b`,
+        "gi"
+      ),
       " "
     )
     .replace(/\s+/g, " ")
@@ -108,7 +133,6 @@ function removeTotalCountPrefix(text = "") {
 
 function preprocess(text = "") {
   return removeTotalCountPrefix(text)
-    // "arko chai cooking" means another 1 cooking.
     .replace(/\barko\s+(?:chai|chahi)?\s*/gi, " 1 ")
     .replace(/\bani\b/gi, " ")
     .replace(/\bra\b/gi, " ")
@@ -119,44 +143,81 @@ function preprocess(text = "") {
     .trim();
 }
 
-function getExplicitQuantityForRole(text, rolePattern) {
-  const quantityBeforeRole = new RegExp(
-    `\\b(${NUMBER_PATTERN})\\s*(?:jana|jna)?\\s*(?:chai|chahi)?\\s*${rolePattern}\\b`,
-    "i"
+function splitRoleSegments(text = "") {
+  const value = preprocess(text);
+
+  const marked = value.replace(
+    new RegExp(`\\b(${NUMBER_PATTERN})\\s*(?:jana|jna)?\\s*(?:chai|chahi)?\\b`, "gi"),
+    "|||$1 "
   );
 
-  const beforeMatch = text.match(quantityBeforeRole);
-  if (beforeMatch?.[1]) return normalizeQuantity(beforeMatch[1]);
+  return marked
+    .split("|||")
+    .map((part) =>
+      part
+        .replace(/\b(?:malai|malaai|ko|lagi|chayako|chaiyako|chahiyo|chaiyo|cha|ho)\b/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+    )
+    .filter(Boolean);
+}
+
+function quantityFromSegment(segment = "") {
+  const match = normalizeText(segment).match(new RegExp(`\\b(${NUMBER_PATTERN})\\b`, "i"));
+  return match ? normalizeQuantity(match[1]) : extractQuantity(segment);
+}
+
+function bestRoleFromSegment(segment = "") {
+  const clean = normalizeText(segment);
+  let best = null;
+
+  for (const roleInfo of ROLE_PATTERNS) {
+    const regex = new RegExp(roleInfo.pattern, "i");
+
+    if (!regex.test(clean)) continue;
+
+    const score = roleInfo.priority + roleInfo.pattern.length / 1000;
+
+    if (!best || score > best.score) {
+      best = {
+        role: roleInfo.role,
+        roleLabel: roleInfo.roleLabel,
+        category: roleInfo.category,
+        score,
+      };
+    }
+  }
+
+  if (best) {
+    return {
+      role: best.role,
+      roleLabel: best.roleLabel,
+      category: best.category,
+    };
+  }
 
   return null;
 }
 
-function hasRole(text, rolePattern) {
-  return new RegExp(rolePattern, "i").test(text);
-}
-
 export function parseHiringNeeds(text = "") {
-  const clean = preprocess(text);
+  const segments = splitRoleSegments(text);
   const needs = [];
 
-  for (const roleInfo of ROLE_PATTERNS) {
-    if (!hasRole(clean, roleInfo.pattern)) continue;
-
-    const explicitQuantity = getExplicitQuantityForRole(clean, roleInfo.pattern);
-    const quantity = explicitQuantity || 1;
+  for (const segment of segments) {
+    const roleInfo = bestRoleFromSegment(segment);
+    if (!roleInfo) continue;
 
     needs.push({
       role: roleInfo.role,
       roleLabel: roleInfo.roleLabel,
-      quantity,
-      experienceRequired: /experience|sipalu|janne|janeko|kaam gareko|paila/i.test(clean)
+      quantity: Number(quantityFromSegment(segment) || 1),
+      experienceRequired: /experience|sipalu|janne|janeko|kaam gareko|paila/i.test(text)
         ? "experienced"
         : "unknown",
       urgency: "unknown",
     });
   }
 
-  // Fallback for true single-role messages that are not covered above.
   if (!needs.length) {
     const role = findRole(text);
 
@@ -165,7 +226,7 @@ export function parseHiringNeeds(text = "") {
         role: role.key,
         roleLabel: role.label,
         quantity: extractQuantity(text),
-        experienceRequired: /experience|sipalu|janne|janeko|kaam gareko|paila/i.test(clean)
+        experienceRequired: /experience|sipalu|janne|janeko|kaam gareko|paila/i.test(text)
           ? "experienced"
           : "unknown",
         urgency: "unknown",
@@ -190,40 +251,10 @@ export function parseHiringNeeds(text = "") {
   return Array.from(merged.values());
 }
 
-function formatRoleLabel(role = "") {
-  const labels = {
-    kitchen_staff: "Kitchen Staff",
-    cook: "Cook",
-    driver: "Driver",
-    marketing_staff: "Marketing Staff",
-    field_promoter: "Field Promoter",
-    shopkeeper: "Shopkeeper",
-    security_guard: "Security Guard",
-    garage_worker: "Garage Worker",
-    street_food_vendor: "Street Food Vendor",
-    house_helper: "House Helper",
-    helper: "General Helper",
-  };
-
-  const value = String(role || "").trim();
-
-  if (labels[value]) return labels[value];
-
-  return value
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
 export function formatHiringNeedsSummary(needs = []) {
   if (!Array.isArray(needs) || !needs.length) return "";
 
   return needs
-    .map((need) => {
-      const label = need.roleLabel && !String(need.roleLabel).includes("_")
-        ? need.roleLabel
-        : formatRoleLabel(need.role);
-
-      return `- ${need.quantity || 1} jana ${label}`;
-    })
+    .map((need) => `- ${need.quantity || 1} jana ${need.roleLabel || need.role}`)
     .join("\n");
 }
