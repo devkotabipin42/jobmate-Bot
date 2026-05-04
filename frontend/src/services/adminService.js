@@ -148,6 +148,20 @@ export const adminService = {
     return request(`/api/admin/employer-leads/${id}/matches${query ? `?${query}` : ""}`);
   },
 
+  createJobMatch(payload) {
+    return request("/api/admin/matches", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateJobMatchStatus(id, payload) {
+    return request(`/api/admin/matches/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
   getWorkers(params = {}) {
     const query = new URLSearchParams(params).toString();
     return request(`/api/admin/workers${query ? `?${query}` : ""}`);

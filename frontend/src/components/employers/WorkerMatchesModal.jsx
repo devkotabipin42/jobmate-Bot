@@ -1,4 +1,4 @@
-import { X, Phone, MapPin, Briefcase, BadgeCheck } from "lucide-react";
+import { X, Phone, MapPin, Briefcase, BadgeCheck, Link2 } from "lucide-react";
 
 function reasonLabel(reason = "") {
   const labels = {
@@ -37,6 +37,8 @@ export default function WorkerMatchesModal({
   lead,
   matches = [],
   error,
+  creatingKey = "",
+  onCreateMatch,
   onClose,
 }) {
   if (!open) return null;
@@ -125,12 +127,26 @@ export default function WorkerMatchesModal({
                       </div>
                     </div>
 
-                    <a
-                      href={`tel:${match.phone}`}
-                      className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-2 text-sm font-bold text-white dark:bg-white dark:text-slate-950"
-                    >
-                      Call Worker
-                    </a>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        disabled={creatingKey === `${match.workerId}-${match.matchedNeed?.role || "role"}`}
+                        onClick={() => onCreateMatch?.(match)}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                      >
+                        <Link2 size={16} />
+                        {creatingKey === `${match.workerId}-${match.matchedNeed?.role || "role"}`
+                          ? "Creating..."
+                          : "Create Match"}
+                      </button>
+
+                      <a
+                        href={`tel:${match.phone}`}
+                        className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-2 text-sm font-bold text-white dark:bg-white dark:text-slate-950"
+                      >
+                        Call Worker
+                      </a>
+                    </div>
                   </div>
                 </div>
               ))}

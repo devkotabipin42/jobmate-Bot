@@ -20,6 +20,7 @@ export default function EmployerLeadsPage() {
   const [matchError, setMatchError] = useState("");
   const [matchLead, setMatchLead] = useState(null);
   const [matches, setMatches] = useState([]);
+  const [matchCreateLoading, setMatchCreateLoading] = useState("");
 
   const { leads, pagination, loading, error, refetch } =
     useEmployerLeads(filters);
@@ -82,6 +83,40 @@ export default function EmployerLeadsPage() {
       setMatchError(err.message || "Failed to find workers.");
     } finally {
       setMatchLoading(false);
+    }
+  }
+
+
+  async function handleCreateMatch(match) {
+    if (!matchLead?.id || !match?.workerId) return;
+
+    const loadingKey = `${match.workerId}-${match.matchedNeed?.role || "role"}`;
+
+    try {
+      setMatchCreateLoading(loadingKey);
+      setMatchError("");
+
+      await adminService.createJobMatch({
+        employerLeadId: matchLead.id,
+        workerId: match.workerId,
+        role: match.matchedNeed?.role || "",
+        matchScore: match.matchScore,
+        matchReasons: match.matchReasons || [],
+        notes: "Created from matching modal",
+        source: "dashboard",
+      });
+
+      const data = await adminService.getEmployerLeadMatches(matchLead.id, {
+        limit: 20,
+      });
+
+      setMatchLead(data.lead || matchLead);
+      setMatches(data.matches || []);
+      setActionMessage("Worker match created.");
+    } catch (err) {
+      setMatchError(err.message || "Failed to create match.");
+    } finally {
+      setMatchCreateLoading("");
     }
   }
 
@@ -195,6 +230,8 @@ export default function EmployerLeadsPage() {
           lead={matchLead}
           matches={matches}
           error={matchError}
+          creatingKey={matchCreateLoading}
+          onCreateMatch={handleCreateMatch}
           onClose={() => setMatchModalOpen(false)}
         />
     </DashboardLayout>
