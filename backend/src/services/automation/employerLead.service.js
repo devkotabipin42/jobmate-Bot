@@ -11,6 +11,7 @@ import {
 } from "../rag/hiringNeedParser.service.js";
 import { EMPLOYER_MESSAGES as MESSAGES } from "./employer/employerLeadMessages.js";
 import { createNotification } from "../notifications/notification.service.js";
+import { scheduleFollowup } from "../followups/followupScheduler.service.js";
 import {
   buildEmployerLeadSummary,
   formatEmployerRoleLabel,
@@ -706,6 +707,24 @@ Aba company/business ko naam pathaunu hola.`;
     contact,
     leadUpdate,
   });
+
+  if (isComplete && employerLead?._id) {
+    await scheduleFollowup({
+      targetType: "EmployerLead",
+      targetId: employerLead._id,
+      phone: employerLead.phone || contact?.phone || "",
+      triggerType: "employer_lead_qualified",
+      templateName: "employer_lead_thank_you",
+      templateData: {
+        businessName: employerLead.businessName || "tapai ko business",
+        location:
+          employerLead.location?.area ||
+          employerLead.location?.district ||
+          "Lumbini",
+        urgencyLevel: employerLead.urgencyLevel || urgencyLevel || "unknown",
+      },
+    });
+  }
 
   const updatedConversation = await updateConversationState({
     conversation,
