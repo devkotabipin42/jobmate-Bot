@@ -4,6 +4,7 @@ import {
   MapPin,
   Phone,
   RefreshCcw,
+  Search,
   ShieldCheck,
   UserCheck,
   Users,
@@ -58,6 +59,7 @@ export default function EmployerLeadCard({
   lead,
   onStatusChange,
   onVerificationChange,
+  onFindWorkers,
   actionLoading,
 }) {
   const need = lead.primaryNeed || lead.hiringNeeds?.[0] || {};
@@ -219,6 +221,14 @@ export default function EmployerLeadCard({
         >
           <UserCheck size={14} />
           Needs Call
+        </button>
+        <button
+          onClick={() => onFindWorkers?.(lead)}
+          disabled={isBusy}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
+        >
+          <Search size={14} />
+          Find Workers
         </button>
       </div>
     </div>

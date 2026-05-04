@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Search, SlidersHorizontal, RefreshCcw } from "lucide-react";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import EmployerLeadCard from "../components/employers/EmployerLeadCard";
+import WorkerMatchesModal from "../components/employers/WorkerMatchesModal";
 import { useEmployerLeads } from "../hooks/useEmployerLeads";
 import { adminService } from "../services/adminService";
 
@@ -14,6 +15,11 @@ export default function EmployerLeadsPage() {
 
   const [actionLoading, setActionLoading] = useState("");
   const [actionMessage, setActionMessage] = useState("");
+  const [matchModalOpen, setMatchModalOpen] = useState(false);
+  const [matchLoading, setMatchLoading] = useState(false);
+  const [matchError, setMatchError] = useState("");
+  const [matchLead, setMatchLead] = useState(null);
+  const [matches, setMatches] = useState([]);
 
   const { leads, pagination, loading, error, refetch } =
     useEmployerLeads(filters);
@@ -54,6 +60,28 @@ export default function EmployerLeadsPage() {
       setActionMessage(err.message || "Failed to update verification.");
     } finally {
       setActionLoading("");
+    }
+  }
+
+
+  async function handleFindWorkers(lead) {
+    try {
+      setMatchLead(lead);
+      setMatchModalOpen(true);
+      setMatchLoading(true);
+      setMatchError("");
+      setMatches([]);
+
+      const data = await adminService.getEmployerLeadMatches(lead.id, {
+        limit: 20,
+      });
+
+      setMatchLead(data.lead || lead);
+      setMatches(data.matches || []);
+    } catch (err) {
+      setMatchError(err.message || "Failed to find workers.");
+    } finally {
+      setMatchLoading(false);
     }
   }
 
@@ -152,6 +180,7 @@ export default function EmployerLeadsPage() {
                   lead={lead}
                   onStatusChange={handleStatusChange}
                   onVerificationChange={handleVerificationChange}
+                  onFindWorkers={handleFindWorkers}
                   actionLoading={actionLoading}
                 />
               ))}
@@ -159,6 +188,15 @@ export default function EmployerLeadsPage() {
           )}
         </section>
       </div>
+
+        <WorkerMatchesModal
+          open={matchModalOpen}
+          loading={matchLoading}
+          lead={matchLead}
+          matches={matches}
+          error={matchError}
+          onClose={() => setMatchModalOpen(false)}
+        />
     </DashboardLayout>
   );
 }
