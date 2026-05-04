@@ -12,6 +12,7 @@ import { WorkerProfile } from "../models/WorkerProfile.model.js";
 import { buildWorkerProfileUpdateFromAaratiProfile } from "../services/jobmate/workerProfileMapper.service.js";
 import { upsertJobApplicationFromWorkerProfile } from "../services/jobmate/jobApplication.service.js";
 import { createNotification } from "../services/notifications/notification.service.js";
+import { scheduleFollowup } from "../services/followups/followupScheduler.service.js";
 import { generateJSONWithAI } from "../services/ai/aiProvider.service.js";
 import {
   AARATI_SAMPLE_REPLIES,
@@ -650,6 +651,20 @@ export const jobmateConfig = {
         district: saved.location?.district,
         availability: saved.availability,
         documentStatus: saved.documentStatus,
+      });
+
+      await scheduleFollowup({
+        targetType: "WorkerProfile",
+        targetId: saved._id,
+        phone: saved.phone,
+        triggerType: "profile_complete",
+        templateName: "worker_profile_thank_you",
+        templateData: {
+          name: saved.fullName || "hajur",
+          role: saved.jobPreferences?.join(", ") || "kaam",
+          location: saved.location?.area || saved.location?.district || "tapai ko area",
+        },
+        scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
       });
 
       const application = await upsertJobApplicationFromWorkerProfile({
