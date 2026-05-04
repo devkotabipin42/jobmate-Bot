@@ -18,6 +18,20 @@ const NON_OVERRIDABLE_INTENTS = new Set([
   "frustrated",
 ]);
 
+
+export function isLocationJobSearchRequest(text = "") {
+  const value = String(text || "").toLowerCase().trim();
+
+  if (!value) return false;
+
+  const hasJobWord = /\b(job|kaam|kam|work|jagir|vacancy)\b/i.test(value);
+  const hasNeedOrAvailabilityWord =
+    /\b(cha|chha|xa|chaiyo|chayio|chahiyo|chayeko|milcha|paincha|paiencha)\b/i.test(value);
+  const hasLocationMarker = /\b(ma|maa|tira|area|side)\b/i.test(value);
+
+  return hasJobWord && hasNeedOrAvailabilityWord && hasLocationMarker;
+}
+
 export function isGenericHelpRequest(text = "") {
   const value = String(text || "").toLowerCase().trim();
 
@@ -90,6 +104,27 @@ export function applyJobMateRoutingGuards({
       aiBrain.intentResult.needsHuman = false;
       aiBrain.intentResult.priority = "low";
       aiBrain.intentResult.reason = "Locked to active employer flow";
+    }
+
+    return intentResult;
+  }
+
+  if (
+    env?.BOT_MODE === "jobmate_hiring" &&
+    isLocationJobSearchRequest(text)
+  ) {
+    intentResult.intent = "job_search";
+    intentResult.finalIntent = "job_search";
+    intentResult.needsHuman = false;
+    intentResult.priority = "low";
+    intentResult.reason = "Location job search request";
+
+    if (aiBrain?.intentResult) {
+      aiBrain.intentResult.intent = "job_search";
+      aiBrain.intentResult.finalIntent = "job_search";
+      aiBrain.intentResult.needsHuman = false;
+      aiBrain.intentResult.priority = "low";
+      aiBrain.intentResult.reason = "Location job search request";
     }
 
     return intentResult;

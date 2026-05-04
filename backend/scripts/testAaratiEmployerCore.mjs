@@ -162,6 +162,23 @@ assertEqual(
   "employer_lead"
 );
 
+
+const jobSearchIntent = { intent: "worker_registration", needsHuman: false, priority: "low" };
+applyJobMateRoutingGuards({
+  intentResult: jobSearchIntent,
+  aiBrain: { intentResult: jobSearchIntent },
+  conversation: { currentState: "idle" },
+  normalized: { message: { normalizedText: "butwal ma job chaiyo" } },
+  env: { BOT_MODE: "jobmate_hiring" },
+});
+
+assertEqual(
+  "location job chaiyo becomes job_search",
+  jobSearchIntent.intent,
+  "job_search"
+);
+
+
 console.log(`\nResult: ${failed === 0 ? "ALL PASSED" : `${failed} FAILED`}`);
 
 if (failed > 0) {

@@ -136,8 +136,18 @@ export function isAaratiOffTopic(text = "") {
 }
 
 export function isAaratiIdentityQuestion(text = "") {
-  const value = String(text || "").toLowerCase();
-  return /(bot|robot|ai|machine|real|manche|staff|tapai ko ho|timi ko ho|aarati ko ho)/i.test(value);
+  const value = String(text || "").toLowerCase().trim();
+
+  // Only identity questions. Do not match "ai" inside Nepali/Roman Nepali words like "chaiyo".
+  return (
+    /\b(bot|robot|chatbot|machine)\b/i.test(value) ||
+    /\bai\b/i.test(value) ||
+    /tapai\s+(ko|kun)\s+ho/i.test(value) ||
+    /timi\s+(ko|kun)\s+ho/i.test(value) ||
+    /aarati\s+ko\s+ho/i.test(value) ||
+    /(tapai|timi)\s+real\s+ho/i.test(value) ||
+    /(tapai|timi)\s+(manche|manxe)\s+ho/i.test(value)
+  );
 }
 
 export function buildAaratiPrompt({
