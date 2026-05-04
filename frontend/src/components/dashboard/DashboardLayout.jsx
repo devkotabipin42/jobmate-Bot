@@ -11,6 +11,7 @@ import {
   Search,
   Bell,
   FileCheck2,
+  Brain,
   Moon,
   Sun,
 } from "lucide-react";
@@ -27,6 +28,7 @@ const jobMateNavItems = [
   { label: "Business", fullLabel: "Business Leads", icon: ClipboardList, to: "/admin/business-leads" },
   { label: "Workers", icon: Users, to: "/admin/workers" },
   { label: "Applications", fullLabel: "Job Applications", icon: FileCheck2, to: "/admin/job-applications" },
+  { label: "Knowledge", fullLabel: "Pending Knowledge", icon: Brain, to: "/admin/pending-knowledge" },
   { label: "Calls", fullLabel: "Handoffs", icon: PhoneCall, to: "/admin/handoffs" },
   { label: "Chats", fullLabel: "Conversations", icon: MessageCircle, to: "/admin/conversations" },
   { label: "Analytics", icon: BarChart3, to: "/admin/analytics" },
