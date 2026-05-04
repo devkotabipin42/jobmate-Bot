@@ -39,7 +39,7 @@ function toJobApplicationCard(application = {}) {
     lastStatusLabel: formatDateLabel(application.lastStatusAt || application.updatedAt),
     createdAt: application.createdAt || null,
     updatedAt: application.updatedAt || null,
-    metadata: application.metadata || {},
+    // Keep list response compact. Use detail endpoint for full metadata.
   };
 }
 
@@ -137,6 +137,38 @@ export async function updateJobApplicationStatus(req, res) {
     return res.status(500).json({
       success: false,
       message: "Failed to update job application",
+      error: error.message,
+    });
+  }
+}
+
+
+export async function getJobApplicationDetail(req, res) {
+  try {
+    const { id } = req.params;
+
+    const application = await JobApplication.findById(id).lean();
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: "Job application not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      application: {
+        ...toJobApplicationCard(application),
+        metadata: application.metadata || {},
+      },
+    });
+  } catch (error) {
+    console.error("Get job application detail failed:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get job application detail",
       error: error.message,
     });
   }
