@@ -1,5 +1,6 @@
 import { JobApplication } from "../../models/JobApplication.model.js";
 import { createNotification } from "../notifications/notification.service.js";
+import { scheduleFollowup } from "../followups/followupScheduler.service.js";
 
 export async function upsertJobApplicationFromWorkerProfile({
   contact,
@@ -76,6 +77,20 @@ export async function upsertJobApplicationFromWorkerProfile({
         jobId: application.jobId,
         jobTitle: application.jobTitle,
         companyName: application.companyName,
+        status: application.status,
+      },
+    });
+
+    await scheduleFollowup({
+      targetType: "JobApplication",
+      targetId: application._id,
+      phone: application.phone,
+      triggerType: "job_application_created",
+      templateName: "job_application_followup",
+      templateData: {
+        jobTitle: application.jobTitle || "job",
+        companyName: application.companyName || "company",
+        jobId: application.jobId,
         status: application.status,
       },
     });
