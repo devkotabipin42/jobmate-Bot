@@ -193,6 +193,25 @@ export const adminService = {
     });
   },
 
+  getJobMatches(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    return request(`/api/admin/matches${query ? `?${query}` : ""}`);
+  },
+
+  createJobMatch(payload) {
+    return request("/api/admin/matches", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateJobMatchStatus(id, payload) {
+    return request(`/api/admin/matches/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
   getNotifications(params = {}) {
     const query = new URLSearchParams(params).toString();
     return request(`/api/admin/notifications${query ? `?${query}` : ""}`);
