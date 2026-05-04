@@ -8,7 +8,8 @@
     "dev": "nodemon src/app.js",
     "start": "node src/app.js",
     "test:aarati-employer": "node scripts/testAaratiEmployerCore.mjs",
-    "test:hiring-parser": "node scripts/testHiringNeedParser.mjs"
+    "test:hiring-parser": "node scripts/testHiringNeedParser.mjs",
+    "check:aarati-employer": "node scripts/checkAaratiEmployer.mjs"
   },
   "keywords": [],
   "author": "JobMate",
