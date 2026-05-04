@@ -476,7 +476,7 @@ export async function receiveWhatsAppWebhook(req, res) {
   } catch (error) {
     await markMessageFailed(processedMessageId, error.message);
 
-    console.error("❌ WhatsApp webhook processing failed:", error);
+    console.error("❌ WhatsApp webhook processing failed:", sanitizeWebhookError(error));
 
     return res.status(200).json({
       success: false,
@@ -484,6 +484,17 @@ export async function receiveWhatsAppWebhook(req, res) {
       error: error.message,
     });
   }
+}
+
+
+function sanitizeWebhookError(error) {
+  return {
+    status: error?.response?.status || null,
+    message: error?.response?.data?.error?.message || error?.message || "Unknown error",
+    code: error?.response?.data?.error?.code || null,
+    type: error?.response?.data?.error?.type || null,
+    fbtrace_id: error?.response?.data?.error?.fbtrace_id || null,
+  };
 }
 
 function applyConversationIntentOverride({ intentResult, conversation, normalized }) {
