@@ -267,5 +267,14 @@
       "marketing ra khana pakaune",
       "marketing ani kitchen"
     ]
+  },
+  "reels_creator": {
+    "label": "Reels Creator",
+    "category": "custom",
+    "aliases": [
+      "reels banaune kt chahiyo",
+      "reels creator",
+      "malai reels banaune kt chahiyo"
+    ]
   }
 }
