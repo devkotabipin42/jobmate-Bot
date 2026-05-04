@@ -163,8 +163,24 @@ export function findRole(text = "") {
           "garage_worker"
         ].includes(key);
 
-        const rolePriority = highPriorityRole ? 250 : isGenericRole ? -100 : 100;
-        const score = normalizeText(alias).length + rolePriority;
+        const isCustomRole = String(role.category || "").toLowerCase() === "custom";
+
+        const cleanAlias = normalizeText(alias);
+        const cleanLabel = normalizeText(role.label || "");
+        const cleanKey = normalizeText(key || "").replace(/_/g, " ");
+        const cleanText = normalizeText(text);
+
+        const exactLabelMatch = cleanLabel && cleanText.includes(cleanLabel);
+        const exactKeyMatch = cleanKey && cleanText.includes(cleanKey);
+
+        const rolePriority =
+          isGenericRole ? -100 :
+          isCustomRole && (exactLabelMatch || exactKeyMatch) ? 600 :
+          isCustomRole ? 300 :
+          highPriorityRole ? 250 :
+          100;
+
+        const score = cleanAlias.length + rolePriority;
 
         if (!best || score > best.score) {
           best = {
