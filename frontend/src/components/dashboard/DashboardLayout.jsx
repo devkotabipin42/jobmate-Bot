@@ -15,6 +15,7 @@ import {
   Moon,
   Sun,
 } from "lucide-react";
+import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useTheme } from "../../hooks/useTheme";
 import { useAdminNotifications } from "../../hooks/useAdminNotifications";
@@ -160,7 +161,7 @@ export default function DashboardLayout({ children }) {
 
             <div className="flex items-center gap-2">
               <ThemeButton isDark={isDark} toggleTheme={toggleTheme} />
-              <NotificationButton count={notifications.count} />
+              <NotificationButton notifications={notifications} />
             </div>
           </div>
 
@@ -188,7 +189,7 @@ export default function DashboardLayout({ children }) {
               </div>
 
               <ThemeButton isDark={isDark} toggleTheme={toggleTheme} />
-              <NotificationButton count={notifications.count} />
+              <NotificationButton notifications={notifications} />
 
               <button
                 onClick={handleLogout}
@@ -288,22 +289,136 @@ function ThemeButton({ isDark, toggleTheme }) {
   );
 }
 
-function NotificationButton({ count = 0 }) {
-  return (
-    <a
-      href="/admin/handoffs"
-      className="relative rounded-2xl border border-slate-200 bg-white p-3 text-slate-600 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
-      title="Urgent handoffs"
-    >
-      <Bell size={18} />
+function NotificationButton({ notifications }) {
+  const [open, setOpen] = useState(false);
 
-      {count > 0 ? (
-        <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-black text-white ring-2 ring-white dark:ring-slate-900">
-          {count > 99 ? "99+" : count}
-        </span>
-      ) : (
-        <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
-      )}
-    </a>
+  const count = notifications?.count || 0;
+  const latest = notifications?.latest || [];
+  const loading = notifications?.loading || false;
+
+  async function handleMarkAllRead() {
+    try {
+      await notifications?.markAllRead?.();
+      setOpen(false);
+    } catch {
+      // Ignore UI error; next refresh will recover.
+    }
+  }
+
+  async function handleItemClick(item) {
+    try {
+      await notifications?.markRead?.(item._id || item.id);
+    } catch {
+      // Ignore UI error; next refresh will recover.
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="relative rounded-2xl border border-slate-200 bg-white p-3 text-slate-600 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+        title="Notifications"
+      >
+        <Bell size={18} />
+
+        {count > 0 ? (
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-black text-white ring-2 ring-white dark:ring-slate-900">
+            {count > 99 ? "99+" : count}
+          </span>
+        ) : (
+          <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
+        )}
+      </button>
+
+      {open ? (
+        <div className="absolute right-0 z-50 mt-3 w-[340px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+            <div>
+              <p className="text-sm font-black text-slate-950 dark:text-white">
+                Notifications
+              </p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {count} unread
+              </p>
+            </div>
+
+            {count > 0 ? (
+              <button
+                type="button"
+                onClick={handleMarkAllRead}
+                className="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300"
+              >
+                Mark all read
+              </button>
+            ) : null}
+          </div>
+
+          <div className="max-h-[420px] overflow-y-auto p-2">
+            {loading ? (
+              <NotificationEmpty text="Loading notifications..." />
+            ) : latest.length === 0 ? (
+              <NotificationEmpty text="No unread notifications." />
+            ) : (
+              latest.map((item) => (
+                <button
+                  key={item._id || item.id}
+                  type="button"
+                  onClick={() => handleItemClick(item)}
+                  className="block w-full rounded-2xl p-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-900"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black text-slate-900 dark:text-slate-100">
+                        {item.title || "Notification"}
+                      </p>
+                      <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-slate-500 dark:text-slate-400">
+                        {item.message || "-"}
+                      </p>
+                    </div>
+
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-black ${
+                      item.priority === "urgent" || item.priority === "high"
+                        ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
+                        : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                    }`}>
+                      {item.priority || "medium"}
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-[11px] font-semibold text-slate-400">
+                    {formatNotificationTime(item.createdAt)}
+                  </p>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
+}
+
+function NotificationEmpty({ text }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm font-semibold text-slate-500 dark:border-slate-800 dark:text-slate-400">
+      {text}
+    </div>
+  );
+}
+
+function formatNotificationTime(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return date.toLocaleString("en-GB", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

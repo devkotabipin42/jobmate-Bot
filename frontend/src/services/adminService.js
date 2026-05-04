@@ -179,6 +179,23 @@ export const adminService = {
     });
   },
 
+  getNotifications(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    return request(`/api/admin/notifications${query ? `?${query}` : ""}`);
+  },
+
+  markNotificationRead(id) {
+    return request(`/api/admin/notifications/${id}/read`, {
+      method: "PATCH",
+    });
+  },
+
+  markAllNotificationsRead() {
+    return request("/api/admin/notifications/read-all", {
+      method: "PATCH",
+    });
+  },
+
   getConversations(params = {}) {
     const query = new URLSearchParams(params).toString();
     return request(`/api/admin/conversations${query ? `?${query}` : ""}`);

@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 import { adminService } from "../services/adminService";
 
-const DASHBOARD_MODE =
-  import.meta.env.VITE_DASHBOARD_MODE || "jobmate_admin";
-
 export function useAdminNotifications() {
   const [count, setCount] = useState(0);
   const [latest, setLatest] = useState([]);
@@ -13,28 +10,12 @@ export function useAdminNotifications() {
     try {
       setLoading(true);
 
-      if (DASHBOARD_MODE === "business_receptionist") {
-        const summary = await adminService.getDashboardSummary();
-        const metrics = summary?.metrics || {};
-
-        setCount(metrics.newBusinessLeads || 0);
-
-        const leads = await adminService.getBusinessLeads({
-          status: "new",
-          limit: 10,
-        });
-
-        setLatest(leads.items || []);
-        return;
-      }
-
-      const data = await adminService.getHandoffs({
-        status: "open",
-        priority: "urgent",
+      const data = await adminService.getNotifications({
+        status: "unread",
         limit: 10,
       });
 
-      setCount(data.pagination?.total || 0);
+      setCount(data.unreadCount || 0);
       setLatest(data.items || []);
     } catch {
       setCount(0);
@@ -42,6 +23,17 @@ export function useAdminNotifications() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function markAllRead() {
+    await adminService.markAllNotificationsRead();
+    await fetchNotifications();
+  }
+
+  async function markRead(id) {
+    if (!id) return;
+    await adminService.markNotificationRead(id);
+    await fetchNotifications();
   }
 
   useEffect(() => {
@@ -56,5 +48,7 @@ export function useAdminNotifications() {
     latest,
     loading,
     refetch: fetchNotifications,
+    markRead,
+    markAllRead,
   };
 }
