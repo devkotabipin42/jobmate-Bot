@@ -33,6 +33,7 @@ import {
   formatBrainSummary as mapperFormatBrainSummary,
 } from "./employer/employerLeadMapper.service.js";
 
+import { learnFromEmployerBrain } from "../rag/knowledgeLearning.service.js";
 const URGENCY_MAP = {
   "1": {
     urgency: "this_week",
@@ -83,6 +84,16 @@ export async function handleEmployerLead({
     quantity: aaratiBrain?.quantity,
     location: aaratiBrain?.location,
     district: aaratiBrain?.district,
+  });
+
+  // Learn useful unknown role/location suggestions without blocking the reply.
+  void learnFromEmployerBrain({
+    rawText: rawText || text,
+    phone: contact?.phone || "",
+    brain: aaratiBrain,
+    source: "whatsapp_aarati_employer",
+  }).catch((error) => {
+    console.warn("PendingKnowledge learning failed:", error?.message);
   });
 
   let nextStep = step;
