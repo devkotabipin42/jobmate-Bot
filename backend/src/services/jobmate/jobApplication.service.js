@@ -1,4 +1,5 @@
 import { JobApplication } from "../../models/JobApplication.model.js";
+import { createNotification } from "../notifications/notification.service.js";
 
 export async function upsertJobApplicationFromWorkerProfile({
   contact,
@@ -44,11 +45,15 @@ export async function upsertJobApplicationFromWorkerProfile({
     },
   };
 
-  return JobApplication.findOneAndUpdate(
-    {
-      contactId: contact._id,
-      jobId: String(profile.selectedJobId || ""),
-    },
+  const filter = {
+    contactId: contact._id,
+    jobId: String(profile.selectedJobId || ""),
+  };
+
+  const existingApplication = await JobApplication.findOne(filter).lean();
+
+  const application = await JobApplication.findOneAndUpdate(
+    filter,
     update,
     {
       upsert: true,
@@ -57,4 +62,24 @@ export async function upsertJobApplicationFromWorkerProfile({
       runValidators: false,
     }
   );
+
+  if (!existingApplication) {
+    await createNotification({
+      type: "job_application_created",
+      title: `New job interest: ${application.jobTitle || "Job"}`,
+      message: `${application.phone || "Worker"} selected ${application.jobTitle || "a job"} at ${application.companyName || "company"}.`,
+      priority: "high",
+      entityType: "JobApplication",
+      entityId: application._id,
+      phone: application.phone,
+      metadata: {
+        jobId: application.jobId,
+        jobTitle: application.jobTitle,
+        companyName: application.companyName,
+        status: application.status,
+      },
+    });
+  }
+
+  return application;
 }

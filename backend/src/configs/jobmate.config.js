@@ -11,6 +11,7 @@ import { findLocation } from "../services/rag/jobmateKnowledge.service.js";
 import { WorkerProfile } from "../models/WorkerProfile.model.js";
 import { buildWorkerProfileUpdateFromAaratiProfile } from "../services/jobmate/workerProfileMapper.service.js";
 import { upsertJobApplicationFromWorkerProfile } from "../services/jobmate/jobApplication.service.js";
+import { createNotification } from "../services/notifications/notification.service.js";
 import { generateJSONWithAI } from "../services/ai/aiProvider.service.js";
 import {
   AARATI_SAMPLE_REPLIES,
@@ -665,6 +666,25 @@ export const jobmateConfig = {
           status: application.status,
         });
       }
+
+      await createNotification({
+        type: "worker_profile_completed",
+        title: `Worker profile completed: ${saved.phone || "Worker"}`,
+        message: `${saved.phone || "Worker"} registered for ${(saved.jobPreferences || []).join(", ") || "job"} in ${saved.location?.area || saved.location?.district || "Lumbini"}.`,
+        priority: saved.documentStatus === "ready" ? "high" : "medium",
+        entityType: "WorkerProfile",
+        entityId: saved._id,
+        phone: saved.phone,
+        metadata: {
+          jobPreferences: saved.jobPreferences || [],
+          location: saved.location || {},
+          availability: saved.availability,
+          documentStatus: saved.documentStatus,
+          selectedJobTitle: saved.metadata?.selectedJobTitle || "",
+          selectedCompanyName: saved.metadata?.selectedCompanyName || "",
+          isApplyingToSelectedJob: Boolean(saved.metadata?.isApplyingToSelectedJob),
+        },
+      });
     } catch (error) {
       console.error("WorkerProfile save failed:", error?.message);
     }

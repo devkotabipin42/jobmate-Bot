@@ -253,6 +253,10 @@ export function classifyIntent(input = {}) {
     });
   }
 
+  if (looksLikeLocationJobSearch(text)) {
+    return buildResult("job_search");
+  }
+
   // Direct job availability search must win before worker registration.
   // Examples: "Bardaghat ma kaam xa?", "Butwal ma job cha?"
   const clearJobAvailabilitySearch =
@@ -292,6 +296,18 @@ export function classifyIntent(input = {}) {
     reason: "Intent not clear. Show menu.",
   });
 }
+
+
+function looksLikeLocationJobSearch(text = "") {
+  const value = String(text || "").toLowerCase().trim();
+
+  const hasJobWord = /\b(job|kaam|kam|work|jagir|vacancy)\b/i.test(value);
+  const hasAvailabilityOrNeedWord = /\b(cha|chha|xa|chaiyo|chayio|chahiyo|chayeko|milcha|paiencha|paincha)\b/i.test(value);
+  const hasLocationMarker = /\b(ma|maa|tira|area|side)\b/i.test(value);
+
+  return hasJobWord && hasAvailabilityOrNeedWord && hasLocationMarker;
+}
+
 
 function buildResult(intent, options = {}) {
   return {
