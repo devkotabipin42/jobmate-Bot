@@ -31,12 +31,12 @@ const ENABLE_AARATI_LLM = process.env.ENABLE_AARATI_LLM !== "false";
 
 // Job type parsing
 const JOB_TYPES = {
-  "1": "Driver/Transport",
-  "2": "Security",
+  "1": "IT/Tech",
+  "2": "Driver/Transport",
   "3": "Hospitality",
-  "4": "Construction/Labor",
-  "5": "Farm/Agriculture",
-  "6": "Shop/Retail",
+  "4": "Shop/Retail",
+  "5": "Security",
+  "6": "Construction/Labor",
   "7": "Other",
 };
 
@@ -62,11 +62,27 @@ function isJobSearchLikeText(text = "") {
 }
 
 
+
+function getJobSearchCategoryMessage(location = "yo area") {
+  return `Hunchha 🙏 ${location} ma kaam khojna sahayog garchhu.
+
+Tapai kun type/sector ko kaam khojdai hunuhunchha?
+
+1. IT / Computer
+2. Driver / Transport
+3. Hotel / Restaurant
+4. Sales / Shop
+5. Security Guard
+6. Helper / Labor
+7. Jun sukai / any`;
+}
+
 function parseJobType(text) {
   const trimmed = String(text || "").trim();
   if (JOB_TYPES[trimmed]) return JOB_TYPES[trimmed];
 
   const lower = trimmed.toLowerCase();
+  if (/(frontend|front end|react|developer|it|computer|software|web|coding|programmer)/i.test(lower)) return "IT/Tech";
   if (/(hotel|restaurant|waiter|kitchen|cook|cafe)/i.test(lower)) return "Hospitality";
   if (/(driver|gadi|license|truck|bus|bike|delivery)/i.test(lower)) return "Driver/Transport";
   if (/(security|guard|watchman)/i.test(lower)) return "Security";
@@ -398,6 +414,26 @@ Tapai kati samaya kaam garna milchha?
     };
   }
 
+  // If user saw jobs and wants another option/sector, ask category again.
+  if (
+    profile.jobSearchDone &&
+    /^(aru|arko|other|different|sector|category|milena|suitable chaina|man parena|not suitable)/i.test(String(text || "").trim())
+  ) {
+    return {
+      messageToSend: getJobSearchCategoryMessage(profile.location || "yo area"),
+      profileUpdates: {
+        jobType: "",
+        jobSearchDone: false,
+        jobSearchResults: [],
+        selectedJob: null,
+        selectedJobId: "",
+        isApplyingToSelectedJob: false,
+      },
+      state: "ask_jobType",
+      lastAskedField: "jobType",
+    };
+  }
+
   if (profile.pendingAaratiReply) {
     const reply = profile.pendingAaratiReply;
     delete profile.pendingAaratiReply;
@@ -413,6 +449,22 @@ Tapai kati samaya kaam garna milchha?
 
   if (profile.jobSearchDone && REGISTER_INTENT_PATTERN.test(t)) {
     return null;
+  }
+
+  if (
+    profile.location &&
+    !profile.jobType &&
+    !profile.jobSearchDone &&
+    isJobSearchLikeText(text)
+  ) {
+    return {
+      messageToSend: getJobSearchCategoryMessage(profile.location),
+      profileUpdates: {
+        searchCategoryAsked: true,
+      },
+      state: "ask_jobType",
+      lastAskedField: "jobType",
+    };
   }
 
   const result = await runJobSearchStep(profile, text);

@@ -1,6 +1,7 @@
 import {
   filterSafeJobMatches,
   isSameLocationSafe,
+  isSameCategorySafe,
 } from "../src/services/jobmate/jobSearchSafety.service.js";
 
 let failed = 0;
@@ -30,17 +31,37 @@ assertEqual(
 );
 
 assertEqual(
-  "filter only verified active same-location jobs",
+  "driver category does not match frontend job",
+  isSameCategorySafe(
+    { title: "Frontend Developer", category: "IT/Tech", description: "React coding" },
+    "Driver/Transport"
+  ),
+  false
+);
+
+assertEqual(
+  "IT category matches frontend job",
+  isSameCategorySafe(
+    { title: "Frontend Developer", category: "IT/Tech", description: "React coding" },
+    "IT/Tech"
+  ),
+  true
+);
+
+assertEqual(
+  "filter only verified active same-location same-category jobs",
   filterSafeJobMatches({
     requestedLocation: "Butwal",
+    requestedJobType: "Driver/Transport",
     jobs: [
-      { title: "Frontend", location: "Butwal", is_verified: true, is_active: true },
-      { title: "Driver", location: "Bardaghat", is_verified: true, is_active: true },
-      { title: "Cook", location: "Butwal", is_verified: false, is_active: true },
-      { title: "Waiter", location: "Butwal", is_verified: true, is_active: false },
+      { title: "Frontend", category: "IT/Tech", location: "Butwal", is_verified: true, is_active: true },
+      { title: "Driver", category: "Driver/Transport", location: "Butwal", is_verified: true, is_active: true },
+      { title: "Driver", category: "Driver/Transport", location: "Bardaghat", is_verified: true, is_active: true },
+      { title: "Cook", category: "Hospitality", location: "Butwal", is_verified: false, is_active: true },
+      { title: "Waiter", category: "Hospitality", location: "Butwal", is_verified: true, is_active: false },
     ],
   }).map((job) => job.title),
-  ["Frontend"]
+  ["Driver"]
 );
 
 console.log(`\nResult: ${failed === 0 ? "ALL PASSED" : `${failed} FAILED`}`);
