@@ -8,6 +8,7 @@ import {
 import { extractJobSearchWithAI } from "../ai/jobmateJobSearchExtractionAI.service.js";
 import { runConversationEngine } from "./conversationEngine.js";
 import { jobmateConfig } from "../../configs/jobmate.config.js";
+import { scheduleFollowup } from "../followups/followupScheduler.service.js";
 
 // Runtime check (not module-load-time) so dotenv has time to load
 function isNewEngineEnabled() {
@@ -267,6 +268,26 @@ export async function handleWorkerRegistration({
     contact,
     profileUpdate,
   });
+
+  if (isComplete && worker?._id) {
+    await scheduleFollowup({
+      targetType: "WorkerProfile",
+      targetId: worker._id,
+      phone: worker.phone || contact?.phone || "",
+      triggerType: "profile_complete",
+      templateName: "worker_profile_thank_you",
+      templateData: {
+        name: worker.fullName || displayName || "hajur",
+        role: Array.isArray(worker.jobPreferences) && worker.jobPreferences.length
+          ? worker.jobPreferences[worker.jobPreferences.length - 1]
+          : "kaam",
+        location:
+          worker.location?.area ||
+          worker.location?.district ||
+          "tapai ko area",
+      },
+    });
+  }
 
   const updatedConversation = await updateConversationState({
     conversation,
