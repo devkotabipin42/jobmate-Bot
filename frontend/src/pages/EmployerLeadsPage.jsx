@@ -41,6 +41,22 @@ export default function EmployerLeadsPage() {
     }
   }
 
+  async function handleVerificationChange(lead, payload) {
+    try {
+      setActionLoading(lead.id);
+      setActionMessage("");
+
+      await adminService.updateEmployerLeadVerification(lead.id, payload);
+
+      setActionMessage("Lead verification updated.");
+      await refetch();
+    } catch (err) {
+      setActionMessage(err.message || "Failed to update verification.");
+    } finally {
+      setActionLoading("");
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -135,6 +151,7 @@ export default function EmployerLeadsPage() {
                   key={lead.id}
                   lead={lead}
                   onStatusChange={handleStatusChange}
+                  onVerificationChange={handleVerificationChange}
                   actionLoading={actionLoading}
                 />
               ))}

@@ -4,6 +4,8 @@ import {
   MapPin,
   Phone,
   RefreshCcw,
+  ShieldCheck,
+  UserCheck,
   Users,
   Wallet,
 } from "lucide-react";
@@ -16,9 +18,46 @@ const nextStatuses = [
   { label: "Closed", value: "closed" },
 ];
 
+const verificationStatuses = {
+  unverified: "Unverified",
+  needs_call: "Needs Call",
+  called: "Called",
+  verified: "Verified",
+  rejected: "Rejected",
+};
+
+function formatRole(role = "") {
+  const labels = {
+    marketing_staff: "Marketing Staff",
+    kitchen_staff: "Kitchen Staff",
+    driver: "Driver",
+    shopkeeper: "Shopkeeper",
+    waiter: "Waiter",
+    security_guard: "Security Guard",
+    frontend_developer: "Frontend Developer",
+    helper_staff: "Helper",
+  };
+
+  return labels[role] || String(role || "staff").replace(/_/g, " ");
+}
+
+function formatNeeds(lead) {
+  const needs = Array.isArray(lead.hiringNeeds) ? lead.hiringNeeds : [];
+
+  if (needs.length > 1) {
+    return needs
+      .map((need) => `${need.quantity || 1} ${formatRole(need.role)}`)
+      .join(", ");
+  }
+
+  const need = lead.primaryNeed || needs[0] || {};
+  return `${need.quantity || 1} ${formatRole(need.role || "staff")}`;
+}
+
 export default function EmployerLeadCard({
   lead,
   onStatusChange,
+  onVerificationChange,
   actionLoading,
 }) {
   const need = lead.primaryNeed || lead.hiringNeeds?.[0] || {};
@@ -30,6 +69,35 @@ export default function EmployerLeadCard({
           need.salaryMax
         ).toLocaleString()}`
       : "Salary not mentioned";
+
+  const verificationStatus = lead.verificationStatus || "needs_call";
+  const needsCall = lead.needsCall !== false;
+
+  function markVerified() {
+    onVerificationChange?.(lead, {
+      verificationStatus: "verified",
+      salaryVerified: true,
+      phoneVerified: true,
+      needsCall: false,
+      hrNotes: "Verified from dashboard.",
+    });
+  }
+
+  function markCalled() {
+    onVerificationChange?.(lead, {
+      verificationStatus: "called",
+      needsCall: false,
+      hrNotes: "Called from dashboard.",
+    });
+  }
+
+  function markNeedsCall() {
+    onVerificationChange?.(lead, {
+      verificationStatus: "needs_call",
+      needsCall: true,
+      hrNotes: "Needs HR follow-up call.",
+    });
+  }
 
   return (
     <div className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl hover:shadow-slate-200/70 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-500/30 dark:hover:shadow-emerald-950/20">
@@ -46,6 +114,27 @@ export default function EmployerLeadCard({
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {lead.contactPerson} • {lead.phone}
             </p>
+
+            <div className="mt-2 flex flex-wrap gap-2">
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                {verificationStatuses[verificationStatus] || verificationStatus}
+              </span>
+              {needsCall ? (
+                <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                  Needs Call
+                </span>
+              ) : null}
+              {lead.salaryVerified ? (
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                  Salary Verified
+                </span>
+              ) : null}
+              {lead.phoneVerified ? (
+                <span className="rounded-full bg-purple-50 px-3 py-1 text-xs font-black text-purple-700 dark:bg-purple-500/10 dark:text-purple-300">
+                  Phone Verified
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -53,21 +142,21 @@ export default function EmployerLeadCard({
       </div>
 
       <div className="mt-5 grid gap-3 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-2">
-        <Info
-          icon={Users}
-          label="Need"
-          value={`${need.quantity || 1} ${need.role || "staff"}`}
-        />
+        <Info icon={Users} label="Need" value={formatNeeds(lead)} />
         <Info
           icon={MapPin}
           label="Location"
-          value={`${lead.location?.area || "-"}, ${
-            lead.location?.district || "-"
-          }`}
+          value={`${lead.location?.area || "-"}, ${lead.location?.district || "-"}`}
         />
         <Info icon={Wallet} label="Salary" value={salary} />
         <Info icon={Phone} label="Urgency" value={lead.urgencyLevel || "unknown"} />
       </div>
+
+      {lead.hrNotes ? (
+        <div className="mt-4 rounded-2xl bg-slate-50 p-3 text-sm font-semibold text-slate-600 dark:bg-slate-950/60 dark:text-slate-300">
+          HR note: {lead.hrNotes}
+        </div>
+      ) : null}
 
       <div className="mt-5 flex items-center justify-between gap-4">
         <div>
@@ -104,6 +193,33 @@ export default function EmployerLeadCard({
             {item.label}
           </button>
         ))}
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <button
+          onClick={markCalled}
+          disabled={isBusy}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-50 disabled:opacity-60 dark:border-blue-500/20 dark:bg-slate-950 dark:text-blue-300"
+        >
+          <Phone size={14} />
+          Mark Called
+        </button>
+        <button
+          onClick={markVerified}
+          disabled={isBusy}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-60 dark:border-emerald-500/20 dark:bg-slate-950 dark:text-emerald-300"
+        >
+          <ShieldCheck size={14} />
+          Mark Verified
+        </button>
+        <button
+          onClick={markNeedsCall}
+          disabled={isBusy}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-white px-3 py-2 text-xs font-bold text-amber-700 transition hover:bg-amber-50 disabled:opacity-60 dark:border-amber-500/20 dark:bg-slate-950 dark:text-amber-300"
+        >
+          <UserCheck size={14} />
+          Needs Call
+        </button>
       </div>
     </div>
   );

@@ -136,6 +136,13 @@ export const adminService = {
     });
   },
 
+  updateEmployerLeadVerification(id, payload) {
+    return request(`/api/admin/employer-leads/${id}/verification`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
   getWorkers(params = {}) {
     const query = new URLSearchParams(params).toString();
     return request(`/api/admin/workers${query ? `?${query}` : ""}`);
