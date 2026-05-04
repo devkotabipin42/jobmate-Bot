@@ -2,6 +2,8 @@ import { spawnSync } from "child_process";
 
 const checks = [
   ["node", ["--check", "src/controllers/whatsapp.controller.js"]],
+  ["node", ["--check", "src/routes/adminJobApplication.routes.js"]],
+  ["node", ["--check", "src/controllers/adminJobApplication.controller.js"]],
   ["node", ["--check", "src/routes/adminEmployerLeadVerification.routes.js"]],
   ["node", ["--check", "src/controllers/adminEmployerLeadVerification.controller.js"]],
   ["node", ["--check", "src/services/automation/employerLead.service.js"]],
@@ -12,6 +14,9 @@ const checks = [
   ["node", ["--check", "src/services/automation/jobmateRoutingGuards.service.js"]],
   ["node", ["--check", "src/services/rag/hiringNeedParser.service.js"]],
   ["node", ["--check", "src/models/PendingKnowledge.model.js"]],
+  ["node", ["scripts/testJobApplicationService.mjs"]],
+  ["node", ["--check", "src/services/jobmate/jobApplication.service.js"]],
+  ["node", ["--check", "src/models/JobApplication.model.js"]],
   ["node", ["--check", "src/services/rag/pendingKnowledge.service.js"]],
   ["node", ["--check", "src/services/rag/applyPendingKnowledge.service.js"]],
   ["node", ["--check", "src/services/rag/knowledgeLearning.service.js"]],
