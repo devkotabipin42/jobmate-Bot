@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { getFollowups } from "../controllers/adminFollowup.controller.js";
+import { getFollowups, processFollowups } from "../controllers/adminFollowup.controller.js";
 
 const router = Router();
 
 router.get("/", getFollowups);
+router.post("/process", processFollowups);
 
 export default router;
