@@ -11,7 +11,8 @@
     "test:hiring-parser": "node scripts/testHiringNeedParser.mjs",
     "check:aarati-employer": "node scripts/checkAaratiEmployer.mjs",
     "test:jobseeker-core": "node scripts/testJobseekerCore.mjs",
-    "test:jobseeker-safety": "node scripts/testJobseekerSafety.mjs"
+    "test:jobseeker-safety": "node scripts/testJobseekerSafety.mjs",
+    "test:worker-profile-mapper": "node scripts/testWorkerProfileMapper.mjs"
   },
   "keywords": [],
   "author": "JobMate",

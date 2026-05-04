@@ -60,7 +60,7 @@ export async function runConversationEngine({
                 $set: {
                   currentState: searchResult.state || "search_done",
                   "metadata.collectedData": profile,
-                  "metadata.lastAskedField": null,
+                  "metadata.lastAskedField": searchResult.lastAskedField || null,
                 },
               },
               { runValidators: false }
@@ -73,7 +73,7 @@ export async function runConversationEngine({
           messageToSend: searchResult.messageToSend,
           newMetadata: {
             collectedData: profile,
-            lastAskedField: null,
+            lastAskedField: searchResult.lastAskedField || null,
             currentState: searchResult.state || "search_done",
           },
           isComplete: false,

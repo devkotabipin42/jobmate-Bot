@@ -7,9 +7,7 @@ import {
 import { resolveJobMateLocationSmart } from "../services/location/smartLocationResolver.service.js";
 import { extractJobSearchWithAI } from "../services/ai/jobmateJobSearchExtractionAI.service.js";
 import { runJobSearchStep } from "../services/jobmate/jobSearchStep.js";
-import { findLocation } from "../services/rag/jobmateKnowledge.service.js";
 import { WorkerProfile } from "../models/WorkerProfile.model.js";
-import { buildWorkerProfileUpdateFromAaratiProfile } from "../services/jobmate/workerProfileMapper.service.js";
 import { generateJSONWithAI } from "../services/ai/aiProvider.service.js";
 import {
   AARATI_SAMPLE_REPLIES,
@@ -101,49 +99,28 @@ function normalizeDisplayName(contact = {}) {
 }
 
 function resolveLocalLocationFromText(cleanText) {
-  const raw = String(cleanText || "").trim();
-
-  if (!raw) return null;
-
-  const stripped = raw
+  const stripped = cleanText
     .replace(/^(malai|tapai|hajur|please|pls|ma|hami|mलाई|मलाई)\s+/gi, "")
     .trim();
 
-  const tryResolve = (candidate) => {
-    const value = String(candidate || "").trim();
-    if (!value || value.length < 3) return null;
-
-    const ragLocation = findLocation(value);
-
-    if (!ragLocation?.found || !ragLocation?.isInsideLumbini) {
-      return null;
-    }
-
-    return {
-      detectedText: ragLocation.canonical,
-      resolved: {
-        canonical: ragLocation.canonical,
-        district: ragLocation.district,
-        province: ragLocation.province || "Lumbini",
-      },
-    };
+  const aliasMap = {
+    bhardghat: "Bardaghat",
+    bhardaght: "Bardaghat",
+    bhardaghat: "Bardaghat",
+    butwl: "Butwal",
+    bhairwa: "Bhairahawa",
+    parsi: "Nawalparasi West",
   };
 
-  // First try full sentence. This catches:
-  // "gopigung nawalparasi ma kaam cha", "bhardghat dhanewa", etc.
-  const fullMatch = tryResolve(raw);
-  if (fullMatch) return fullMatch;
-
-  const strippedMatch = tryResolve(stripped);
-  if (strippedMatch) return strippedMatch;
-
-  const cleaned = stripped
-    .replace(/\b(ma|maa|मा|tira|side|area|kaam|kam|job|work|jagir|काम|जागिर|cha|chha|xa|milcha|khoj)\b/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const cleanedMatch = tryResolve(cleaned);
-  if (cleanedMatch) return cleanedMatch;
+  const lowered = stripped.toLowerCase();
+  for (const [alias, canonical] of Object.entries(aliasMap)) {
+    if (lowered.includes(alias)) {
+      const resolved = resolveLumbiniLocation(canonical);
+      if (resolved) {
+        return { detectedText: canonical, resolved };
+      }
+    }
+  }
 
   const locationCandidates = [];
   const patterns = [
@@ -155,13 +132,16 @@ function resolveLocalLocationFromText(cleanText) {
   for (const pattern of patterns) {
     const match = stripped.match(pattern);
     if (match?.[1]) {
-      locationCandidates.push(match[1].trim());
+      const candidate = match[1].trim();
+      if (candidate.length >= 3) locationCandidates.push(candidate);
     }
   }
 
   for (const candidate of locationCandidates) {
-    const resolved = tryResolve(candidate);
-    if (resolved) return resolved;
+    const resolved = resolveLumbiniLocation(candidate);
+    if (resolved) {
+      return { detectedText: candidate, resolved };
+    }
   }
 
   return null;
@@ -343,61 +323,6 @@ Return a clean reply with no Hindi leakage.`,
 }
 
 async function aaratiSearchStep(profile, text = "") {
-  const selectedNumber = Number(String(text || "").trim());
-
-  if (
-    profile.jobSearchDone &&
-    !profile.isApplyingToSelectedJob &&
-    !profile.selectedJobId &&
-    !profile.selectedJob &&
-    Array.isArray(profile.jobSearchResults) &&
-    profile.jobSearchResults.length > 0 &&
-    Number.isInteger(selectedNumber) &&
-    selectedNumber >= 1 &&
-    selectedNumber <= profile.jobSearchResults.length
-  ) {
-    const selectedJob = profile.jobSearchResults[selectedNumber - 1];
-
-    return {
-      messageToSend: `Ramro 🙏 Tapai le yo job select garnubhayo:
-
-${selectedNumber}. ${selectedJob.title || "Job"}
-Company: ${selectedJob?.employer?.company_name || selectedJob?.company_name || "Company"}
-Location: ${selectedJob.location || "-"}
-Type: ${selectedJob.type || "-"}
-Salary: ${
-        selectedJob.salary_min && selectedJob.salary_max
-          ? `Rs ${Number(selectedJob.salary_min).toLocaleString("en-IN")} - ${Number(selectedJob.salary_max).toLocaleString("en-IN")}`
-          : "Company anusar"
-      }
-
-Apply/interest submit garna kehi details chahinchha.
-
-Tapai kati samaya kaam garna milchha?
-
-1. Full-time
-2. Part-time
-3. Shift based
-4. Jun sukai`,
-      profileUpdates: {
-        selectedJob,
-        selectedJobId: selectedJob._id || selectedJob.id || "",
-        selectedJobTitle: selectedJob.title || "",
-        selectedCompanyName:
-          selectedJob?.employer?.company_name ||
-          selectedJob?.company_name ||
-          "",
-        jobType: selectedJob.category || selectedJob.title || profile.jobType || "Other",
-        location: selectedJob.location || profile.location,
-        district: profile.district,
-        province: profile.province || "Lumbini",
-        isApplyingToSelectedJob: true,
-      },
-      state: "ask_availability",
-      lastAskedField: "availability",
-    };
-  }
-
   if (profile.pendingAaratiReply) {
     const reply = profile.pendingAaratiReply;
     delete profile.pendingAaratiReply;
@@ -578,24 +503,44 @@ export const jobmateConfig = {
     }
 
     try {
-      const mapped = buildWorkerProfileUpdateFromAaratiProfile({
-        contact,
-        profile,
-      });
+      const phone = contact.phone || contact.phoneNumber || contact.from || "";
+      const displayName = normalizeDisplayName(contact);
+      const fullName = displayName === "Mitra" ? "" : displayName;
+
+      const profileUpdate = {
+        $set: {
+          contactId: contact._id,
+          phone,
+          phoneNumber: phone,
+          fullName,
+          "location.district": profile.district || "",
+          "location.province": profile.province || "Lumbini",
+          "location.country": "Nepal",
+          availability: profile.availability || "",
+          documents: profile.documents || "",
+          profileStatus: "complete",
+          source: "whatsapp_bot",
+        },
+        $addToSet: {
+          jobPreferences: profile.jobType || "Other",
+        },
+      };
 
       const saved = await WorkerProfile.findOneAndUpdate(
-        mapped.filter,
-        mapped.update,
-        mapped.options
+        { contactId: contact._id },
+        profileUpdate,
+        {
+          new: true,
+          upsert: true,
+          setDefaultsOnInsert: true,
+          runValidators: false,
+        }
       );
 
       console.log("WorkerProfile saved:", {
         id: saved._id,
-        phone: saved.phone,
-        area: saved.location?.area,
+        phone: saved.phoneNumber,
         district: saved.location?.district,
-        availability: saved.availability,
-        documentStatus: saved.documentStatus,
       });
     } catch (error) {
       console.error("WorkerProfile save failed:", error?.message);

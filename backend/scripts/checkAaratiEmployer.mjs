@@ -22,6 +22,8 @@ const checks = [
   ["node", ["scripts/testHiringNeedParser.mjs"]],
   ["node", ["scripts/testJobseekerCore.mjs"]],
   ["node", ["scripts/testJobseekerSafety.mjs"]],
+  ["node", ["scripts/testWorkerProfileMapper.mjs"]],
+  ["node", ["--check", "src/services/jobmate/workerProfileMapper.service.js"]],
   ["node", ["scripts/testEmployerLeadFlowV2.mjs"]],
 ];
 
