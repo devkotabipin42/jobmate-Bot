@@ -37,6 +37,11 @@ const rawEnv = {
   ADMIN_AUTH_TOKEN: clean(process.env.ADMIN_AUTH_TOKEN) || "jobmate-admin-token-2026",
 
   BOT_MODE: clean(process.env.BOT_MODE) || "jobmate_hiring",
+
+  FOLLOWUP_PROCESSOR_ENABLED:
+    clean(process.env.FOLLOWUP_PROCESSOR_ENABLED) || "false",
+  FOLLOWUP_PROCESSOR_INTERVAL_MS:
+    clean(process.env.FOLLOWUP_PROCESSOR_INTERVAL_MS) || "60000",
 };
 
 const envSchema = z.object({
@@ -67,6 +72,9 @@ const envSchema = z.object({
   ADMIN_AUTH_TOKEN: z.string().min(10),
 
   BOT_MODE: z.enum(["jobmate_hiring", "business_receptionist"]),
+
+  FOLLOWUP_PROCESSOR_ENABLED: z.coerce.boolean().default(false),
+  FOLLOWUP_PROCESSOR_INTERVAL_MS: z.coerce.number().int().min(30000),
 });
 
 const parsed = envSchema.safeParse(rawEnv);

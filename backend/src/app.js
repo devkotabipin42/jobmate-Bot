@@ -15,6 +15,7 @@ import adminWorkerMatchRoutes from "./routes/adminWorkerMatch.routes.js";
 import adminJobApplicationRoutes from "./routes/adminJobApplication.routes.js";
 import adminEmployerLeadVerificationRoutes from "./routes/adminEmployerLeadVerification.routes.js";
 import adminPendingKnowledgeRoutes from "./routes/adminPendingKnowledge.routes.js";
+import { startFollowupRunner } from "./services/followups/followupRunner.service.js";
 
 const app = express();
 
@@ -59,6 +60,7 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 await connectDB();
+startFollowupRunner();
 
 app.listen(env.PORT, () => {
   console.log(`🚀 Server running on http://localhost:${env.PORT}`);
