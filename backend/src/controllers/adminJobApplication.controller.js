@@ -1,5 +1,48 @@
 import { JobApplication } from "../models/JobApplication.model.js";
 
+function formatDateLabel(date) {
+  if (!date) return "";
+
+  const d = new Date(date);
+
+  if (Number.isNaN(d.getTime())) return "";
+
+  return d.toLocaleString("en-GB", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function toJobApplicationCard(application = {}) {
+  return {
+    id: application._id,
+    workerId: application.workerId || null,
+    contactId: application.contactId || null,
+    workerPhone: application.phone || "",
+    jobId: application.jobId || "",
+    jobTitle: application.jobTitle || "",
+    companyName: application.companyName || "",
+    location: application.location || "",
+    salaryMin: application.salaryMin ?? null,
+    salaryMax: application.salaryMax ?? null,
+    jobType: application.jobType || "",
+    status: application.status || "interest_submitted",
+    source: application.source || "whatsapp_aarati",
+    notes: application.notes || "",
+    appliedAt: application.appliedAt || application.createdAt || null,
+    appliedDateLabel: formatDateLabel(application.appliedAt || application.createdAt),
+    lastStatusAt: application.lastStatusAt || application.updatedAt || null,
+    lastStatusLabel: formatDateLabel(application.lastStatusAt || application.updatedAt),
+    createdAt: application.createdAt || null,
+    updatedAt: application.updatedAt || null,
+    metadata: application.metadata || {},
+  };
+}
+
 export async function listJobApplications(req, res) {
   try {
     const {
@@ -23,7 +66,7 @@ export async function listJobApplications(req, res) {
     return res.json({
       success: true,
       count: applications.length,
-      applications,
+      applications: applications.map(toJobApplicationCard),
     });
   } catch (error) {
     console.error("List job applications failed:", error);
@@ -86,7 +129,7 @@ export async function updateJobApplicationStatus(req, res) {
 
     return res.json({
       success: true,
-      application,
+      application: toJobApplicationCard(application),
     });
   } catch (error) {
     console.error("Update job application failed:", error);
