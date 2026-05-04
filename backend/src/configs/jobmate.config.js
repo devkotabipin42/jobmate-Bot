@@ -7,6 +7,7 @@ import {
 import { resolveJobMateLocationSmart } from "../services/location/smartLocationResolver.service.js";
 import { extractJobSearchWithAI } from "../services/ai/jobmateJobSearchExtractionAI.service.js";
 import { runJobSearchStep } from "../services/jobmate/jobSearchStep.js";
+import { findLocation } from "../services/rag/jobmateKnowledge.service.js";
 import { WorkerProfile } from "../models/WorkerProfile.model.js";
 import { generateJSONWithAI } from "../services/ai/aiProvider.service.js";
 import {
@@ -99,28 +100,49 @@ function normalizeDisplayName(contact = {}) {
 }
 
 function resolveLocalLocationFromText(cleanText) {
-  const stripped = cleanText
+  const raw = String(cleanText || "").trim();
+
+  if (!raw) return null;
+
+  const stripped = raw
     .replace(/^(malai|tapai|hajur|please|pls|ma|hami|mलाई|मलाई)\s+/gi, "")
     .trim();
 
-  const aliasMap = {
-    bhardghat: "Bardaghat",
-    bhardaght: "Bardaghat",
-    bhardaghat: "Bardaghat",
-    butwl: "Butwal",
-    bhairwa: "Bhairahawa",
-    parsi: "Nawalparasi West",
+  const tryResolve = (candidate) => {
+    const value = String(candidate || "").trim();
+    if (!value || value.length < 3) return null;
+
+    const ragLocation = findLocation(value);
+
+    if (!ragLocation?.found || !ragLocation?.isInsideLumbini) {
+      return null;
+    }
+
+    return {
+      detectedText: ragLocation.canonical,
+      resolved: {
+        canonical: ragLocation.canonical,
+        district: ragLocation.district,
+        province: ragLocation.province || "Lumbini",
+      },
+    };
   };
 
-  const lowered = stripped.toLowerCase();
-  for (const [alias, canonical] of Object.entries(aliasMap)) {
-    if (lowered.includes(alias)) {
-      const resolved = resolveLumbiniLocation(canonical);
-      if (resolved) {
-        return { detectedText: canonical, resolved };
-      }
-    }
-  }
+  // First try full sentence. This catches:
+  // "gopigung nawalparasi ma kaam cha", "bhardghat dhanewa", etc.
+  const fullMatch = tryResolve(raw);
+  if (fullMatch) return fullMatch;
+
+  const strippedMatch = tryResolve(stripped);
+  if (strippedMatch) return strippedMatch;
+
+  const cleaned = stripped
+    .replace(/\b(ma|maa|मा|tira|side|area|kaam|kam|job|work|jagir|काम|जागिर|cha|chha|xa|milcha|khoj)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const cleanedMatch = tryResolve(cleaned);
+  if (cleanedMatch) return cleanedMatch;
 
   const locationCandidates = [];
   const patterns = [
@@ -132,16 +154,13 @@ function resolveLocalLocationFromText(cleanText) {
   for (const pattern of patterns) {
     const match = stripped.match(pattern);
     if (match?.[1]) {
-      const candidate = match[1].trim();
-      if (candidate.length >= 3) locationCandidates.push(candidate);
+      locationCandidates.push(match[1].trim());
     }
   }
 
   for (const candidate of locationCandidates) {
-    const resolved = resolveLumbiniLocation(candidate);
-    if (resolved) {
-      return { detectedText: candidate, resolved };
-    }
+    const resolved = tryResolve(candidate);
+    if (resolved) return resolved;
   }
 
   return null;

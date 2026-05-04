@@ -20,6 +20,7 @@ const checks = [
   ["node", ["--check", "src/services/ai/aaratiBrainGate.service.js"]],
   ["node", ["scripts/testAaratiEmployerCore.mjs"]],
   ["node", ["scripts/testHiringNeedParser.mjs"]],
+  ["node", ["scripts/testJobseekerCore.mjs"]],
   ["node", ["scripts/testEmployerLeadFlowV2.mjs"]],
 ];
 
