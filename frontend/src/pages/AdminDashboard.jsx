@@ -4,19 +4,45 @@ import {
   PhoneCall,
   MessageCircle,
   ArrowUpRight,
+  RefreshCw,
 } from "lucide-react";
+import { useState } from "react";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import MetricCard from "../components/dashboard/MetricCard";
 import { useDashboardSummary } from "../hooks/useDashboardSummary";
+import { adminService } from "../services/adminService";
 
 const DASHBOARD_MODE =
   import.meta.env.VITE_DASHBOARD_MODE || "jobmate_admin";
 
 export default function AdminDashboard() {
   const { data, loading, error, refetch } = useDashboardSummary();
+  const [followupProcessing, setFollowupProcessing] = useState(false);
+  const [followupResult, setFollowupResult] = useState(null);
+  const [followupError, setFollowupError] = useState("");
 
   const metrics = data?.metrics || {};
   const latest = data?.latest || {};
+
+  async function handleProcessFollowups() {
+    setFollowupProcessing(true);
+    setFollowupError("");
+    setFollowupResult(null);
+
+    try {
+      const response = await adminService.processFollowups({
+        limit: 25,
+        dryRun: false,
+      });
+
+      setFollowupResult(response?.result || response);
+      await refetch?.();
+    } catch (err) {
+      setFollowupError(err.message || "Failed to process follow-ups");
+    } finally {
+      setFollowupProcessing(false);
+    }
+  }
 
   return (
     <DashboardLayout>
@@ -124,6 +150,45 @@ export default function AdminDashboard() {
               </p>
             </section>
           ) : (
+            <>
+            <section className="rounded-3xl border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm dark:border-emerald-500/20 dark:bg-emerald-500/10">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                    Aarati Follow-ups
+                  </p>
+                  <h3 className="mt-1 text-lg font-black text-slate-950 dark:text-white">
+                    Process due follow-ups manually
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    Creates dashboard notifications for due worker/application follow-ups. WhatsApp sending is not enabled yet.
+                  </p>
+                  {followupResult ? (
+                    <p className="mt-3 text-sm font-bold text-emerald-800 dark:text-emerald-200">
+                      Scanned {followupResult.scanned || 0}, sent {followupResult.sent || 0}, failed {followupResult.failed || 0}.
+                    </p>
+                  ) : null}
+                  {followupError ? (
+                    <p className="mt-3 text-sm font-bold text-red-600 dark:text-red-300">
+                      {followupError}
+                    </p>
+                  ) : null}
+                </div>
+
+                <button
+                  onClick={handleProcessFollowups}
+                  disabled={followupProcessing}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <RefreshCw
+                    size={17}
+                    className={followupProcessing ? "animate-spin" : ""}
+                  />
+                  {followupProcessing ? "Processing..." : "Process Due Follow-ups"}
+                </button>
+              </div>
+            </section>
+
             <section className="grid gap-6 xl:grid-cols-3">
               <LatestPanel
                 title="Hot Employer Leads"
@@ -159,6 +224,7 @@ export default function AdminDashboard() {
                 }))}
               />
             </section>
+            </>
           )}
         </div>
       )}
