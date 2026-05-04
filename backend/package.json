@@ -13,7 +13,8 @@
     "test:jobseeker-core": "node scripts/testJobseekerCore.mjs",
     "test:jobseeker-safety": "node scripts/testJobseekerSafety.mjs",
     "test:worker-profile-mapper": "node scripts/testWorkerProfileMapper.mjs",
-    "test:jobseeker-application": "node scripts/testJobseekerApplicationFlow.mjs"
+    "test:jobseeker-application": "node scripts/testJobseekerApplicationFlow.mjs",
+    "test:jobseeker-refinement": "node scripts/testJobseekerSearchRefinement.mjs"
   },
   "keywords": [],
   "author": "JobMate",
