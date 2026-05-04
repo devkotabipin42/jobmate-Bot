@@ -231,8 +231,30 @@ export async function updateJobMatchStatus({
     },
   };
 
-  return JobMatch.findByIdAndUpdate(id, update, {
+  const match = await JobMatch.findByIdAndUpdate(id, update, {
     returnDocument: "after",
     runValidators: false,
   }).lean();
+
+  if (match && status === "placed") {
+    await createNotification({
+      type: "system_alert",
+      title: `Placement completed: ${match.workerPhone || "Worker"}`,
+      message: `${match.workerPhone || "Worker"} placed for ${match.businessName || "employer"} as ${match.roleLabel || match.role || "staff"}.`,
+      priority: "urgent",
+      entityType: "System",
+      entityId: match._id,
+      phone: match.workerPhone,
+      metadata: {
+        matchId: match._id,
+        employerLeadId: match.employerLeadId,
+        workerId: match.workerId,
+        role: match.role,
+        businessName: match.businessName,
+        status: match.status,
+      },
+    });
+  }
+
+  return match;
 }
