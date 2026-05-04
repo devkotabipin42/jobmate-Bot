@@ -1,14 +1,7 @@
 import mongoose from "mongoose";
 
-const jobMatchSchema = new mongoose.Schema(
+const JobMatchSchema = new mongoose.Schema(
   {
-    workerId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "WorkerProfile",
-      required: true,
-      index: true,
-    },
-
     employerLeadId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "EmployerLead",
@@ -16,72 +9,139 @@ const jobMatchSchema = new mongoose.Schema(
       index: true,
     },
 
-    contactId: {
+    workerId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Contact",
+      ref: "WorkerProfile",
+      required: true,
+      index: true,
+    },
+
+    jobApplicationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "JobApplication",
       default: null,
       index: true,
     },
 
-    score: {
+    employerPhone: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    workerPhone: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    businessName: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    workerName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    role: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    roleLabel: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    location: {
+      area: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      district: {
+        type: String,
+        default: "",
+        trim: true,
+        index: true,
+      },
+      province: {
+        type: String,
+        default: "Lumbini",
+        trim: true,
+      },
+      country: {
+        type: String,
+        default: "Nepal",
+        trim: true,
+      },
+    },
+
+    matchScore: {
       type: Number,
-      required: true,
+      default: 0,
       min: 0,
       max: 100,
       index: true,
     },
 
-    reasons: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
+    matchReasons: {
+      type: [String],
+      default: [],
+    },
 
     status: {
       type: String,
       enum: [
-        "suggested",
-        "admin_review",
-        "worker_contacted",
-        "employer_contacted",
-        "accepted",
-        "rejected",
+        "matched",
+        "contacted",
+        "interview_scheduled",
+        "selected",
         "placed",
-        "expired",
+        "rejected",
+        "withdrawn",
       ],
-      default: "suggested",
+      default: "matched",
       index: true,
     },
 
     source: {
       type: String,
-      enum: ["auto", "manual", "ai_assisted"],
-      default: "auto",
+      enum: ["dashboard", "auto_match", "manual"],
+      default: "dashboard",
       index: true,
     },
 
-    adminNote: {
+    matchedAt: {
+      type: Date,
+      default: Date.now,
+      index: true,
+    },
+
+    lastStatusAt: {
+      type: Date,
+      default: Date.now,
+    },
+
+    placedAt: {
+      type: Date,
+      default: null,
+    },
+
+    notes: {
       type: String,
       default: "",
-    },
-
-    workerResponse: {
-      type: String,
-      enum: ["pending", "interested", "not_interested", "no_response"],
-      default: "pending",
-    },
-
-    employerResponse: {
-      type: String,
-      enum: ["pending", "interested", "not_interested", "no_response"],
-      default: "pending",
-    },
-
-    expiresAt: {
-      type: Date,
-      default: () => new Date(Date.now() + 1000 * 60 * 60 * 24 * 14),
-      index: true,
+      trim: true,
     },
 
     metadata: {
@@ -94,12 +154,15 @@ const jobMatchSchema = new mongoose.Schema(
   }
 );
 
-jobMatchSchema.index(
-  { workerId: 1, employerLeadId: 1 },
+JobMatchSchema.index(
+  { employerLeadId: 1, workerId: 1, role: 1 },
   { unique: true }
 );
 
-jobMatchSchema.index({ score: -1, status: 1 });
-jobMatchSchema.index({ status: 1, createdAt: -1 });
+JobMatchSchema.index({ status: 1, updatedAt: -1 });
+JobMatchSchema.index({ workerId: 1, status: 1 });
+JobMatchSchema.index({ employerLeadId: 1, status: 1 });
 
-export const JobMatch = mongoose.model("JobMatch", jobMatchSchema);
+export const JobMatch =
+  mongoose.models.JobMatch ||
+  mongoose.model("JobMatch", JobMatchSchema);

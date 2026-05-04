@@ -2,6 +2,15 @@ import { spawnSync } from "child_process";
 
 const checks = [
   ["node", ["--check", "src/controllers/whatsapp.controller.js"]],
+  ["node", ["--check", "src/routes/adminJobMatch.routes.js"]],
+  ["node", ["--check", "src/controllers/adminJobMatch.controller.js"]],
+  ["node", ["--check", "src/services/matching/jobMatch.service.js"]],
+  ["node", ["--check", "src/models/JobMatch.model.js"]],
+  ["node", ["--check", "src/routes/adminFollowup.routes.js"]],
+  ["node", ["--check", "src/controllers/adminFollowup.controller.js"]],
+  ["node", ["--check", "src/services/followups/followupScheduler.service.js"]],
+  ["node", ["--check", "src/services/followups/followupTemplates.js"]],
+  ["node", ["--check", "src/models/ScheduledFollowup.model.js"]],
   ["node", ["--check", "src/routes/adminNotification.routes.js"]],
   ["node", ["--check", "src/controllers/adminNotification.controller.js"]],
   ["node", ["--check", "src/services/notifications/notification.service.js"]],
