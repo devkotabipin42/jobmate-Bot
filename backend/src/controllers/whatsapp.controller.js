@@ -81,53 +81,6 @@ function isGenericHelpRequest(text = "") {
 
 
 
-function isDocumentPrivacyConcern({ conversation, normalized } = {}) {
-  const text = String(
-    normalized?.message?.text ||
-      normalized?.message?.normalizedText ||
-      ""
-  ).toLowerCase();
-
-  const isDocumentState =
-    conversation?.currentState === "ask_documents" ||
-    conversation?.metadata?.lastAskedField === "documents";
-
-  if (!isDocumentState || !text) return false;
-
-  return (
-    /trust|leak|leaked|responsible|responsibility|privacy|safe|secure|security|misuse|ignore|dekhidaina|document.*leak/i.test(text) ||
-    /विश्वास|गोपनीय|सुरक्षित|चुहावट|दुरुपयोग|जिम्मेवारी|डर/i.test(text)
-  );
-}
-
-function buildDocumentPrivacyConcernReply() {
-  return `Tapai ko chinta thik ho 🙏
-
-Document pathaunu compulsory haina.
-
-JobMate team le document sirf verification/hiring process ko lagi herchha. Tapai comfortable hunuhunna bhane document bina pani profile save garna milchha.
-
-Document bina profile save garna 2 lekhnu hola.
-Pachhi trust bhaye yahi WhatsApp ma license/CV/citizenship photo pathauna saknuhunchha.`;
-}
-
-function isUnsafeHiringRequest(text = "") {
-  const value = String(text || "").toLowerCase();
-
-  return (
-    /human\s*traffick|trafficker|trafficking|slave|forced\s*labor|forced\s*labour|kidnap|illegal\s*worker|sell\s*people|people\s*smuggling/i.test(value) ||
-    /मानव\s*तस्कर|मानव\s*तस्करी|बेचबिखन|जबरजस्ती\s*काम|अपहरण/i.test(value)
-  );
-}
-
-function buildUnsafeHiringReply() {
-  return `Ma yasto request ma sahayog garna sakdina.
-
-JobMate le sirf legal, safe ra voluntary employment/hiring process ma matra sahayog garchha.
-
-Yedi tapai lai legal business ko lagi staff chahiyeko ho bhane business naam, location, role, salary ra work type clear pathaunu hola.`;
-}
-
 export async function verifyWhatsAppWebhook(req, res) {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
