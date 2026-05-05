@@ -87,12 +87,14 @@ Tapai kahile dekhi kaam start garna ready hunuhuncha?
 
   askDocument: (availabilityLabel = "soon") => `Ramro 😊 ${availabilityLabel} dekhi ready hunuhuncha vanera note gare.
 
-Tapai sanga CV wa related documents chha?
-Jastai: license, certificate, experience letter, etc.
+Tapai sanga document chha? 🙏
 
-1. Cha, ready chha
-2. Cha, tara ahile pathauna mildaina
-3. Chaina`,
+License, citizenship/nagarikta, CV, certificate jasto document bhaye yahi WhatsApp ma photo/file pathauna saknuhunchha.
+
+Aile document status choose garnu hola:
+1. Chha, photo/file pathauna sakchhu
+2. Chhaina
+3. Kehi chha, kehi chhaina`,
 
   completed: (name) =>
     `Dhanyabaad ${name || "Mitra"} ji! 🙏
