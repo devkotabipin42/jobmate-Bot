@@ -18,7 +18,8 @@
     "test:followup-templates": "node scripts/testFollowupTemplates.mjs",
     "check:followups": "node --check src/services/followups/followupProcessor.service.js && node --check src/services/followups/followupRunner.service.js && node --check src/services/whatsapp/whatsappClient.service.js && node --check src/controllers/adminFollowup.controller.js && node --check src/routes/adminFollowup.routes.js && node --check scripts/testFollowupTemplates.mjs",
     "test:followup-processor:manual": "node scripts/testFollowupProcessorManual.mjs",
-    "test:env-boolean": "node scripts/testEnvBooleanParsing.mjs"
+    "test:env-boolean": "node scripts/testEnvBooleanParsing.mjs",
+    "check:whatsapp-media": "node --check src/services/whatsapp/whatsappClient.service.js && node --check src/services/uploads/documentUpload.service.js"
   },
   "keywords": [],
   "author": "JobMate",

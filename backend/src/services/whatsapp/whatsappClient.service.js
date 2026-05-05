@@ -150,3 +150,99 @@ export async function sendWhatsAppButtonMessage({
     providerMessageId: response.data?.messages?.[0]?.id || null,
   };
 }
+
+
+function buildSafeMetaError(error, fallbackMessage = "Meta WhatsApp API request failed") {
+  const metaError = error?.response?.data?.error || {};
+
+  const safe = {
+    status: error?.response?.status || null,
+    message: metaError.message || error?.message || fallbackMessage,
+    code: metaError.code || null,
+    type: metaError.type || null,
+    fbtrace_id: metaError.fbtrace_id || null,
+  };
+
+  const safeError = new Error(safe.message);
+  safeError.status = safe.status;
+  safeError.code = safe.code;
+  safeError.type = safe.type;
+  safeError.fbtrace_id = safe.fbtrace_id;
+  safeError.safe = safe;
+
+  return safeError;
+}
+
+export async function getWhatsAppMediaInfo(mediaId) {
+  if (!mediaId) {
+    throw new Error("WhatsApp media ID is required");
+  }
+
+  if (
+    !env.META_ACCESS_TOKEN ||
+    env.META_ACCESS_TOKEN === "replace_later"
+  ) {
+    return {
+      skipped: true,
+      reason: "META_ACCESS_TOKEN_NOT_CONFIGURED",
+      mediaId,
+    };
+  }
+
+  try {
+    const response = await axios.get(`${META_GRAPH_BASE_URL}/${mediaId}`, {
+      headers: {
+        Authorization: `Bearer ${env.META_ACCESS_TOKEN}`,
+      },
+      timeout: 10000,
+    });
+
+    return {
+      skipped: false,
+      mediaId,
+      url: response.data?.url || "",
+      mimeType: response.data?.mime_type || "",
+      sha256: response.data?.sha256 || "",
+      fileSize: response.data?.file_size || null,
+      raw: response.data || {},
+    };
+  } catch (error) {
+    throw buildSafeMetaError(error, "Failed to fetch WhatsApp media info");
+  }
+}
+
+export async function downloadWhatsAppMediaBuffer(mediaUrl) {
+  if (!mediaUrl) {
+    throw new Error("WhatsApp media URL is required");
+  }
+
+  if (
+    !env.META_ACCESS_TOKEN ||
+    env.META_ACCESS_TOKEN === "replace_later"
+  ) {
+    return {
+      skipped: true,
+      reason: "META_ACCESS_TOKEN_NOT_CONFIGURED",
+      buffer: null,
+    };
+  }
+
+  try {
+    const response = await axios.get(mediaUrl, {
+      headers: {
+        Authorization: `Bearer ${env.META_ACCESS_TOKEN}`,
+      },
+      responseType: "arraybuffer",
+      timeout: 15000,
+    });
+
+    return {
+      skipped: false,
+      buffer: Buffer.from(response.data),
+      contentType: response.headers?.["content-type"] || "",
+      contentLength: Number(response.headers?.["content-length"] || 0),
+    };
+  } catch (error) {
+    throw buildSafeMetaError(error, "Failed to download WhatsApp media");
+  }
+}
