@@ -57,6 +57,7 @@ import { detectJobMateSafetyEvent } from "../services/safety/jobmateSafetyGuards
 import { detectConversationRepairEvent } from "../services/safety/jobmateConversationRepair.service.js";
 import { jobmateConfig } from "../configs/jobmate.config.js";
 import { findJobMateKnowledgeAnswer } from "../services/rag/jobmateKnowledgeAnswer.service.js";
+import { generateJobMateGeneralAnswer } from "../services/rag/jobmateGeneralAnswer.service.js";
 import {
   buildDocumentReceivedReply,
   isSupportedDocumentMedia,
@@ -323,6 +324,56 @@ export async function receiveWhatsAppWebhook(req, res) {
         success: true,
         message: "JobMate knowledge answer handled message",
         topic: knowledgeAnswer.topic,
+        replied: true,
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
+
+    const generalAnswer =
+      env.BOT_MODE === "jobmate_hiring"
+        ? await generateJobMateGeneralAnswer({ conversation, normalized })
+        : null;
+
+    if (generalAnswer) {
+      const generalIntentResult = {
+        intent: "unknown",
+        needsHuman: false,
+        priority: "low",
+        reason: generalAnswer.source,
+      };
+
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: generalIntentResult,
+      });
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: generalAnswer.reply,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation,
+        text: generalAnswer.reply,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      await updateConversationIntent({
+        conversation,
+        intent: "unknown",
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "JobMate general AI answer handled message",
         replied: true,
         sendSkipped: sendResult.skipped || false,
       });

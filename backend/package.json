@@ -23,7 +23,8 @@
     "test:job-search-step": "node scripts/testJobSearchStepMessages.mjs",
     "test:safety-guards": "node scripts/testJobmateSafetyGuards.mjs",
     "test:conversation-repair": "node scripts/testJobmateConversationRepair.mjs",
-    "test:knowledge-answer": "node scripts/testJobMateKnowledgeAnswer.mjs"
+    "test:knowledge-answer": "node scripts/testJobMateKnowledgeAnswer.mjs",
+    "test:general-answer-gate": "node scripts/testJobMateGeneralAnswerGate.mjs"
   },
   "keywords": [],
   "author": "JobMate",
