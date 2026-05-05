@@ -53,6 +53,7 @@ import {
 
 import { env } from "../config/env.js";
 import { applyJobMateRoutingGuards } from "../services/automation/jobmateRoutingGuards.service.js";
+import { jobmateConfig } from "../configs/jobmate.config.js";
 import {
   buildDocumentReceivedReply,
   isSupportedDocumentMedia,
@@ -153,7 +154,52 @@ export async function receiveWhatsAppWebhook(req, res) {
         normalized,
       });
 
-      const replyText = buildDocumentReceivedReply(saved?.document);
+      const currentJobmateProfile = {
+        ...(conversation?.metadata?.collectedData || {}),
+      };
+
+      const shouldCompleteProfile =
+        conversation?.currentState === "ask_documents" ||
+        conversation?.metadata?.lastAskedField === "documents";
+
+      let replyText = buildDocumentReceivedReply(saved?.document);
+
+      if (shouldCompleteProfile) {
+        const completedProfile = {
+          ...currentJobmateProfile,
+          documents: "yes",
+        };
+
+        if (typeof jobmateConfig.onComplete === "function") {
+          await jobmateConfig.onComplete({
+            contact,
+            profile: completedProfile,
+            conversation,
+          });
+        }
+
+        if (conversation?._id) {
+          const Model = conversation.constructor;
+          await Model.updateOne(
+            { _id: conversation._id },
+            {
+              $set: {
+                currentState: "completed",
+                "metadata.collectedData": completedProfile,
+                "metadata.lastAskedField": null,
+              },
+            },
+            { runValidators: false }
+          );
+        }
+
+        const completionText =
+          typeof jobmateConfig.completionMessage === "function"
+            ? jobmateConfig.completionMessage(completedProfile)
+            : "Dhanyabaad 🙏 Tapai ko detail JobMate ma save bhayo.";
+
+        replyText = `${replyText}\n\n${completionText}`;
+      }
 
       const sendResult = await sendWhatsAppTextMessage({
         to: contact.phone,
