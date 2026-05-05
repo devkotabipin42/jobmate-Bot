@@ -10,6 +10,7 @@ import { runConversationEngine } from "./conversationEngine.js";
 import { jobmateConfig } from "../../configs/jobmate.config.js";
 import { scheduleFollowup } from "../followups/followupScheduler.service.js";
 import { getActiveFlowSideReply } from "../../policies/aarati.rulebook.js";
+import { getAaratiActiveFlowSideReply } from "../aarati/aaratiActiveFlowSideReply.service.js";
 
 // Runtime check (not module-load-time) so dotenv has time to load
 function isNewEngineEnabled() {
@@ -121,8 +122,7 @@ export async function handleWorkerRegistration({
   if (isNewEngineEnabled()) {
     console.log("🔧 [NEW ENGINE] handleWorkerRegistration called", {
       currentState: conversation?.currentState,
-      lastAskedField: conversation?.metadata?.lastAskedField,
-      collectedData: conversation?.metadata?.collectedData,
+        collectedData: conversation?.metadata?.collectedData,
       text: normalizedMessage?.message?.normalizedText,
     });
     const result = await runConversationEngine({
@@ -145,10 +145,9 @@ export async function handleWorkerRegistration({
   const text = normalizedMessage?.message?.normalizedText || "";
 
 
-  const activeFlowSideReply = getActiveFlowSideReply({
+  const activeFlowSideReply = getAaratiActiveFlowSideReply({
     text,
-    state: conversation?.currentState,
-    lastAskedField: conversation?.metadata?.lastAskedField,
+    conversation,
   });
 
   if (activeFlowSideReply) {

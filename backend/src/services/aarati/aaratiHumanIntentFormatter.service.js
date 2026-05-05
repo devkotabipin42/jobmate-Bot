@@ -1,9 +1,19 @@
+import {
+  getAaratiRawText,
+  normalizeAaratiText,
+  isAaratiSmallTalkText,
+  isAaratiFrustrationText,
+  isAaratiUnsafeIllegalText,
+  isAaratiPersonalMoneyText,
+  isAaratiEmployerRequestText,
+  isAaratiJobSeekerRequestText,
+  isAaratiWeatherText,
+  isAaratiMathHomeworkText,
+  isAaratiDirectMenuReply,
+} from "./aaratiTextNormalizer.service.js";
+
 function getText(normalized = {}) {
-  return String(
-    normalized?.message?.text ||
-      normalized?.message?.normalizedText ||
-      ""
-  ).trim();
+  return getAaratiRawText(normalized);
 }
 
 const ACTIVE_FLOW_STATES = new Set([
@@ -56,7 +66,27 @@ function isQuestionLike(text = "") {
 }
 
 function detectIntent(text = "") {
-  const value = String(text || "").toLowerCase();
+  const value = normalizeAaratiText(text);
+
+  if (isAaratiFrustrationText(value)) {
+    return "frustration_or_abuse";
+  }
+
+  if (isAaratiUnsafeIllegalText(value)) {
+    return "unsafe_illegal_request";
+  }
+
+  if (isAaratiPersonalMoneyText(value)) {
+    return "personal_money_request";
+  }
+
+  if (isAaratiWeatherText(value)) {
+    return "weather";
+  }
+
+  if (isAaratiMathHomeworkText(value)) {
+    return "homework_or_math";
+  }
 
   if (/bitch|fuck|pagal|stupid|idiot|ghus|ghus khanxau|bribe|rishwat|घुस|रिसवत/i.test(value)) {
     return "frustration_or_abuse";
@@ -218,6 +248,8 @@ export function getAaratiHumanIntentFormattedAnswer({
 
   if (!text) return null;
   if (isActiveFlow(conversation)) return null;
+  if (isAaratiDirectMenuReply(text)) return null;
+  if (isAaratiEmployerRequestText(text) || isAaratiJobSeekerRequestText(text)) return null;
   if (isDirectJobOrHiringFlow(text)) return null;
 
   const intent = detectIntent(text);

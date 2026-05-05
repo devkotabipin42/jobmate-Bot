@@ -59,6 +59,7 @@ import { jobmateConfig } from "../configs/jobmate.config.js";
 import { findJobMateKnowledgeAnswer } from "../services/rag/jobmateKnowledgeAnswer.service.js";
 import { getAaratiHumanBoundaryAnswer } from "../services/aarati/aaratiHumanBoundary.service.js";
 import { getAaratiHumanIntentFormattedAnswer } from "../services/aarati/aaratiHumanIntentFormatter.service.js";
+import { getAaratiEmployerDirectRoute } from "../services/aarati/aaratiEmployerDirectRouter.service.js";
 import { getUserTextForPolish, polishAaratiReply } from "../services/aarati/aaratiReplyPolish.service.js";
 import { generateJobMateGeneralAnswer } from "../services/rag/jobmateGeneralAnswer.service.js";
 import {
@@ -708,6 +709,21 @@ export async function receiveWhatsAppWebhook(req, res) {
       buttonId: normalized.message.buttonId,
       listId: normalized.message.listId,
     });
+
+    const employerDirectRoute = getAaratiEmployerDirectRoute({
+      normalized,
+      conversation,
+    });
+
+    if (employerDirectRoute) {
+      intentResult = {
+        ...intentResult,
+        intent: employerDirectRoute.intent,
+        needsHuman: false,
+        priority: "medium",
+        reason: employerDirectRoute.reason,
+      };
+    }
 
     intentResult = applyConversationIntentOverride({
       intentResult,

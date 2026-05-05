@@ -1,9 +1,17 @@
+import {
+  getAaratiRawText,
+  getAaratiNormalizedText,
+  isAaratiSmallTalkText,
+  isAaratiFrustrationText,
+  isAaratiUnsafeIllegalText,
+  isAaratiPersonalMoneyText,
+  isAaratiEmployerRequestText,
+  isAaratiJobSeekerRequestText,
+  isAaratiDirectMenuReply,
+} from "./aaratiTextNormalizer.service.js";
+
 function getText(normalized = {}) {
-  return String(
-    normalized?.message?.text ||
-      normalized?.message?.normalizedText ||
-      ""
-  ).trim();
+  return getAaratiRawText(normalized);
 }
 
 function isActiveFlow(conversation = {}) {
@@ -92,15 +100,23 @@ function isPoliticsReligionDeep(text = "") {
 
 export function getAaratiHumanBoundaryAnswer({ normalized, conversation } = {}) {
   const text = getText(normalized);
-  const value = text.toLowerCase();
+  const value = getAaratiNormalizedText(normalized);
 
   if (!text) return null;
+
+  if (isAaratiDirectMenuReply(value)) {
+    return null;
+  }
+
+  if (isAaratiEmployerRequestText(value) || isAaratiJobSeekerRequestText(value)) {
+    return null;
+  }
 
   if (isDirectJobOrHiringFlow(value)) {
     return null;
   }
 
-  if (isUnsafeOrIllegalRequest(value)) {
+  if (isAaratiUnsafeIllegalText(value) || isUnsafeOrIllegalRequest(value)) {
     return {
       intent: "unknown",
       source: "aarati_human_boundary",
@@ -112,7 +128,7 @@ Yedi tapai lai legal business ko lagi staff chahiyeko ho bhane business name, lo
     };
   }
 
-  if (isPersonalMoneyRequest(value)) {
+  if (isAaratiPersonalMoneyText(value) || isPersonalMoneyRequest(value)) {
     return {
       intent: "unknown",
       source: "aarati_human_boundary",
@@ -124,7 +140,7 @@ Tapai lai income/kaam chahiyeko ho bhane location ra kasto kaam chahiyo pathaunu
     };
   }
 
-  if (isFrustration(value)) {
+  if (isAaratiFrustrationText(value) || isFrustration(value)) {
     return {
       intent: "frustrated",
       source: "aarati_human_boundary",
@@ -172,7 +188,7 @@ Tapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`,
     };
   }
 
-  if (!isActiveFlow(conversation) && isSmallTalk(value)) {
+  if (!isActiveFlow(conversation) && (isAaratiSmallTalkText(value) || isSmallTalk(value))) {
     return {
       intent: "unknown",
       source: "aarati_human_boundary",
