@@ -53,6 +53,11 @@ import {
 
 import { env } from "../config/env.js";
 import { applyJobMateRoutingGuards } from "../services/automation/jobmateRoutingGuards.service.js";
+import {
+  buildDocumentReceivedReply,
+  isSupportedDocumentMedia,
+  saveWorkerDocumentMetadata,
+} from "../services/uploads/documentUpload.service.js";
 
 /**
  * Meta WhatsApp webhook verification.
@@ -127,6 +132,62 @@ export async function receiveWhatsAppWebhook(req, res) {
       contact,
       channel: "whatsapp",
     });
+
+    if (env.BOT_MODE === "jobmate_hiring" && isSupportedDocumentMedia(normalized)) {
+      const mediaIntentResult = {
+        intent: "document_upload",
+        needsHuman: false,
+        priority: "medium",
+        reason: "WhatsApp media document received",
+      };
+
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: mediaIntentResult,
+      });
+
+      const saved = await saveWorkerDocumentMetadata({
+        contact,
+        normalized,
+      });
+
+      const replyText = buildDocumentReceivedReply(saved?.document);
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: replyText,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation,
+        text: replyText,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      await updateConversationIntent({
+        conversation,
+        intent: "document_upload",
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "Document metadata captured",
+        intent: "document_upload",
+        replied: true,
+        workerId: saved?.worker?._id || null,
+        documentType: saved?.document?.type || "other",
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
+
 
     if (env.BOT_MODE === "business_receptionist") {
       const businessIntentResult = {

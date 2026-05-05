@@ -1,5 +1,70 @@
 import mongoose from "mongoose";
 
+const workerDocumentSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: ["license", "citizenship", "cv", "certificate", "photo", "other"],
+      default: "other",
+      index: true,
+    },
+    mediaId: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
+    mimeType: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    sha256: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    caption: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    filename: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    storageUrl: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    source: {
+      type: String,
+      enum: ["whatsapp", "admin", "manual"],
+      default: "whatsapp",
+    },
+    status: {
+      type: String,
+      enum: ["received", "downloaded", "uploaded", "failed"],
+      default: "received",
+    },
+    verified: {
+      type: Boolean,
+      default: false,
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+  },
+  { _id: true }
+);
+
 const workerProfileSchema = new mongoose.Schema(
   {
     contactId: {
@@ -115,6 +180,11 @@ const workerProfileSchema = new mongoose.Schema(
       type: String,
       enum: ["ready", "available_later", "not_available", "unknown"],
       default: "unknown",
+    },
+
+    documents: {
+      type: [workerDocumentSchema],
+      default: [],
     },
 
     profileStatus: {
