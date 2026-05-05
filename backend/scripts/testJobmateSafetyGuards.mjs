@@ -29,6 +29,12 @@ assertEqual(
   false
 );
 
+assertEqual(
+  "fasauna unsafe request detected",
+  isUnsafeHiringRequest("malai aauta manxe chaiyo aauta lai fasauna xa"),
+  true
+);
+
 const documentConversation = {
   currentState: "ask_documents",
   metadata: {

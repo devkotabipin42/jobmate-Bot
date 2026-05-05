@@ -33,7 +33,8 @@ export function isUnsafeHiringRequest(text = "") {
 
   return (
     /human\s*traffick|trafficker|trafficking|slave|forced\s*labor|forced\s*labour|kidnap|illegal\s*worker|sell\s*people|people\s*smuggling/i.test(value) ||
-    /मानव\s*तस्कर|मानव\s*तस्करी|बेचबिखन|जबरजस्ती\s*काम|अपहरण/i.test(value)
+    /fasauna|fasaauna|fasayera|fasna|fasaune|jabarjasti|jabardasti|passport\s*rakh|passport\s*rakhera|manche\s*bech|manxe\s*bech|bidesh\s*pathauna.*passport|illegal\s*kaam/i.test(value) ||
+    /मानव\s*तस्कर|मानव\s*तस्करी|बेचबिखन|जबरजस्ती\s*काम|अपहरण|फसाउन|पासपोर्ट\s*राख/i.test(value)
   );
 }
 
