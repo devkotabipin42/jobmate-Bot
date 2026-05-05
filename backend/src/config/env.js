@@ -39,6 +39,12 @@ const rawEnv = {
     clean(process.env.JOBMATE_JOB_CACHE_TTL_MS) || "300000",
   JOBMATE_FAST_SEARCH: cleanBoolean(process.env.JOBMATE_FAST_SEARCH, true),
 
+  DOCUMENT_STORAGE_PROVIDER:
+    clean(process.env.DOCUMENT_STORAGE_PROVIDER) || "local",
+  CLOUDINARY_CLOUD_NAME: clean(process.env.CLOUDINARY_CLOUD_NAME),
+  CLOUDINARY_API_KEY: clean(process.env.CLOUDINARY_API_KEY),
+  CLOUDINARY_API_SECRET: clean(process.env.CLOUDINARY_API_SECRET),
+
   GEMINI_API_KEY: clean(process.env.GEMINI_API_KEY),
   GEMINI_MODEL: clean(process.env.GEMINI_MODEL) || "gemini-1.5-flash",
 
@@ -82,6 +88,11 @@ const envSchema = z.object({
   JOBMATE_API_TIMEOUT_MS: z.coerce.number().int().min(1000).max(15000),
   JOBMATE_JOB_CACHE_TTL_MS: z.coerce.number().int().min(30000).max(3600000),
   JOBMATE_FAST_SEARCH: z.boolean().default(true),
+
+  DOCUMENT_STORAGE_PROVIDER: z.enum(["local", "cloudinary"]).default("local"),
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
 
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().optional(),

@@ -6,6 +6,10 @@ import {
   downloadWhatsAppMediaBuffer,
   getWhatsAppMediaInfo,
 } from "../whatsapp/whatsappClient.service.js";
+import {
+  isCloudinaryConfigured,
+  uploadDocumentBufferToCloudinary,
+} from "./cloudinaryStorage.service.js";
 
 const SUPPORTED_MEDIA_TYPES = ["image", "document"];
 
@@ -44,7 +48,7 @@ function safeDownloadError(error) {
   };
 }
 
-async function downloadAndStoreWhatsAppDocument(document = {}) {
+async function downloadAndStoreWhatsAppDocumentLocal(document = {}) {
   if (!document.mediaId) {
     return {
       ok: false,
@@ -145,6 +149,64 @@ export function buildDocumentMetadata(normalized = {}) {
   };
 }
 
+
+async function downloadAndStoreWhatsAppDocument(document = {}) {
+  if (!document.mediaId) {
+    return {
+      ok: false,
+      reason: "MISSING_MEDIA_ID",
+    };
+  }
+
+  const mediaInfo = await getWhatsAppMediaInfo(document.mediaId);
+
+  if (mediaInfo?.skipped || !mediaInfo?.url) {
+    return {
+      ok: false,
+      reason: mediaInfo?.reason || "MEDIA_URL_NOT_AVAILABLE",
+    };
+  }
+
+  const downloaded = await downloadWhatsAppMediaBuffer(mediaInfo.url);
+
+  if (downloaded?.skipped || !downloaded?.buffer) {
+    return {
+      ok: false,
+      reason: downloaded?.reason || "MEDIA_DOWNLOAD_SKIPPED",
+    };
+  }
+
+  const mimeType = mediaInfo.mimeType || downloaded.contentType || document.mimeType || "";
+  const extension = extensionFromMimeType(mimeType);
+
+  if (isCloudinaryConfigured()) {
+    const uploaded = await uploadDocumentBufferToCloudinary({
+      buffer: downloaded.buffer,
+      document,
+      mimeType,
+      extension,
+    });
+
+    if (!uploaded?.skipped && uploaded?.storageUrl) {
+      return {
+        ok: true,
+        filename: uploaded.publicId || "",
+        localPath: "",
+        storageUrl: uploaded.storageUrl,
+        mimeType,
+        fileSize: uploaded.bytes || downloaded.buffer.length,
+        sha256: mediaInfo.sha256 || document.sha256 || "",
+        storageMode: "cloudinary",
+        provider: uploaded.provider,
+        publicId: uploaded.publicId || "",
+        resourceType: uploaded.resourceType || "",
+      };
+    }
+  }
+
+  return downloadAndStoreWhatsAppDocumentLocal(document);
+}
+
 export async function saveWorkerDocumentMetadata({ contact, normalized } = {}) {
   if (!contact?._id || !contact?.phone || !isSupportedDocumentMedia(normalized)) {
     return null;
@@ -165,8 +227,13 @@ export async function saveWorkerDocumentMetadata({ contact, normalized } = {}) {
         ...(document.metadata || {}),
         localPath: stored.localPath || "",
         fileSize: stored.fileSize || null,
-        storageMode: "local_dev",
-        note: "Media downloaded to local dev storage. Cloud storage not enabled yet.",
+        storageMode: stored.storageMode || "local_dev",
+        provider: stored.provider || "local",
+        publicId: stored.publicId || "",
+        resourceType: stored.resourceType || "",
+        note: stored.storageMode === "cloudinary"
+          ? "Media uploaded to Cloudinary."
+          : "Media downloaded to local dev storage. Cloud storage fallback used.",
       };
     } else {
       document.metadata = {
