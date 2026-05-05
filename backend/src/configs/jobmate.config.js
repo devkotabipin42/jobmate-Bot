@@ -105,14 +105,19 @@ function parseAvailability(text) {
   return null;
 }
 
-function parseDocuments(text) {
+function parseDocuments(text, profile = {}) {
   const t = String(text || "").trim().toLowerCase();
 
   if (
-    /trust|leak|leaked|responsible|responsibility|safe|privacy|secure|security|misuse|dar|risk|bharosa/i.test(t) ||
+    /trust|leak|leaked|responsible|responsibility|safe|privacy|secure|security|misuse|dar|risk|bharosa|ignore|dekhidaina/i.test(t) ||
     /विश्वास|गोपनीय|सुरक्षित|चुहावट|दुरुपयोग|जिम्मेवारी|डर/i.test(t)
   ) {
-    return "privacy_concern";
+    profile.pendingDocumentPrivacyConcern = true;
+    return null;
+  }
+
+  if (/document bina|without document|bina document|document na/i.test(t)) {
+    return "no";
   }
 
   if (t === "1" || /^(yes|cha|chha|छ|ho)$/i.test(t)) return "yes";
@@ -570,6 +575,17 @@ const MESSAGES = ENABLE_AARATI_PERSONA
 4. Jun sukai`,
 
       askDocuments: (profile = {}) => {
+        if (profile.pendingDocumentPrivacyConcern) {
+          return `Tapai ko chinta thik ho 🙏
+
+Document pathaunu compulsory haina.
+
+JobMate team le document sirf verification/hiring process ko lagi herchha. Tapai comfortable hunuhunna bhane document bina pani profile save garna milchha.
+
+Document bina profile save garna 2 lekhnu hola.
+Pachhi trust bhaye yahi WhatsApp ma license/CV/citizenship photo pathauna saknuhunchha.`;
+        }
+
         const jobType = String(profile.jobType || "").toLowerCase();
 
         let hint = "Citizenship/nagarikta, CV, license, certificate jasto document bhaye photo/file yahi WhatsApp ma pathauna saknuhunchha.";
