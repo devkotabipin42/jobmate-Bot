@@ -5,6 +5,11 @@ import {
   isAaratiDirectMenuReply,
   isAaratiEmployerRequestText,
   isAaratiJobSeekerRequestText,
+  isAaratiFrustrationText,
+  isAaratiUnsafeIllegalText,
+  isAaratiPersonalMoneyText,
+  isAaratiWeatherText,
+  isAaratiMathHomeworkText,
 } from "./aaratiTextNormalizer.service.js";
 
 const SAFE_DB_INTENTS = new Set([
@@ -131,6 +136,128 @@ Yo kura ma ma JobMate ko rule bhitra basera help garna sakchu. JobMate le job kh
 Tapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`;
 }
 
+// ---------------------------------------------------------------------------
+// Deterministic fallback — used when ALL AI providers fail/timeout.
+// One AI call only: if the call fails, this runs instead of cascading to
+// old intent classifier or job_search/worker_registration flows.
+// ---------------------------------------------------------------------------
+
+function detectAaratiDeterministicIntent(normalizedText = "") {
+  const v = normalizedText;
+
+  if (isAaratiFrustrationText(v)) return "frustration_or_abuse";
+  if (isAaratiUnsafeIllegalText(v)) return "unsafe_illegal_request";
+  if (isAaratiPersonalMoneyText(v)) return "personal_money_request";
+  if (isAaratiWeatherText(v)) return "weather";
+  if (isAaratiMathHomeworkText(v)) return "homework_or_math";
+
+  if (/trust|vishwas|believe|genuine|legit|fake|scam|fraud|cheat|bharosa|trust.*garne/i.test(v)) return "trust_question";
+  if (/remember.*me|yaad.*tapai|recall|recognize|pehchaan|tapai.*chinnu|remember.*gara/i.test(v)) return "memory_question";
+  if (/call.*me|phone.*me|call.*gara|call.*garnu|phone.*number.*de|call.*lagau/i.test(v)) return "call_request";
+  if (/salary.*choose|salary.*set|salary.*decide|salary.*fix|salary.*ma.*choice|aafai.*salary|choose.*salary|salary.*आफैँ/i.test(v)) return "salary_choice_question";
+  if (/how fast|kati chitto|kati garda|kati din|kati time|kitro din|kitro time|jaldi.*job|chitto.*job|kitna.*time/i.test(v)) return "job_speed_question";
+  if (/interview|interview.*kasari|interview.*kaise|interview.*garne|interview.*ko|interview.*ma/i.test(v)) return "interview_question";
+  if (/cv.*ban|cv.*bana|cv.*make|cv.*create|cv.*garna|resume.*ban|resume.*bana|cv.*help|cv.*lakh|make.*cv|create.*cv/i.test(v)) return "cv_help_question";
+  if (/student|parttime|part.?time|college.*job|job.*student|studying|padhai.*garda.*job|padhai.*sanga.*kaam/i.test(v)) return "parttime_question";
+  if (/politics|election|president|prime minister|party|religion|dharm|धर्म|राजनीति|bible|quran/i.test(v)) return "sensitive_unrelated";
+  if (/timi ko hau|tapai ko ho|timro naam|who are you|what are you|aarati.*k.*ho|jobmate.*k.*ho/i.test(v)) return "identity";
+  if (/jobmate.*guarantee|job guarantee|salary guarantee|guarantee din|sure job|pakka job|pakka.*milcha/i.test(v)) return "job_guarantee";
+  if (/document.*safe|privacy|data.*safe|cv.*safe|license.*safe|citizenship.*safe|leak.*garne/i.test(v)) return "document_privacy_unknown";
+  if (/price|pricing|fee|cost|monthly|plan|free.*ho|lagcha.*kati|kati.*lagcha/i.test(v)) return "pricing_unknown";
+  if (/support|team.*contact|phone.*help|human.*help/i.test(v)) return "support_unknown";
+  if (/khana khanu|k cha|khabar|sanchai|hello|hi\b|namaste|good morning|good evening|how are you|k gardai/i.test(v)) return "small_talk";
+
+  return "safe_unknown_question";
+}
+
+function buildDeterministicFallbackReply(intent = "safe_unknown_question") {
+  switch (intent) {
+    case "frustration_or_abuse":
+      return `Sorry Mitra ji 🙏\n\nAghi ko reply ramro bhayena jasto lagyo. Ma JobMate team bata kaam khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.\n\nTapai ko main kura ekchoti short ma pathaunu hola, ma sidha answer dinchhu.`;
+
+    case "unsafe_illegal_request":
+      return `Yo request JobMate rules anusar mildaina 🙏\n\nJobMate le legal, safe ra voluntary employment/hiring process matra support garcha.\n\nLegal business ko lagi staff chahiyeko ho bhane business name, location, role ra salary detail pathaunu hola.`;
+
+    case "personal_money_request":
+      return `Bujhe Mitra ji 🙏\n\nJobMate loan/paisa dine service haina. JobMate le kaam khojna, staff khojna, document/verification ra hiring support ma help garcha.\n\nTapai lai income/kaam chahiyeko ho bhane location ra kasto kaam chahiyo pathaunu hola.`;
+
+    case "weather":
+      return `Ma live weather update herna sakdina 🙏\n\nTara JobMate ko kaam ma help garna sakchu — kaam khojna, staff khojna, document verification ya support.\n\nTapai kun location ko job/staff ko lagi sodhdai hunuhunchha?`;
+
+    case "homework_or_math":
+      return `Mitra ji, yo kura JobMate ko kaam bhanda bahira parcha 🙏\n\nMa yaha math/homework solve garna bhanda pani job khojna, staff khojna, document/verification ra support ma help garna sakchu.\n\nTapai lai JobMate ma kun kura chahiyeko ho?`;
+
+    case "trust_question":
+      return `Bujhe Mitra ji 🙏\n\nJobMate Nepal ma registered ra operated service ho. Tapai ko data safe rakhcha, fake job/employer use gardaina, ra registered employer sanga matra connect garcha.\n\nKaam khojna ho bhane location ra job type pathaunu hola.`;
+
+    case "memory_question":
+      return `Mitra ji, ma haru ko purana conversation remember garna sakdina 🙏\n\nTara tapai ko naulo message bata ma pheri help garna tauyyar chu.\n\nTapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`;
+
+    case "call_request":
+      return `Mitra ji, ma yahi WhatsApp bata text support dinu ho 🙏\n\nPhone/call support ko lagi JobMate team lai message garnu hola. Complex case bhaye team le contact garcha.\n\nTapai ko problem short ma pathaunu hola, ma try garchu.`;
+
+    case "salary_choice_question":
+      return `Mitra ji, salary negotiation tapai ra employer ko beech ma hune kura ho 🙏\n\nJobMate le salary fix gardaina — tara tapai ko expectation employer lai forward garna sakcha.\n\nTapai kasto job ma interested hunuhunchha? Location ra job type pathaunu hola.`;
+
+    case "job_speed_question":
+      return `Mitra ji, job milne speed depend garcha — role, location, ra employer ko response ma 🙏\n\nJobMate le job guarantee ya speed guarantee gardaina, tara match bhayema jaldi connect garcha.\n\nTapai ko location ra job type pathaunu hola, ma search garchu.`;
+
+    case "interview_question":
+      return `Mitra ji, interview ko process employer le decide garcha 🙏\n\nSamai, format ra kura kunai employer le set garcha. JobMate le match confirmed bhayema detail share garcha.\n\nTapai kasto job ma interested hunuhunchha?`;
+
+    case "cv_help_question":
+      return `Mitra ji, ma full CV banaune service haina 🙏\n\nTara tapai ko basic profile save garna, document upload garna, ra employer lai forward garna help garna sakchu.\n\nProfile save garna chahanu huncha bhane location ra job type pathaunu hola.`;
+
+    case "parttime_question":
+      return `Hajur Mitra ji 🙏\n\nPart-time kaam JobMate ma pani available huna sakcha. Location ra kasto kaam chahiyo pathaunu hola, ma available options herna sakchu.\n\nStudent hunu bhane flexible timing role pani available huncha kahi.`;
+
+    case "sensitive_unrelated":
+      return `Mitra ji, yo topic ma ma answer dina sakdina 🙏\n\nMa JobMate ko rule bhitra basera job, hiring, worker, employer, document/verification, pricing ra support ko kura ma matra help garchu.\n\nTapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`;
+
+    case "identity":
+      return `Ma Aarati ho, JobMate team bata 🙏\n\nMa tapai lai kaam khojna, staff khojna, profile save garna, document/verification ra support ma help garna sakchu.\n\nTapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`;
+
+    case "job_guarantee":
+      return `Mitra ji, JobMate le job guarantee ya salary guarantee gardaina 🙏\n\nJobMate le jobseeker ra employer lai connect garna, profile/application manage garna ra verification support garna help garcha.\n\nTapai kaam khojdai hunuhunchha bhane location ra kaam type pathaunu hola.`;
+
+    case "document_privacy_unknown":
+      return `Mitra ji, document compulsory haina 🙏\n\nDocument verification/hiring process ko lagi matra use huncha. Tapai comfortable hunuhunna bhane document bina pani profile save garna milcha.\n\nDocument bina profile save garna 2 lekhnu hola.`;
+
+    case "pricing_unknown":
+      return `Mitra ji, jobseeker ko basic profile/application support generally free ho 🙏\n\nEmployer pricing/service plan chai business need anusar confirm garna parcha.\n\nTapai jobseeker ho bhane kaam type ra location pathaunu hola.`;
+
+    case "support_unknown":
+      return `Mitra ji, JobMate support ko lagi ma yahi WhatsApp ma basic help garna sakchu 🙏\n\nComplex kura bhaye team lai forward garna milcha.\n\nTapai ko problem short ma pathaunu hola, ma sidha help garne try garchu.`;
+
+    case "small_talk":
+      return `Hajur Mitra ji, thik cha 🙏\n\nMa Aarati, JobMate team bata. Small kura garna milcha, tara mero main kaam tapai lai job/hiring support dinu ho.\n\nKaam khojna ho bhane location ra kaam type pathaunu hola. Staff khojna ho bhane business/role pathaunu hola.`;
+
+    case "safe_unknown_question":
+    default:
+      return `Bujhe Mitra ji 🙏\n\nYo kura ma ma exact answer confirm garna sakdina, tara JobMate bhitra ma job khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.\n\nTapai ko question JobMate/job/hiring sanga related ho bhane ekchoti short ma detail pathaunu hola.`;
+  }
+}
+
+export function buildAaratiDeterministicFallback(rawText, normalizedText) {
+  const detectedIntent = detectAaratiDeterministicIntent(normalizedText || normalizeAaratiText(rawText || ""));
+  const reply = buildDeterministicFallbackReply(detectedIntent);
+
+  return {
+    route: "answer",
+    intent: detectedIntent === "frustration_or_abuse" ? "frustrated" : "unknown",
+    detectedIntent,
+    allowed: true,
+    confidence: 0.6,
+    reply,
+    nextStep: "",
+    handoffNeeded: detectedIntent === "frustration_or_abuse",
+    reason: "deterministic_fallback",
+    source: "aarati_ai_first_router:deterministic_fallback",
+  };
+}
+
+// ---------------------------------------------------------------------------
+
 export function shouldUseAaratiAiFirstRouter({ normalized, conversation } = {}) {
   const rawText = getAaratiRawText(normalized);
   const text = normalizeAaratiText(rawText);
@@ -246,7 +373,12 @@ Last asked field: ${conversation?.metadata?.lastAskedField || ""}
     timeoutMs: 8000,
   });
 
-  if (!aiResult) return null;
+  // One AI call only. If all providers fail (timeout/503/quota), use
+  // deterministic bounded fallback — never fall through to old classifier.
+  if (!aiResult) {
+    console.warn("⚠️ [aarati_ai_first_router] All AI providers failed — using deterministic fallback");
+    return buildAaratiDeterministicFallback(rawText, normalizedText);
+  }
 
   const safe = normalizeAaratiAiFirstResult(aiResult);
 
