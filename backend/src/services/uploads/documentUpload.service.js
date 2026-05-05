@@ -1,6 +1,97 @@
+import crypto from "crypto";
+import fs from "fs/promises";
+import path from "path";
 import { WorkerProfile } from "../../models/WorkerProfile.model.js";
+import {
+  downloadWhatsAppMediaBuffer,
+  getWhatsAppMediaInfo,
+} from "../whatsapp/whatsappClient.service.js";
 
 const SUPPORTED_MEDIA_TYPES = ["image", "document"];
+
+const LOCAL_DOCUMENT_UPLOAD_DIR = path.join(
+  process.cwd(),
+  "uploads",
+  "jobmate-documents"
+);
+
+function extensionFromMimeType(mimeType = "") {
+  const value = String(mimeType || "").toLowerCase();
+
+  if (value.includes("jpeg") || value.includes("jpg")) return "jpg";
+  if (value.includes("png")) return "png";
+  if (value.includes("webp")) return "webp";
+  if (value.includes("pdf")) return "pdf";
+  if (value.includes("msword")) return "doc";
+  if (value.includes("officedocument")) return "docx";
+
+  return "bin";
+}
+
+function sanitizeForFilename(value = "") {
+  return String(value || "")
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .slice(0, 80);
+}
+
+function safeDownloadError(error) {
+  return {
+    status: error?.status || error?.safe?.status || null,
+    message: error?.safe?.message || error?.message || "Media download failed",
+    code: error?.code || error?.safe?.code || null,
+    type: error?.type || error?.safe?.type || null,
+    fbtrace_id: error?.fbtrace_id || error?.safe?.fbtrace_id || null,
+  };
+}
+
+async function downloadAndStoreWhatsAppDocument(document = {}) {
+  if (!document.mediaId) {
+    return {
+      ok: false,
+      reason: "MISSING_MEDIA_ID",
+    };
+  }
+
+  const mediaInfo = await getWhatsAppMediaInfo(document.mediaId);
+
+  if (mediaInfo?.skipped || !mediaInfo?.url) {
+    return {
+      ok: false,
+      reason: mediaInfo?.reason || "MEDIA_URL_NOT_AVAILABLE",
+    };
+  }
+
+  const downloaded = await downloadWhatsAppMediaBuffer(mediaInfo.url);
+
+  if (downloaded?.skipped || !downloaded?.buffer) {
+    return {
+      ok: false,
+      reason: downloaded?.reason || "MEDIA_DOWNLOAD_SKIPPED",
+    };
+  }
+
+  await fs.mkdir(LOCAL_DOCUMENT_UPLOAD_DIR, { recursive: true });
+
+  const mimeType = mediaInfo.mimeType || downloaded.contentType || document.mimeType || "";
+  const extension = extensionFromMimeType(mimeType);
+  const safeMediaId = sanitizeForFilename(document.mediaId);
+  const randomSuffix = crypto.randomBytes(6).toString("hex");
+  const filename = `${Date.now()}_${safeMediaId}_${randomSuffix}.${extension}`;
+  const absolutePath = path.join(LOCAL_DOCUMENT_UPLOAD_DIR, filename);
+
+  await fs.writeFile(absolutePath, downloaded.buffer);
+
+  return {
+    ok: true,
+    filename,
+    localPath: absolutePath,
+    storageUrl: `/uploads/jobmate-documents/${filename}`,
+    mimeType,
+    fileSize: downloaded.buffer.length,
+    sha256: mediaInfo.sha256 || document.sha256 || "",
+  };
+}
+
 
 export function isSupportedDocumentMedia(normalized = {}) {
   return (
@@ -60,6 +151,37 @@ export async function saveWorkerDocumentMetadata({ contact, normalized } = {}) {
   }
 
   const document = buildDocumentMetadata(normalized);
+
+  try {
+    const stored = await downloadAndStoreWhatsAppDocument(document);
+
+    if (stored?.ok) {
+      document.status = "downloaded";
+      document.storageUrl = stored.storageUrl || "";
+      document.filename = stored.filename || document.filename || "";
+      document.mimeType = stored.mimeType || document.mimeType || "";
+      document.sha256 = stored.sha256 || document.sha256 || "";
+      document.metadata = {
+        ...(document.metadata || {}),
+        localPath: stored.localPath || "",
+        fileSize: stored.fileSize || null,
+        storageMode: "local_dev",
+        note: "Media downloaded to local dev storage. Cloud storage not enabled yet.",
+      };
+    } else {
+      document.metadata = {
+        ...(document.metadata || {}),
+        downloadSkippedReason: stored?.reason || "UNKNOWN",
+      };
+    }
+  } catch (error) {
+    const safeError = safeDownloadError(error);
+
+    document.metadata = {
+      ...(document.metadata || {}),
+      downloadError: safeError,
+    };
+  }
 
   const worker = await WorkerProfile.findOneAndUpdate(
     { contactId: contact._id },
