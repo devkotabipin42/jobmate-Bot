@@ -3,6 +3,7 @@ import {
   Briefcase,
   CalendarClock,
   FileCheck2,
+  ExternalLink,
   Image,
   MapPin,
   Phone,
@@ -11,6 +12,9 @@ import {
 } from "lucide-react";
 import WorkerStatusBadge from "./WorkerStatusBadge";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const nextStatuses = [
   { label: "Qualified", value: "qualified" },
   { label: "Verified", value: "verified" },
@@ -18,6 +22,13 @@ const nextStatuses = [
   { label: "Placed", value: "placed" },
   { label: "Inactive", value: "inactive" },
 ];
+
+function buildDocumentUrl(storageUrl = "") {
+  if (!storageUrl) return "";
+  if (/^https?:\/\//i.test(storageUrl)) return storageUrl;
+
+  return `${API_BASE_URL}${storageUrl.startsWith("/") ? storageUrl : `/${storageUrl}`}`;
+}
 
 export default function WorkerCard({
   worker,
@@ -32,6 +43,7 @@ export default function WorkerCard({
       : "Not selected";
 
   const latestDocument = worker.latestDocument || null;
+  const latestDocumentUrl = buildDocumentUrl(latestDocument?.storageUrl || "");
   const documentSummary = worker.documentCount
     ? `${worker.documentCount} received${
         latestDocument?.type ? ` • latest: ${latestDocument.type}` : ""
@@ -110,6 +122,18 @@ export default function WorkerCard({
               {latestDocument.mediaId || "-"}
             </p>
           </div>
+
+          {latestDocumentUrl ? (
+            <a
+              href={latestDocumentUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-black text-white transition hover:bg-emerald-700"
+            >
+              <ExternalLink size={14} />
+              Open document
+            </a>
+          ) : null}
         </div>
       ) : null}
 
