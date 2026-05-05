@@ -56,6 +56,7 @@ import { applyJobMateRoutingGuards } from "../services/automation/jobmateRouting
 import { detectJobMateSafetyEvent } from "../services/safety/jobmateSafetyGuards.service.js";
 import { detectConversationRepairEvent } from "../services/safety/jobmateConversationRepair.service.js";
 import { jobmateConfig } from "../configs/jobmate.config.js";
+import { findJobMateKnowledgeAnswer } from "../services/rag/jobmateKnowledgeAnswer.service.js";
 import {
   buildDocumentReceivedReply,
   isSupportedDocumentMedia,
@@ -272,6 +273,57 @@ export async function receiveWhatsAppWebhook(req, res) {
         intent: repairEvent.intent,
         replied: true,
         handoffCreated: Boolean(handoff),
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
+
+    const knowledgeAnswer =
+      env.BOT_MODE === "jobmate_hiring"
+        ? findJobMateKnowledgeAnswer({ normalized })
+        : null;
+
+    if (knowledgeAnswer) {
+      const knowledgeIntentResult = {
+        intent: "unknown",
+        needsHuman: false,
+        priority: "low",
+        reason: `knowledge_answer:${knowledgeAnswer.topic}`,
+      };
+
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: knowledgeIntentResult,
+      });
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: knowledgeAnswer.answer,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation,
+        text: knowledgeAnswer.answer,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      await updateConversationIntent({
+        conversation,
+        intent: "unknown",
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "JobMate knowledge answer handled message",
+        topic: knowledgeAnswer.topic,
+        replied: true,
         sendSkipped: sendResult.skipped || false,
       });
     }
