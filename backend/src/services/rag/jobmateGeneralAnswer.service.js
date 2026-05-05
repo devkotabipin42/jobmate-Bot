@@ -8,12 +8,33 @@ function getText(normalized = {}) {
   ).trim();
 }
 
+const ACTIVE_FLOW_STATES = new Set([
+  "ask_documents",
+  "ask_document_status",
+  "ask_availability",
+  "ask_jobType",
+  "ask_job_type",
+  "ask_district",
+  "ask_location",
+  "asked_register",
+  "showed_jobs",
+  "job_search_results",
+  "search_done",
+  "ask_business_name",
+  "ask_business_name_after_ai",
+  "ask_vacancy",
+  "ask_vacancy_role",
+  "ask_urgency",
+  "ask_salary_range",
+  "ask_work_type",
+]);
+
 function isLikelyDirectFlow(text = "") {
   const value = String(text || "").toLowerCase().trim();
 
   return (
     /^[1-9]$/.test(value) ||
-    /kaam chahiyo|kam chahiyo|job chahiyo|staff chahiyo|worker chahiyo|apply|register|profile save/i.test(value) ||
+    /kaam chahiyo|kam chahiyo|job chahiyo|staff chahiyo|worker chahiyo|apply|register|profile save|document patha|cv patha|license patha/i.test(value) ||
     /driver|hotel|security|sales|helper|it|computer|frontend|backend|restaurant|shop|retail/i.test(value) ||
     /butwal|bardaghat|bhardaghat|bhairahawa|parasi|nawalparasi|rupandehi|kapilvastu|palpa|dang|banke/i.test(value)
   );
@@ -25,16 +46,7 @@ function isActiveFormState(conversation = {}) {
 
   if (lastAsked) return true;
 
-  return [
-    "ask_documents",
-    "ask_availability",
-    "ask_jobType",
-    "ask_job_type",
-    "ask_district",
-    "ask_location",
-    "asked_register",
-    "showed_jobs",
-  ].includes(state);
+  return ACTIVE_FLOW_STATES.has(state);
 }
 
 function isQuestionLike(text = "") {
@@ -42,6 +54,7 @@ function isQuestionLike(text = "") {
 
   return (
     /\?/.test(value) ||
+    /[0-9]+\s*[\+\-\*\/]\s*[0-9]+/.test(value) ||
     /ke ho|k ho|kina|kasari|kati|kaha|kahile|who|what|why|how|can you|do you|garxa|garcha|huncha|safe|trust|guarantee|responsible/i.test(value)
   );
 }
@@ -106,8 +119,14 @@ Last asked field: ${conversation?.metadata?.lastAskedField || ""}
     return null;
   }
 
+  const reply = String(result.reply).trim();
+
+  if (/gemini|openai|chatgpt|language model|ai model|provider/i.test(reply)) {
+    return null;
+  }
+
   return {
-    reply: String(result.reply).trim(),
+    reply,
     source: "ai_general_answer",
     reason: result.reason || "",
   };

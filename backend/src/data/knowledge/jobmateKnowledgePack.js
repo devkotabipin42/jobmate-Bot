@@ -69,14 +69,14 @@ export const JOBMATE_KNOWLEDGE_PACK = {
 
 export const JOBMATE_KNOWLEDGE_TOPICS = [
   {
+    key: "jobseeker_free",
+    patterns: [/job\s*seeker.*free|free.*job\s*seeker|job\s*seeker.*paisa|job\s*seeker.*lagcha|kaam khojna paisa|kaam khojna.*lagcha|apply.*free/i],
+    answer: JOBMATE_KNOWLEDGE_PACK.pricing.jobseeker,
+  },
+  {
     key: "pricing",
     patterns: [/price|pricing|paisa|kati|cost|plan|basic|premium|free|monthly|fee/i, /मूल्य|पैसा|शुल्क/i],
     answer: JOBMATE_KNOWLEDGE_PACK.pricing.employer,
-  },
-  {
-    key: "jobseeker_free",
-    patterns: [/jobseeker.*free|free.*jobseeker|job seeker.*paisa|kaam khojna paisa|apply.*free/i],
-    answer: JOBMATE_KNOWLEDGE_PACK.pricing.jobseeker,
   },
   {
     key: "what_is_jobmate",
@@ -85,7 +85,7 @@ export const JOBMATE_KNOWLEDGE_TOPICS = [
   },
   {
     key: "how_it_works",
-    patterns: [/job\s*mate.*kasari|jobmate.*kasari|kasari.*kaam.*gar|kasari.*kam.*gar|how.*work|how does.*work|yo.*kasari.*chal/i],
+    patterns: [/job\s*mate.*kasari|jobmate.*kasari|kasari.*kaam.*gar|kasari.*kam.*gar|kasari.*kaam|kasari.*kam|asle.*kasari|how.*work|how does.*work|yo.*kasari.*chal/i],
     answer: JOBMATE_KNOWLEDGE_PACK.company.howItWorks,
   },
   {

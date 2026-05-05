@@ -73,6 +73,24 @@ assertEqual(
   false
 );
 
+assertEqual(
+  "active job results state does not use general AI",
+  shouldTryGeneralAIAnswer({
+    conversation: { currentState: "job_search_results", metadata: {} },
+    normalized: normalized("salary kati ho?"),
+  }),
+  false
+);
+
+assertEqual(
+  "active employer state does not use general AI",
+  shouldTryGeneralAIAnswer({
+    conversation: { currentState: "ask_salary_range", metadata: {} },
+    normalized: normalized("kati salary rakhda ramro hola?"),
+  }),
+  false
+);
+
 console.log(`\nResult: ${failed === 0 ? "ALL PASSED" : `${failed} FAILED`}`);
 
 if (failed > 0) process.exit(1);

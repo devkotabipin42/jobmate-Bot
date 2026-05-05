@@ -68,7 +68,7 @@ export function getNextStepHint({ conversation } = {}) {
   const lastAskedField = String(conversation?.metadata?.lastAskedField || "");
 
   if (state === "ask_documents" || lastAskedField === "documents") {
-    return `Aba document pathauna comfortable hunuhunna bhane 2 lekhnu hola.
+    return `Document bina profile save garna 2 lekhnu hola.
 Document chha bhane yahi WhatsApp ma photo/file pathauna saknuhunchha.`;
   }
 

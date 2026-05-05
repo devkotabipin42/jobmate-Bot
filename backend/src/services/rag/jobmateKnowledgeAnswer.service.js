@@ -13,7 +13,7 @@ function shouldAnswerFromKnowledge(text = "") {
 
   if (!value || value.length < 3) return false;
 
-  return /jobmate|price|pricing|paisa|plan|basic|premium|free|document|privacy|safe|verify|badge|field agent|support|contact|founder|owner|company|ke ho|about/i.test(value);
+  return /job\s*mate|jobmate|price|pricing|paisa|plan|basic|premium|free|document|privacy|safe|verify|badge|field agent|support|contact|founder|owner|company|ke ho|k ho|about|kasari.*kaam|kasari.*kam|asle/i.test(value);
 }
 
 export function findJobMateKnowledgeAnswer({ normalized } = {}) {
