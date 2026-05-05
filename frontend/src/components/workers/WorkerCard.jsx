@@ -27,7 +27,6 @@ const nextStatuses = [
 function buildDocumentUrl(storageUrl = "") {
   if (!storageUrl) return "";
   if (/^https?:\/\//i.test(storageUrl)) return storageUrl;
-
   return `${API_BASE_URL}${storageUrl.startsWith("/") ? storageUrl : `/${storageUrl}`}`;
 }
 
@@ -45,12 +44,14 @@ export default function WorkerCard({
       ? worker.jobPreferences.join(", ")
       : "Not selected";
 
-  const latestDocument = worker.latestDocument || null;
+  const documents = Array.isArray(worker.documents) ? worker.documents : [];
+  const latestDocument = worker.latestDocument || documents[documents.length - 1] || null;
   const latestDocumentUrl = buildDocumentUrl(latestDocument?.storageUrl || "");
   const latestDocumentBusy = Boolean(
     latestDocument?.id &&
       documentActionLoading === `${worker.id}:${latestDocument.id}`
   );
+
   const documentSummary = worker.documentCount
     ? `${worker.documentCount} received${
         latestDocument?.type ? ` • latest: ${latestDocument.type}` : ""
@@ -93,34 +94,12 @@ export default function WorkerCard({
           label="Availability"
           value={worker.availability || "unknown"}
         />
-        <Info
-          icon={FileCheck2}
-          label="Documents"
-          value={documentSummary}
-        />
+        <Info icon={FileCheck2} label="Documents" value={documentSummary} />
       </div>
 
       {latestDocument ? (
         <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 text-sm dark:border-emerald-500/20 dark:bg-emerald-500/10">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-black text-emerald-700 shadow-sm dark:bg-slate-900 dark:text-emerald-300">
-              <Image size={14} />
-              Document received
-            </span>
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
-              {latestDocument.type || "other"}
-            </span>
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
-              {latestDocument.status || "received"}
-            </span>
-            <span className={`rounded-full px-3 py-1 text-xs font-black shadow-sm ${
-              latestDocument.verified
-                ? "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300"
-                : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
-            }`}>
-              {latestDocument.verified ? "verified" : "not verified"}
-            </span>
-          </div>
+          <DocumentBadges document={latestDocument} />
 
           <div className="mt-3 grid gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-2">
             <p>
@@ -137,28 +116,49 @@ export default function WorkerCard({
             </p>
           </div>
 
-          {latestDocumentUrl ? (
-            <a
-              href={latestDocumentUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-black text-white transition hover:bg-emerald-700"
-            >
-              <ExternalLink size={14} />
-              Open document
-            </a>
-          ) : null}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {latestDocumentUrl ? (
+              <a
+                href={latestDocumentUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-black text-white transition hover:bg-emerald-700"
+              >
+                <ExternalLink size={14} />
+                Open document
+              </a>
+            ) : null}
 
-          {latestDocument && !latestDocument.verified ? (
-            <button
-              onClick={() => onVerifyDocument?.(worker, latestDocument)}
-              disabled={latestDocumentBusy}
-              className="ml-2 mt-3 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-2 text-xs font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <ShieldCheck size={14} />
-              {latestDocumentBusy ? "Verifying..." : "Mark verified"}
-            </button>
-          ) : null}
+            {!latestDocument.verified ? (
+              <button
+                onClick={() => onVerifyDocument?.(worker, latestDocument)}
+                disabled={latestDocumentBusy}
+                className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-2 text-xs font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <ShieldCheck size={14} />
+                {latestDocumentBusy ? "Verifying..." : "Mark verified"}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {documents.length > 1 ? (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/50">
+          <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+            All documents ({documents.length})
+          </p>
+          <div className="mt-3 grid gap-3">
+            {documents.map((document) => (
+              <DocumentMiniRow
+                key={document.id || document.mediaId}
+                document={document}
+                worker={worker}
+                onVerifyDocument={onVerifyDocument}
+                documentActionLoading={documentActionLoading}
+              />
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -197,6 +197,74 @@ export default function WorkerCard({
             {item.label}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function DocumentBadges({ document }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-black text-emerald-700 shadow-sm dark:bg-slate-900 dark:text-emerald-300">
+        <Image size={14} />
+        Document received
+      </span>
+      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+        {document.type || "other"}
+      </span>
+      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+        {document.status || "received"}
+      </span>
+      <span
+        className={`rounded-full px-3 py-1 text-xs font-black shadow-sm ${
+          document.verified
+            ? "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300"
+            : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+        }`}
+      >
+        {document.verified ? "verified" : "not verified"}
+      </span>
+    </div>
+  );
+}
+
+function DocumentMiniRow({ document, worker, onVerifyDocument, documentActionLoading }) {
+  const documentUrl = buildDocumentUrl(document?.storageUrl || "");
+  const busy = Boolean(
+    document?.id && documentActionLoading === `${worker.id}:${document.id}`
+  );
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-3 text-xs dark:border-slate-800 dark:bg-slate-950">
+      <DocumentBadges document={document} />
+
+      <p className="mt-2 text-slate-600 dark:text-slate-300">
+        Caption: <span className="font-bold">{document.caption || "-"}</span>
+      </p>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {documentUrl ? (
+          <a
+            href={documentUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 font-black text-white hover:bg-emerald-700"
+          >
+            <ExternalLink size={13} />
+            Open
+          </a>
+        ) : null}
+
+        {!document.verified ? (
+          <button
+            onClick={() => onVerifyDocument?.(worker, document)}
+            disabled={busy}
+            className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3 py-1.5 font-black text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            <ShieldCheck size={13} />
+            {busy ? "Verifying..." : "Verify"}
+          </button>
+        ) : null}
       </div>
     </div>
   );
