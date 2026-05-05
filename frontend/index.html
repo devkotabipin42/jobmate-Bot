@@ -5,8 +5,86 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>
+    <style>
+      html {
+        background: #020617;
+      }
+
+      #initial-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(circle at top left, rgba(16, 185, 129, 0.18), transparent 34%),
+          linear-gradient(135deg, #020617 0%, #0f172a 100%);
+        color: white;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .jm-loader-card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 20px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 24px;
+        background: rgba(15, 23, 42, 0.78);
+        box-shadow: 0 22px 70px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(18px);
+        animation: jmPulse 1.4s ease-in-out infinite;
+      }
+
+      .jm-loader-logo {
+        width: 46px;
+        height: 46px;
+        display: grid;
+        place-items: center;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #059669, #22c55e);
+        color: #ffffff;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+      }
+
+      .jm-loader-title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 900;
+        letter-spacing: -0.02em;
+      }
+
+      .jm-loader-subtitle {
+        margin: 4px 0 0;
+        font-size: 13px;
+        color: #94a3b8;
+        font-weight: 600;
+      }
+
+      @keyframes jmPulse {
+        0%, 100% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        50% {
+          transform: translateY(-2px);
+          opacity: 0.86;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="initial-loader">
+      <div class="jm-loader-card">
+        <div class="jm-loader-logo">JM</div>
+        <div>
+          <p class="jm-loader-title">JobMate</p>
+          <p class="jm-loader-subtitle">AI Hiring OS loading...</p>
+        </div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
