@@ -113,7 +113,7 @@ export function inferDocumentType({
 
   if (/license|licence|driving|driver|लाइसेन्स/i.test(value)) return "license";
   if (/citizen|citizenship|nagarikta|नागरिकता/i.test(value)) return "citizenship";
-  if (/\bcv\b|resume|bio[-\s]?data/i.test(value)) return "cv";
+  if (/\bcv\b|\bcvs\b|resume|bio[-\s]?data/i.test(value)) return "cv";
   if (/certificate|training|अनुभव|experience/i.test(value)) return "certificate";
   if (/image|photo|jpeg|jpg|png/i.test(value)) return "photo";
 
