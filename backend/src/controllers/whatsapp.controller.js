@@ -54,6 +54,7 @@ import {
 import { env } from "../config/env.js";
 import { applyJobMateRoutingGuards } from "../services/automation/jobmateRoutingGuards.service.js";
 import { detectJobMateSafetyEvent } from "../services/safety/jobmateSafetyGuards.service.js";
+import { detectConversationRepairEvent } from "../services/safety/jobmateConversationRepair.service.js";
 import { jobmateConfig } from "../configs/jobmate.config.js";
 import {
   buildDocumentReceivedReply,
@@ -247,6 +248,77 @@ export async function receiveWhatsAppWebhook(req, res) {
         safetyType: safetyEvent.type,
         intent: safetyEvent.intent,
         replied: true,
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
+
+    const repairEvent =
+      env.BOT_MODE === "jobmate_hiring"
+        ? detectConversationRepairEvent({ conversation, normalized })
+        : null;
+
+    if (repairEvent) {
+      const repairIntentResult = {
+        intent: repairEvent.intent,
+        needsHuman: Boolean(repairEvent.needsHuman),
+        priority: repairEvent.priority || "medium",
+        reason: repairEvent.type,
+      };
+
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: repairIntentResult,
+      });
+
+      let handoff = null;
+
+      if (repairEvent.needsHuman) {
+        handoff = await createHandoffRequest({
+          contact,
+          conversation,
+          reason: repairEvent.type,
+          lastUserMessage: normalized.message.text || "",
+          priority: repairEvent.priority || "high",
+          callRequired: false,
+          metadata: {
+            intent: repairEvent.intent,
+            source: "conversation_repair_guard",
+            repairType: repairEvent.type,
+          },
+        });
+      }
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: repairEvent.reply,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation,
+        text: repairEvent.reply,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      await updateConversationIntent({
+        conversation,
+        intent: repairEvent.intent,
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "JobMate conversation repair handled message",
+        repairType: repairEvent.type,
+        intent: repairEvent.intent,
+        replied: true,
+        handoffCreated: Boolean(handoff),
         sendSkipped: sendResult.skipped || false,
       });
     }
