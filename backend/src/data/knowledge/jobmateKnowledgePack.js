@@ -2,6 +2,8 @@ export const JOBMATE_KNOWLEDGE_PACK = {
   company: {
     whatIsJobMate:
       "JobMate Nepal ko AI-powered verified job platform ho. Yesle jobseekers ra employers lai skills, experience, location ra salary expectation ko aadhaar ma connect garna help garchha.",
+    howItWorks:
+      "JobMate ma jobseeker le location, skill, experience, availability ra document/profile detail dincha. Employer le hiring need post garcha. JobMate le verified jobs, worker profiles, AI matching, applications, follow-ups ra document verification process bata dui side lai connect garcha.",
     mission:
       "JobMate ko mission Nepal ko hiring chaos kam garera verified jobseekers lai verified employers sanga transparent ra trusted tarika le connect garnu ho.",
     focus:
@@ -78,8 +80,13 @@ export const JOBMATE_KNOWLEDGE_TOPICS = [
   },
   {
     key: "what_is_jobmate",
-    patterns: [/jobmate.*ke ho|what is jobmate|jobmate kya hai|jobmate barema|about jobmate/i],
+    patterns: [/job\s*mate.*(ke|k)\s*ho|jobmate.*(ke|k)\s*ho|what is jobmate|jobmate kya hai|job\s*mate barema|jobmate barema|about jobmate/i],
     answer: JOBMATE_KNOWLEDGE_PACK.company.whatIsJobMate,
+  },
+  {
+    key: "how_it_works",
+    patterns: [/job\s*mate.*kasari|jobmate.*kasari|kasari.*kaam.*gar|kasari.*kam.*gar|how.*work|how does.*work|yo.*kasari.*chal/i],
+    answer: JOBMATE_KNOWLEDGE_PACK.company.howItWorks,
   },
   {
     key: "founder",

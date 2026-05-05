@@ -33,9 +33,16 @@ export function isFrustrationOrAbuse(text = "") {
 }
 
 export function isConfusedMessage(text = "") {
-  return /bujhina|bujena|clear chaina|kasari|what now|aba ke|k garne|confuse|confused|ke bhayo/i.test(
-    String(text || "")
-  );
+  const value = String(text || "").toLowerCase();
+
+  // Let JobMate knowledge layer answer product/how-it-works questions.
+  if (
+    /job\s*mate|jobmate|yo platform|asle|yesle|kasari.*kaam|kasari.*kam|how.*work/i.test(value)
+  ) {
+    return false;
+  }
+
+  return /bujhina|bujena|clear chaina|what now|aba ke|k garne|confuse|confused|ke bhayo/i.test(value);
 }
 
 function withNextStep(reply, conversation) {

@@ -22,6 +22,12 @@ function ask(text) {
 const about = ask("JobMate ke ho?");
 assert("answers about JobMate", about?.answer?.includes("AI-powered verified job platform"), about?.answer);
 
+const spacedAbout = ask("job mate k ho?");
+assert("answers spaced job mate k ho", spacedAbout?.answer?.includes("AI-powered verified job platform"), spacedAbout?.answer);
+
+const howWorks = ask("kasari kam garxa asle?");
+assert("answers how JobMate works", howWorks?.answer?.includes("verified jobs") || howWorks?.answer?.includes("connect"), howWorks?.answer);
+
 const pricing = ask("employer ko price kati ho?");
 assert("answers pricing", pricing?.answer?.includes("NPR 499") && pricing?.answer?.includes("NPR 999"), pricing?.answer);
 
