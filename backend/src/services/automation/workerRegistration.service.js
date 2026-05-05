@@ -9,6 +9,7 @@ import { extractJobSearchWithAI } from "../ai/jobmateJobSearchExtractionAI.servi
 import { runConversationEngine } from "./conversationEngine.js";
 import { jobmateConfig } from "../../configs/jobmate.config.js";
 import { scheduleFollowup } from "../followups/followupScheduler.service.js";
+import { getActiveFlowSideReply } from "../../policies/aarati.rulebook.js";
 
 // Runtime check (not module-load-time) so dotenv has time to load
 function isNewEngineEnabled() {
@@ -142,6 +143,22 @@ export async function handleWorkerRegistration({
   }
   const step = Number(conversation?.metadata?.qualificationStep || 0);
   const text = normalizedMessage?.message?.normalizedText || "";
+
+
+  const activeFlowSideReply = getActiveFlowSideReply({
+    text,
+    state: conversation?.currentState,
+    lastAskedField: conversation?.metadata?.lastAskedField,
+  });
+
+  if (activeFlowSideReply) {
+    return {
+      handled: true,
+      intent: "worker_registration",
+      reply: activeFlowSideReply,
+      source: "active_flow_side_reply",
+    };
+  }
   const displayName =
     contact?.displayName && !/recruiter|admin|business/i.test(contact.displayName)
       ? contact.displayName

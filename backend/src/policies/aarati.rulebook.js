@@ -103,3 +103,26 @@ Pachhi try garna chahanu hunchha bhane 2 lekhnu hola.`;
   return `Kaam khojna ho bhane "malai kaam chahiyo" lekhnu hola.
 Staff khojna ho bhane "malai staff chahiyo" lekhnu hola.`;
 }
+
+
+export function getActiveFlowSideReply({ text = "", state = "", lastAskedField = "" } = {}) {
+  const value = String(text || "").toLowerCase();
+
+  const isDocumentState =
+    state === "ask_documents" || lastAskedField === "documents";
+
+  if (!isDocumentState) return null;
+
+  if (/khana|k gardai|k cha|sanchai|hello|hi|namaste|how are you/i.test(value)) {
+    return `Hajur Mitra ji, thik cha 🙏
+
+Aile tapai ko profile save process document step ma cha.
+
+Document pathaunu compulsory haina.
+Document bina profile save garna 2 lekhnu hola.
+Document chha bhane yahi WhatsApp ma photo/file pathauna saknuhunchha.`;
+  }
+
+  return null;
+}
+

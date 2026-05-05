@@ -27,7 +27,7 @@ const math = getAaratiHumanIntentFormattedAnswer({
   normalized: normalized("2+2 kati hunxa"),
   conversation: idle,
 });
-assert("math gets out-of-scope", math?.intent === "out_of_scope", JSON.stringify(math));
+assert("math stores enum-safe unknown intent", math?.intent === "unknown", JSON.stringify(math));
 assert("math does not solve with 4", !/\b4\b/.test(math?.reply || ""), math?.reply);
 
 const identity = getAaratiHumanIntentFormattedAnswer({

@@ -193,9 +193,7 @@ export function getAaratiHumanIntentFormattedAnswer({
   if (!intent) return null;
 
   return {
-    intent: intent === "homework_or_math" || intent === "sensitive_unrelated"
-      ? "out_of_scope"
-      : "unknown",
+    intent: "unknown",
     detectedIntent: intent,
     source: "aarati_human_intent_formatter",
     reply: buildReplyForIntent(intent),

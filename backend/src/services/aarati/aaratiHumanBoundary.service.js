@@ -106,7 +106,7 @@ Tapai ko main kura ekchoti short ma pathaunu hola, ma sidha answer dinchhu.`,
 
   if (isIdentityQuestion(value)) {
     return {
-      intent: "identity",
+      intent: "unknown",
       source: "aarati_human_boundary",
       reply: `Ma Aarati ho, JobMate team bata 🙏
 
@@ -118,7 +118,7 @@ Tapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`,
 
   if (isWeatherQuestion(value)) {
     return {
-      intent: "small_talk",
+      intent: "unknown",
       source: "aarati_human_boundary",
       reply: `Mitra ji, ma live weather update herna sakdina 🙏
 
@@ -130,7 +130,7 @@ Tapai kun location ko job/staff ko lagi sodhdai hunuhunchha?`,
 
   if (isMathOrHomework(value) || isPoliticsReligionDeep(value)) {
     return {
-      intent: "out_of_scope",
+      intent: "unknown",
       source: "aarati_human_boundary",
       reply: `Mitra ji, yo kura JobMate ko kaam bhanda bahira parcha 🙏
 
@@ -142,7 +142,7 @@ Tapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`,
 
   if (!isActiveFlow(conversation) && isSmallTalk(value)) {
     return {
-      intent: "small_talk",
+      intent: "unknown",
       source: "aarati_human_boundary",
       reply: `Hajur Mitra ji, thik cha 🙏
 
