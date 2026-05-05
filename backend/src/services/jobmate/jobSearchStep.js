@@ -83,15 +83,31 @@ export async function runJobSearchStep(profile, text = "") {
     };
   }
 
-  // No jobs found or API slow — offer registration.
   const loc = profile.location;
   const jobTypeText = profile.jobType ? `${profile.jobType} ko ` : "";
-  const apiSlowText = result.ok === false
-    ? `${loc} ma ${jobTypeText}job check garna ali time lagyo 🙏`
-    : `${loc} ma aile ${jobTypeText}verified job listing bhetiyena 🙏`;
+
+  if (result.ok === false) {
+    return {
+      messageToSend: `${loc} ma ${jobTypeText}job listing check गर्दा system ali slow bhayo 🙏
+
+Ma tapai ko vivaran JobMate ma save gardinchhu.
+Verified job listing properly check bhayepachhi suitable kaam aayo bhane JobMate team le sampark garchha.
+
+Profile register garna chahanu hunchha?
+1. Ho, register garchhu
+2. Pachhi try garchhu`,
+      profileUpdates: {
+        ...updates,
+        noJobsFound: false,
+        jobSearchError: result.reason || "JOBMATE_API_FAILED_OR_TIMEOUT",
+        jobSearchStrategy: result.strategy || "api_failed_or_timeout",
+      },
+      state: "asked_register",
+    };
+  }
 
   return {
-    messageToSend: `${apiSlowText}
+    messageToSend: `${loc} ma aile ${jobTypeText}verified job listing bhetiyena 🙏
 
 Tara naya kaam aune sambhavana chha.
 Tapai ko vivaran save garna milchha bhane suitable kaam aayepachhi JobMate team le sampark garchha.
@@ -99,7 +115,12 @@ Tapai ko vivaran save garna milchha bhane suitable kaam aayepachhi JobMate team 
 Profile register garna chahanu hunchha?
 1. Ho, register garchhu
 2. Pachhi try garchhu`,
-    profileUpdates: { ...updates, noJobsFound: true },
+    profileUpdates: {
+      ...updates,
+      noJobsFound: true,
+      jobSearchError: "",
+      jobSearchStrategy: result.strategy || "no_match",
+    },
     state: "asked_register",
   };
 }
