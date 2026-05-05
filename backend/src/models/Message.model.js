@@ -76,6 +76,7 @@ const messageSchema = new mongoose.Schema(
       type: String,
       enum: [
         "worker_registration",
+        "document_upload",
         "employer_lead",
         "profile_update",
         "job_search",
