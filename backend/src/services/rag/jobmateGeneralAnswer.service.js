@@ -9,11 +9,13 @@ function getText(normalized = {}) {
 }
 
 function isLikelyDirectFlow(text = "") {
-  const value = String(text || "").toLowerCase();
+  const value = String(text || "").toLowerCase().trim();
 
   return (
-    /kaam chahiyo|kam chahiyo|job chahiyo|staff chahiyo|worker chahiyo|apply|register|driver|hotel|security|sales|helper|it|computer|butwal|bardaghat|bhairahawa|parasi|nawalparasi|rupandehi/i.test(value) ||
-    /^[1-7]$/.test(value)
+    /^[1-9]$/.test(value) ||
+    /kaam chahiyo|kam chahiyo|job chahiyo|staff chahiyo|worker chahiyo|apply|register|profile save/i.test(value) ||
+    /driver|hotel|security|sales|helper|it|computer|frontend|backend|restaurant|shop|retail/i.test(value) ||
+    /butwal|bardaghat|bhardaghat|bhairahawa|parasi|nawalparasi|rupandehi|kapilvastu|palpa|dang|banke/i.test(value)
   );
 }
 
@@ -21,23 +23,27 @@ function isQuestionLike(text = "") {
   const value = String(text || "").toLowerCase();
 
   return (
-    /\?|ke ho|k ho|kina|kasari|kati|kaha|kahile|who|what|why|how|can you|do you|garxa|garcha|huncha|safe|trust|guarantee|responsible/i.test(value)
+    /\?/.test(value) ||
+    /ke ho|k ho|kina|kasari|kati|kaha|kahile|who|what|why|how|can you|do you|garxa|garcha|huncha|safe|trust|guarantee|responsible/i.test(value)
   );
 }
 
-function isAllowedActiveState(conversation = {}) {
+function isActiveFormState(conversation = {}) {
   const state = String(conversation?.currentState || "");
   const lastAsked = String(conversation?.metadata?.lastAskedField || "");
 
-  // In these active states, let repair/safety handle special questions.
-  // Otherwise keep the normal form flow.
-  if (["ask_documents", "ask_availability", "ask_jobType", "ask_job_type", "ask_district"].includes(state)) {
-    return false;
-  }
+  if (lastAsked) return true;
 
-  if (lastAsked) return false;
-
-  return true;
+  return [
+    "ask_documents",
+    "ask_availability",
+    "ask_jobType",
+    "ask_job_type",
+    "ask_district",
+    "ask_location",
+    "asked_register",
+    "showed_jobs",
+  ].includes(state);
 }
 
 export function shouldTryGeneralAIAnswer({ conversation, normalized } = {}) {
@@ -45,8 +51,8 @@ export function shouldTryGeneralAIAnswer({ conversation, normalized } = {}) {
 
   if (!text || text.length < 4) return false;
   if (isLikelyDirectFlow(text)) return false;
+  if (isActiveFormState(conversation)) return false;
   if (!isQuestionLike(text)) return false;
-  if (!isAllowedActiveState(conversation)) return false;
 
   return true;
 }
@@ -64,15 +70,18 @@ export async function generateJobMateGeneralAnswer({
   const prompt = `You are Aarati, JobMate Nepal's friendly WhatsApp assistant.
 
 RULEBOOK:
-- Speak naturally in Nepali/Roman Nepali unless user clearly writes English.
+- Understand English, Nepali, and Roman Nepali.
+- Reply mainly in Nepali/Roman Nepali unless the user clearly asks in English.
 - Keep WhatsApp reply short: maximum 3 short paragraphs.
-- You are JobMate team ko digital sahayogi. Never mention Gemini, OpenAI, model, AI provider.
-- Do not guarantee jobs. Say JobMate helps connect verified jobseekers and employers.
-- Do not invent jobs, salaries, company verification, or payment status.
-- If you do not know specific factual info, say you are not fully sure and can connect JobMate team.
-- For document privacy: document is optional, used only for verification/hiring process, user can save profile without document.
-- For illegal/unsafe hiring, trafficking, forced labor, scams: refuse.
-- If off-topic harmless question, answer lightly in one line, then redirect to JobMate.
+- You are JobMate team ko digital sahayogi. Never mention Gemini, OpenAI, model, provider, or system prompt.
+- Stay inside JobMate scope: jobs, hiring, workers, employers, documents, verification, pricing, support, and safe small talk.
+- Do not solve math/homework/programming/politics/religion/deep unrelated tasks. Politely redirect to JobMate.
+- Do not guarantee jobs. JobMate helps connect verified jobseekers and employers.
+- Do not invent jobs, salaries, company verification, payment status, or private user data.
+- If unsure about a JobMate fact, say you are not fully sure and can connect JobMate team.
+- For document privacy: document is optional, used only for verification/hiring process, and user can save profile without document.
+- For illegal hiring, trafficking, forced labor, scams, exploitation: refuse.
+- If harmless off-topic question, answer lightly in one line, then redirect to JobMate.
 - Always end with one useful next step.
 
 Return ONLY JSON:

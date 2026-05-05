@@ -20,10 +20,28 @@ function normalized(text) {
 }
 
 assertEqual(
-  "general question can use AI",
+  "small talk question can use general AI",
   shouldTryGeneralAIAnswer({
     conversation: idle,
     normalized: normalized("khana khayau?"),
+  }),
+  true
+);
+
+assertEqual(
+  "math question can route to boundary answer",
+  shouldTryGeneralAIAnswer({
+    conversation: idle,
+    normalized: normalized("2+2 kati?"),
+  }),
+  true
+);
+
+assertEqual(
+  "job guarantee question can use general AI",
+  shouldTryGeneralAIAnswer({
+    conversation: idle,
+    normalized: normalized("job guarantee dinchau?"),
   }),
   true
 );
