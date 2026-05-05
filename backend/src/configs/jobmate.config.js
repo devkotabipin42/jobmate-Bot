@@ -630,7 +630,10 @@ export const jobmateConfig = {
     },
     {
       key: "documents",
-      ask: (profile) => MESSAGES.askDocuments(profile),
+      ask: (profile) =>
+        typeof MESSAGES.askDocuments === "function"
+          ? MESSAGES.askDocuments(profile)
+          : MESSAGES.askDocuments,
       parse: parseDocuments,
     },
   ],
