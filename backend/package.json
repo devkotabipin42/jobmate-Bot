@@ -20,7 +20,8 @@
     "test:followup-processor:manual": "node scripts/testFollowupProcessorManual.mjs",
     "test:env-boolean": "node scripts/testEnvBooleanParsing.mjs",
     "check:whatsapp-media": "node --check src/services/whatsapp/whatsappClient.service.js && node --check src/services/uploads/documentUpload.service.js",
-    "test:job-search-step": "node scripts/testJobSearchStepMessages.mjs"
+    "test:job-search-step": "node scripts/testJobSearchStepMessages.mjs",
+    "test:safety-guards": "node scripts/testJobmateSafetyGuards.mjs"
   },
   "keywords": [],
   "author": "JobMate",

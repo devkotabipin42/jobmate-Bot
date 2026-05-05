@@ -53,6 +53,7 @@ import {
 
 import { env } from "../config/env.js";
 import { applyJobMateRoutingGuards } from "../services/automation/jobmateRoutingGuards.service.js";
+import { detectJobMateSafetyEvent } from "../services/safety/jobmateSafetyGuards.service.js";
 import { jobmateConfig } from "../configs/jobmate.config.js";
 import {
   buildDocumentReceivedReply,
@@ -181,6 +182,75 @@ export async function receiveWhatsAppWebhook(req, res) {
       contact,
       channel: "whatsapp",
     });
+
+    const safetyEvent =
+      env.BOT_MODE === "jobmate_hiring"
+        ? detectJobMateSafetyEvent({ conversation, normalized })
+        : null;
+
+    if (safetyEvent) {
+      const safetyIntentResult = {
+        intent: safetyEvent.intent,
+        needsHuman: safetyEvent.type === "unsafe_hiring",
+        priority: safetyEvent.priority || "medium",
+        reason: safetyEvent.type,
+      };
+
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: safetyIntentResult,
+      });
+
+      if (safetyEvent.updateConversation && conversation?._id) {
+        const Model = conversation.constructor;
+        await Model.updateOne(
+          { _id: conversation._id },
+          {
+            $set: {
+              currentState: safetyEvent.updateConversation.currentState,
+              "metadata.lastAskedField": safetyEvent.updateConversation.lastAskedField,
+              "metadata.collectedData.pendingDocumentPrivacyConcern":
+                safetyEvent.updateConversation.pendingDocumentPrivacyConcern,
+            },
+          },
+          { runValidators: false }
+        );
+      }
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: safetyEvent.reply,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation,
+        text: safetyEvent.reply,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      await updateConversationIntent({
+        conversation,
+        intent: safetyEvent.intent,
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "JobMate safety guard handled message",
+        safetyType: safetyEvent.type,
+        intent: safetyEvent.intent,
+        replied: true,
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
+
 
     if (env.BOT_MODE === "jobmate_hiring" && isUnsafeHiringRequest(normalized.message.text || normalized.message.normalizedText)) {
       const unsafeIntentResult = {
