@@ -38,7 +38,5 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
-  },
-  "test:aarati-employer": "node scripts/testAaratiEmployerCore.mjs",
-  "test:hiring-parser": "node scripts/testHiringNeedParser.mjs"
+  }
 }
