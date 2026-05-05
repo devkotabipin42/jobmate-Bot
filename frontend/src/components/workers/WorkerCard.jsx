@@ -3,6 +3,7 @@ import {
   Briefcase,
   CalendarClock,
   FileCheck2,
+  Image,
   MapPin,
   Phone,
   User,
@@ -29,6 +30,13 @@ export default function WorkerCard({
     worker.jobPreferences?.length > 0
       ? worker.jobPreferences.join(", ")
       : "Not selected";
+
+  const latestDocument = worker.latestDocument || null;
+  const documentSummary = worker.documentCount
+    ? `${worker.documentCount} received${
+        latestDocument?.type ? ` • latest: ${latestDocument.type}` : ""
+      }`
+    : worker.documentStatus || "unknown";
 
   return (
     <div className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-slate-200/70 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-500/30 dark:hover:shadow-blue-950/20">
@@ -69,9 +77,41 @@ export default function WorkerCard({
         <Info
           icon={FileCheck2}
           label="Documents"
-          value={worker.documentStatus || "unknown"}
+          value={documentSummary}
         />
       </div>
+
+      {latestDocument ? (
+        <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 text-sm dark:border-emerald-500/20 dark:bg-emerald-500/10">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-black text-emerald-700 shadow-sm dark:bg-slate-900 dark:text-emerald-300">
+              <Image size={14} />
+              Document received
+            </span>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+              {latestDocument.type || "other"}
+            </span>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+              {latestDocument.status || "received"}
+            </span>
+          </div>
+
+          <div className="mt-3 grid gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-2">
+            <p>
+              <span className="font-black text-slate-400">MIME:</span>{" "}
+              {latestDocument.mimeType || "-"}
+            </p>
+            <p>
+              <span className="font-black text-slate-400">Caption:</span>{" "}
+              {latestDocument.caption || "-"}
+            </p>
+            <p className="sm:col-span-2">
+              <span className="font-black text-slate-400">Media ID:</span>{" "}
+              {latestDocument.mediaId || "-"}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-5 flex items-center justify-between gap-4">
         <div>
