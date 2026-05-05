@@ -29,7 +29,8 @@
     "test:aarati-human-boundary": "node scripts/testAaratiHumanBoundary.mjs",
     "test:aarati-human-intent-formatter": "node scripts/testAaratiHumanIntentFormatter.mjs",
     "test:aarati-boundary-hotfix": "node scripts/testAaratiHumanBoundaryHotfix.mjs",
-    "test:aarati-14-foundation": "node scripts/testAarati14Foundation.mjs"
+    "test:aarati-14-foundation": "node scripts/testAarati14Foundation.mjs",
+    "test:aarati-ai-first-router": "node scripts/testAaratiAiFirstRouter.mjs"
   },
   "keywords": [],
   "author": "JobMate",

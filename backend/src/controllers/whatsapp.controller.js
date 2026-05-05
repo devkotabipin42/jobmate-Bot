@@ -59,6 +59,7 @@ import { jobmateConfig } from "../configs/jobmate.config.js";
 import { findJobMateKnowledgeAnswer } from "../services/rag/jobmateKnowledgeAnswer.service.js";
 import { getAaratiHumanBoundaryAnswer } from "../services/aarati/aaratiHumanBoundary.service.js";
 import { getAaratiHumanIntentFormattedAnswer } from "../services/aarati/aaratiHumanIntentFormatter.service.js";
+import { generateAaratiAiFirstAnswer } from "../services/aarati/aaratiAiFirstRouter.service.js";
 import { getAaratiEmployerDirectRoute } from "../services/aarati/aaratiEmployerDirectRouter.service.js";
 import { getUserTextForPolish, polishAaratiReply } from "../services/aarati/aaratiReplyPolish.service.js";
 import { generateJobMateGeneralAnswer } from "../services/rag/jobmateGeneralAnswer.service.js";
@@ -388,6 +389,58 @@ export async function receiveWhatsAppWebhook(req, res) {
         success: true,
         message: "JobMate knowledge answer handled message",
         topic: knowledgeAnswer.topic,
+        replied: true,
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
+
+    const aiFirstAnswer =
+      env.BOT_MODE === "jobmate_hiring"
+        ? await generateAaratiAiFirstAnswer({ normalized, conversation })
+        : null;
+
+    if (aiFirstAnswer) {
+      const aiFirstIntentResult = {
+        intent: aiFirstAnswer.intent || "unknown",
+        needsHuman: aiFirstAnswer.handoffNeeded || aiFirstAnswer.intent === "human_handoff",
+        priority: aiFirstAnswer.handoffNeeded ? "medium" : "low",
+        reason: `${aiFirstAnswer.source}:${aiFirstAnswer.detectedIntent}`,
+      };
+
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: aiFirstIntentResult,
+      });
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: aiFirstAnswer.reply,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation,
+        text: aiFirstAnswer.reply,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      await updateConversationIntent({
+        conversation,
+        intent: aiFirstIntentResult.intent,
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "Aarati AI-first router handled message",
+        source: aiFirstAnswer.source,
+        detectedIntent: aiFirstAnswer.detectedIntent,
         replied: true,
         sendSkipped: sendResult.skipped || false,
       });
