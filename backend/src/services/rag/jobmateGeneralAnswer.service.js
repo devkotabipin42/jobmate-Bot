@@ -112,7 +112,7 @@ Last asked field: ${conversation?.metadata?.lastAskedField || ""}
   const result = await generateJSONWithAI({
     prompt,
     taskName: "jobmate_general_answer",
-    timeoutMs: 2500,
+    timeoutMs: 6000,
   });
 
   if (!result?.shouldAnswer || !result?.reply) {

@@ -243,7 +243,7 @@ Last asked field: ${conversation?.metadata?.lastAskedField || ""}
   const aiResult = await generateJSONWithAI({
     prompt,
     taskName: "aarati_ai_first_router",
-    timeoutMs: 3500,
+    timeoutMs: 8000,
   });
 
   if (!aiResult) return null;
