@@ -58,6 +58,7 @@ import { detectConversationRepairEvent } from "../services/safety/jobmateConvers
 import { jobmateConfig } from "../configs/jobmate.config.js";
 import { findJobMateKnowledgeAnswer } from "../services/rag/jobmateKnowledgeAnswer.service.js";
 import { getAaratiHumanBoundaryAnswer } from "../services/aarati/aaratiHumanBoundary.service.js";
+import { getAaratiHumanIntentFormattedAnswer } from "../services/aarati/aaratiHumanIntentFormatter.service.js";
 import { getUserTextForPolish, polishAaratiReply } from "../services/aarati/aaratiReplyPolish.service.js";
 import { generateJobMateGeneralAnswer } from "../services/rag/jobmateGeneralAnswer.service.js";
 import {
@@ -452,7 +453,59 @@ export async function receiveWhatsAppWebhook(req, res) {
 
 
     if (env.BOT_MODE === "jobmate_hiring" && isSupportedDocumentMedia(normalized)) {
-      const mediaIntentResult = {
+      const humanIntentFormattedAnswer =
+      env.BOT_MODE === "jobmate_hiring"
+        ? getAaratiHumanIntentFormattedAnswer({ normalized, conversation })
+        : null;
+
+    if (humanIntentFormattedAnswer) {
+      const humanIntentResult = {
+        intent: humanIntentFormattedAnswer.intent || "unknown",
+        needsHuman: false,
+        priority: "low",
+        reason: `${humanIntentFormattedAnswer.source}:${humanIntentFormattedAnswer.detectedIntent}`,
+      };
+
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: humanIntentResult,
+      });
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: humanIntentFormattedAnswer.reply,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation,
+        text: humanIntentFormattedAnswer.reply,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      await updateConversationIntent({
+        conversation,
+        intent: humanIntentResult.intent,
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "Aarati human intent formatter handled message",
+        source: humanIntentFormattedAnswer.source,
+        detectedIntent: humanIntentFormattedAnswer.detectedIntent,
+        replied: true,
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
+
+    const mediaIntentResult = {
         intent: "document_upload",
         needsHuman: false,
         priority: "medium",
