@@ -38,8 +38,12 @@ export function normalizeAaratiText(input = "") {
     .replace(/\bthyo\b/g, "thiyo")
     .replace(/\bghus\b/g, "ghus")
     .replace(/\bkanxau\b/g, "khanchau")
+    .replace(/\barw\b/g, "are")
+    .replace(/\barew\b/g, "are")
     .replace(/\btarkar\b/g, "taskar")
     .replace(/\btaskar\b/g, "taskar")
+    .replace(/\bnadine\b/g, "nadine")
+    .replace(/\bnadiney\b/g, "nadine")
     .replace(/\bmanav\b/g, "manav")
     .trim();
 
@@ -69,7 +73,7 @@ export function isAaratiFrustrationText(text = "") {
 export function isAaratiUnsafeIllegalText(text = "") {
   const value = normalizeAaratiText(text);
 
-  return /manav.*taskar|human.*traffick|traffick|bechna|बेच्न|fake document|fake license|child worker|underage|passport rakh|salary nadine|illegal worker/i.test(
+  return /manav.*taskar|human.*traffick|traffick|bechna|बेच्न|fake document|fake license|fake cv|nakali|child worker|child labour|child labor|underage|minor worker|baccha worker|bal shram|passport rakh|passport hold|salary nadine|salary na dine|free work|no salary|illegal worker|forced labor|forced labour|bonded labor|bonded labour/i.test(
     value
   );
 }
@@ -117,8 +121,11 @@ export function isAaratiWeatherText(text = "") {
 export function isAaratiMathHomeworkText(text = "") {
   const value = normalizeAaratiText(text);
 
+  const looksLikeSalaryRange = /\b\d{4,6}\s*-\s*\d{4,6}\b/.test(value);
+  if (looksLikeSalaryRange) return false;
+
   return (
-    /[0-9]+\s*[\+\-\*\/x]\s*[0-9]+/.test(value) ||
+    /[0-9]+\s*[\+\*\/x]\s*[0-9]+/.test(value) ||
     /math|homework|assignment|essay|solve/i.test(value)
   );
 }

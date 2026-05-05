@@ -2,6 +2,7 @@ import {
   getAaratiRawText,
   isAaratiEmployerRequestText,
   isAaratiJobSeekerRequestText,
+  isAaratiUnsafeIllegalText,
 } from "./aaratiTextNormalizer.service.js";
 
 const ACTIVE_WORKER_STATES = new Set([
@@ -24,6 +25,7 @@ export function getAaratiEmployerDirectRoute({ normalized, conversation } = {}) 
 
   if (!text) return null;
   if (ACTIVE_WORKER_STATES.has(state)) return null;
+  if (isAaratiUnsafeIllegalText(text)) return null;
   if (isAaratiJobSeekerRequestText(text)) return null;
 
   if (!isAaratiEmployerRequestText(text)) return null;
