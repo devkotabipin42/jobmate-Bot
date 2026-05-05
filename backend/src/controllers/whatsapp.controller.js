@@ -57,6 +57,8 @@ import { detectJobMateSafetyEvent } from "../services/safety/jobmateSafetyGuards
 import { detectConversationRepairEvent } from "../services/safety/jobmateConversationRepair.service.js";
 import { jobmateConfig } from "../configs/jobmate.config.js";
 import { findJobMateKnowledgeAnswer } from "../services/rag/jobmateKnowledgeAnswer.service.js";
+import { getAaratiHumanBoundaryAnswer } from "../services/aarati/aaratiHumanBoundary.service.js";
+import { getUserTextForPolish, polishAaratiReply } from "../services/aarati/aaratiReplyPolish.service.js";
 import { generateJobMateGeneralAnswer } from "../services/rag/jobmateGeneralAnswer.service.js";
 import {
   buildDocumentReceivedReply,
@@ -278,12 +280,72 @@ export async function receiveWhatsAppWebhook(req, res) {
       });
     }
 
+    const humanBoundaryAnswer =
+      env.BOT_MODE === "jobmate_hiring"
+        ? getAaratiHumanBoundaryAnswer({ normalized, conversation })
+        : null;
+
+    if (humanBoundaryAnswer) {
+      const humanBoundaryIntentResult = {
+        intent: humanBoundaryAnswer.intent || "unknown",
+        needsHuman: humanBoundaryAnswer.intent === "frustrated",
+        priority: humanBoundaryAnswer.intent === "frustrated" ? "medium" : "low",
+        reason: humanBoundaryAnswer.source,
+      };
+
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: humanBoundaryIntentResult,
+      });
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: humanBoundaryAnswer.reply,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation,
+        text: humanBoundaryAnswer.reply,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      await updateConversationIntent({
+        conversation,
+        intent: humanBoundaryIntentResult.intent,
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "Aarati human boundary handled message",
+        source: humanBoundaryAnswer.source,
+        replied: true,
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
+
     const knowledgeAnswer =
       env.BOT_MODE === "jobmate_hiring"
         ? findJobMateKnowledgeAnswer({ normalized })
         : null;
 
     if (knowledgeAnswer) {
+      const polishedKnowledgeReply = polishAaratiReply({
+        userText: getUserTextForPolish(normalized),
+        reply: knowledgeAnswer.answer,
+        source: knowledgeAnswer.source,
+      });
+
+      const knowledgeReplyText =
+        polishedKnowledgeReply?.reply || knowledgeAnswer.answer;
+
       const knowledgeIntentResult = {
         intent: "unknown",
         needsHuman: false,
@@ -300,13 +362,13 @@ export async function receiveWhatsAppWebhook(req, res) {
 
       const sendResult = await sendWhatsAppTextMessage({
         to: contact.phone,
-        text: knowledgeAnswer.answer,
+        text: knowledgeReplyText,
       });
 
       const outboundMessage = await saveOutboundMessage({
         contact,
         conversation,
-        text: knowledgeAnswer.answer,
+        text: knowledgeReplyText,
         providerMessageId: sendResult.providerMessageId,
         status: "sent",
       });
@@ -335,6 +397,15 @@ export async function receiveWhatsAppWebhook(req, res) {
         : null;
 
     if (generalAnswer) {
+      const polishedGeneralReply = polishAaratiReply({
+        userText: getUserTextForPolish(normalized),
+        reply: generalAnswer.reply,
+        source: generalAnswer.source,
+      });
+
+      const generalReplyText =
+        polishedGeneralReply?.reply || generalAnswer.reply;
+
       const generalIntentResult = {
         intent: "unknown",
         needsHuman: false,
@@ -351,13 +422,13 @@ export async function receiveWhatsAppWebhook(req, res) {
 
       const sendResult = await sendWhatsAppTextMessage({
         to: contact.phone,
-        text: generalAnswer.reply,
+        text: generalReplyText,
       });
 
       const outboundMessage = await saveOutboundMessage({
         contact,
         conversation,
-        text: generalAnswer.reply,
+        text: generalReplyText,
         providerMessageId: sendResult.providerMessageId,
         status: "sent",
       });

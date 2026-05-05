@@ -24,7 +24,9 @@
     "test:safety-guards": "node scripts/testJobmateSafetyGuards.mjs",
     "test:conversation-repair": "node scripts/testJobmateConversationRepair.mjs",
     "test:knowledge-answer": "node scripts/testJobMateKnowledgeAnswer.mjs",
-    "test:general-answer-gate": "node scripts/testJobMateGeneralAnswerGate.mjs"
+    "test:general-answer-gate": "node scripts/testJobMateGeneralAnswerGate.mjs",
+    "test:aarati-reply-polish": "node scripts/testAaratiReplyPolish.mjs",
+    "test:aarati-human-boundary": "node scripts/testAaratiHumanBoundary.mjs"
   },
   "keywords": [],
   "author": "JobMate",
