@@ -25,9 +25,12 @@ export function mapAvailabilityToWorkerEnum(availability = "") {
   if (/within_1_month|month|mahina/i.test(value)) return "within_1_month";
   if (/not_decided|not decided|pachi|later|unknown/i.test(value)) return "not_decided";
 
-  // Old Aarati jobseeker flow values were work schedule, not availability date.
-  // Treat them as immediate availability and keep the original in metadata.
-  if (/full-time|full_time|part-time|part_time|shift|any|flexible/i.test(value)) return "immediate";
+  // New conversation engine collects work-style values here.
+  // Only full-time implies immediate availability.
+  // Part-time / shift / flexible are preferences, but WorkerProfile
+  // availability enum does not support them yet, so do not mark them immediate.
+  if (/full-time|full_time/i.test(value)) return "immediate";
+  if (/part-time|part_time|shift|any|flexible/i.test(value)) return "not_decided";
 
   return "unknown";
 }

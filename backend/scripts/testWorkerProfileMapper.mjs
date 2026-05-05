@@ -21,6 +21,9 @@ function assertEqual(name, actual, expected) {
 assertEqual("driver job type", mapJobTypeToPreference("Driver/Transport"), "driver_transport");
 assertEqual("frontend job type", mapJobTypeToPreference("Frontend Developer"), "it_web");
 assertEqual("old full-time availability maps to immediate", mapAvailabilityToWorkerEnum("full-time"), "immediate");
+assertEqual("part-time availability maps to not_decided", mapAvailabilityToWorkerEnum("part-time"), "not_decided");
+assertEqual("shift availability maps to not_decided", mapAvailabilityToWorkerEnum("shift"), "not_decided");
+assertEqual("any availability maps to not_decided", mapAvailabilityToWorkerEnum("any"), "not_decided");
 assertEqual("2 week availability", mapAvailabilityToWorkerEnum("within_2_weeks"), "within_2_weeks");
 assertEqual("documents yes", mapDocumentsToWorkerEnum("yes"), "ready");
 assertEqual("documents partial", mapDocumentsToWorkerEnum("partial"), "available_later");
