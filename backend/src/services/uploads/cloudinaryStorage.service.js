@@ -25,7 +25,7 @@ function configureCloudinary() {
   configured = true;
 }
 
-function buildPublicId({ document = {}, extension = "" } = {}) {
+function buildPublicId({ document = {} } = {}) {
   const mediaId = String(document.mediaId || "media")
     .replace(/[^a-zA-Z0-9_-]/g, "_")
     .slice(0, 80);
@@ -36,7 +36,7 @@ function buildPublicId({ document = {}, extension = "" } = {}) {
 
   const suffix = Date.now();
 
-  return `jobmate/documents/${type}_${mediaId}_${suffix}${extension ? `.${extension}` : ""}`;
+  return `jobmate/documents/${type}_${mediaId}_${suffix}`;
 }
 
 function resourceTypeFromMimeType(mimeType = "") {
@@ -67,7 +67,7 @@ export async function uploadDocumentBufferToCloudinary({
 
   configureCloudinary();
 
-  const publicId = buildPublicId({ document, extension });
+  const publicId = buildPublicId({ document });
   const resourceType = resourceTypeFromMimeType(mimeType || document.mimeType);
 
   const uploadResult = await new Promise((resolve, reject) => {
