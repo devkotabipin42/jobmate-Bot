@@ -87,11 +87,12 @@ Tapai kun district/area ma kaam garna milchha?
 3. Shift based
 4. Jun sukai`),
 
-  askDocuments: sanitizeAaratiOutput(`Antim prashna 🙏 Tapai sanga document chha?
+  askDocuments: sanitizeAaratiOutput(`Tapai sanga document chha? 🙏
 
-Citizenship, license, PAN jasta document bhaye sajilo hunchha.
+License, citizenship/nagarikta, CV, certificate jasto document bhaye yahi WhatsApp ma photo/file pathauna saknuhunchha.
 
-1. Chha
+Aile document status choose garnu hola:
+1. Chha, photo/file pathauna sakchhu
 2. Chhaina
 3. Kehi chha, kehi chhaina`),
 
