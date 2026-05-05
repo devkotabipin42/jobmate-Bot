@@ -24,6 +24,7 @@ import {
   listAdminWorkers,
   getAdminWorkerDetail,
   patchAdminWorkerStatus,
+  patchAdminWorkerDocumentVerify,
 
   listAdminHandoffs,
   getAdminHandoffDetail,
@@ -63,6 +64,7 @@ router.patch("/employer-leads/:id/status", patchAdminEmployerLeadStatus);
 router.get("/workers", listAdminWorkers);
 router.get("/workers/:id", getAdminWorkerDetail);
 router.patch("/workers/:id/status", patchAdminWorkerStatus);
+router.patch("/workers/:id/documents/:documentId/verify", patchAdminWorkerDocumentVerify);
 
 router.get("/handoffs", listAdminHandoffs);
 router.get("/handoffs/:id", getAdminHandoffDetail);

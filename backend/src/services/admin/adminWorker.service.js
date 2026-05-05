@@ -98,6 +98,32 @@ export async function updateWorkerStatus(id, status) {
   return formatWorker(worker);
 }
 
+export async function verifyWorkerDocument(workerId, documentId) {
+  const worker = await WorkerProfile.findOneAndUpdate(
+    {
+      _id: workerId,
+      "documents._id": documentId,
+    },
+    {
+      $set: {
+        "documents.$.verified": true,
+        "documents.$.metadata.verifiedAt": new Date(),
+        "documents.$.metadata.verifiedBy": "admin",
+        documentStatus: "ready",
+        updatedAt: new Date(),
+      },
+    },
+    {
+      returnDocument: "after",
+      runValidators: false,
+    }
+  ).lean();
+
+  if (!worker) return null;
+
+  return formatWorker(worker);
+}
+
 function formatWorker(worker) {
   return {
     id: worker._id,

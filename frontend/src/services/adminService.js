@@ -174,6 +174,14 @@ export const adminService = {
     });
   },
 
+
+  verifyWorkerDocument(workerId, documentId, payload = {}) {
+    return request(`/api/admin/workers/${workerId}/documents/${documentId}/verify`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
   getHandoffs(params = {}) {
     const query = new URLSearchParams(params).toString();
     return request(`/api/admin/handoffs${query ? `?${query}` : ""}`);

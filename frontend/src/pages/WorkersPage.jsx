@@ -14,6 +14,7 @@ export default function WorkersPage() {
   });
 
   const [actionLoading, setActionLoading] = useState("");
+  const [documentActionLoading, setDocumentActionLoading] = useState("");
   const [actionMessage, setActionMessage] = useState("");
 
   const { workers, pagination, loading, error, refetch } = useWorkers(filters);
@@ -38,6 +39,29 @@ export default function WorkersPage() {
       setActionMessage(err.message || "Failed to update worker status.");
     } finally {
       setActionLoading("");
+    }
+  }
+
+  async function handleVerifyDocument(worker, document) {
+    const workerId = worker?.id;
+    const documentId = document?.id;
+
+    if (!workerId || !documentId || document?.verified) return;
+
+    try {
+      setDocumentActionLoading(`${workerId}:${documentId}`);
+      setActionMessage("");
+
+      await adminService.verifyWorkerDocument(workerId, documentId, {
+        verified: true,
+      });
+
+      setActionMessage("Worker document marked as verified.");
+      await refetch();
+    } catch (err) {
+      setActionMessage(err.message || "Failed to verify worker document.");
+    } finally {
+      setDocumentActionLoading("");
     }
   }
 
@@ -146,7 +170,9 @@ export default function WorkersPage() {
                   key={worker.id}
                   worker={worker}
                   onStatusChange={handleStatusChange}
+                  onVerifyDocument={handleVerifyDocument}
                   actionLoading={actionLoading}
+                  documentActionLoading={documentActionLoading}
                 />
               ))}
             </div>

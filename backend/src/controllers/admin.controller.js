@@ -11,6 +11,7 @@ import {
   getWorkers,
   getWorkerById,
   updateWorkerStatus,
+  verifyWorkerDocument,
 } from "../services/admin/adminWorker.service.js";
 
 import {
@@ -189,6 +190,30 @@ export async function patchAdminWorkerStatus(req, res) {
     return res.status(error.statusCode || 500).json({
       success: false,
       message: error.message || "Failed to update worker status",
+    });
+  }
+}
+
+export async function patchAdminWorkerDocumentVerify(req, res) {
+  try {
+    const worker = await verifyWorkerDocument(
+      req.params.id,
+      req.params.documentId
+    );
+
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: "Worker document not found",
+      });
+    }
+
+    return res.status(200).json({ success: true, data: worker });
+  } catch (error) {
+    console.error("❌ Admin worker document verify failed:", error);
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to verify worker document",
     });
   }
 }

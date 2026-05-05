@@ -6,6 +6,7 @@ import {
   ExternalLink,
   Image,
   MapPin,
+  ShieldCheck,
   Phone,
   User,
   UserCheck,
@@ -33,7 +34,9 @@ function buildDocumentUrl(storageUrl = "") {
 export default function WorkerCard({
   worker,
   onStatusChange,
+  onVerifyDocument,
   actionLoading,
+  documentActionLoading,
 }) {
   const isBusy = actionLoading === worker.id;
 
@@ -44,6 +47,10 @@ export default function WorkerCard({
 
   const latestDocument = worker.latestDocument || null;
   const latestDocumentUrl = buildDocumentUrl(latestDocument?.storageUrl || "");
+  const latestDocumentBusy = Boolean(
+    latestDocument?.id &&
+      documentActionLoading === `${worker.id}:${latestDocument.id}`
+  );
   const documentSummary = worker.documentCount
     ? `${worker.documentCount} received${
         latestDocument?.type ? ` • latest: ${latestDocument.type}` : ""
@@ -106,6 +113,13 @@ export default function WorkerCard({
             <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">
               {latestDocument.status || "received"}
             </span>
+            <span className={`rounded-full px-3 py-1 text-xs font-black shadow-sm ${
+              latestDocument.verified
+                ? "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300"
+                : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+            }`}>
+              {latestDocument.verified ? "verified" : "not verified"}
+            </span>
           </div>
 
           <div className="mt-3 grid gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-2">
@@ -133,6 +147,17 @@ export default function WorkerCard({
               <ExternalLink size={14} />
               Open document
             </a>
+          ) : null}
+
+          {latestDocument && !latestDocument.verified ? (
+            <button
+              onClick={() => onVerifyDocument?.(worker, latestDocument)}
+              disabled={latestDocumentBusy}
+              className="ml-2 mt-3 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-2 text-xs font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <ShieldCheck size={14} />
+              {latestDocumentBusy ? "Verifying..." : "Mark verified"}
+            </button>
           ) : null}
         </div>
       ) : null}
