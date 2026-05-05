@@ -143,6 +143,7 @@ function formatWorker(worker) {
     },
 
     availability: worker.availability || "unknown",
+    workPreference: worker.metadata?.rawAvailability || "",
     documentStatus: worker.documentStatus || "unknown",
     documents: Array.isArray(worker.documents)
       ? worker.documents.map(formatWorkerDocument)

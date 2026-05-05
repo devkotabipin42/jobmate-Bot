@@ -92,7 +92,11 @@ export default function WorkerCard({
         <Info
           icon={CalendarClock}
           label="Availability"
-          value={worker.availability || "unknown"}
+          value={
+            worker.workPreference
+              ? `${worker.availability || "unknown"} • ${worker.workPreference}`
+              : worker.availability || "unknown"
+          }
         />
         <Info icon={FileCheck2} label="Documents" value={documentSummary} />
       </div>
