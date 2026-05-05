@@ -185,7 +185,7 @@ export async function receiveWhatsAppWebhook(req, res) {
 
     const safetyEvent =
       env.BOT_MODE === "jobmate_hiring"
-        ? detectJobMateSafetyEvent({ conversation, normalized })
+        ? await detectJobMateSafetyEvent({ conversation, normalized })
         : null;
 
     if (safetyEvent) {

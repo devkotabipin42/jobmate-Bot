@@ -57,7 +57,7 @@ assertEqual(
   true
 );
 
-const safetyEvent = detectJobMateSafetyEvent({
+const safetyEvent = await detectJobMateSafetyEvent({
   conversation: documentConversation,
   normalized: privacyNormalized,
 });
@@ -76,7 +76,7 @@ assertEqual(
   }
 );
 
-const unsafeEvent = detectJobMateSafetyEvent({
+const unsafeEvent = await detectJobMateSafetyEvent({
   conversation: { currentState: "ask_business_name", metadata: {} },
   normalized: {
     message: {
