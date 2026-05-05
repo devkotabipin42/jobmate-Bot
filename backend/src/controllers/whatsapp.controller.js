@@ -60,6 +60,7 @@ import { findJobMateKnowledgeAnswer } from "../services/rag/jobmateKnowledgeAnsw
 import { getAaratiHumanBoundaryAnswer } from "../services/aarati/aaratiHumanBoundary.service.js";
 import { getAaratiHumanIntentFormattedAnswer } from "../services/aarati/aaratiHumanIntentFormatter.service.js";
 import { generateAaratiAiFirstAnswer } from "../services/aarati/aaratiAiFirstRouter.service.js";
+import { getAaratiPreFlowQaAnswer } from "../services/aarati/aaratiPreFlowQaGuard.service.js";
 import { getAaratiEmployerDirectRoute } from "../services/aarati/aaratiEmployerDirectRouter.service.js";
 import { getUserTextForPolish, polishAaratiReply } from "../services/aarati/aaratiReplyPolish.service.js";
 import { generateJobMateGeneralAnswer } from "../services/rag/jobmateGeneralAnswer.service.js";
@@ -329,6 +330,58 @@ export async function receiveWhatsAppWebhook(req, res) {
         success: true,
         message: "Aarati human boundary handled message",
         source: humanBoundaryAnswer.source,
+        replied: true,
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
+
+    const preFlowQaAnswer =
+      env.BOT_MODE === "jobmate_hiring"
+        ? getAaratiPreFlowQaAnswer({ normalized, conversation })
+        : null;
+
+    if (preFlowQaAnswer) {
+      const preFlowQaIntentResult = {
+        intent: preFlowQaAnswer.intent || "unknown",
+        needsHuman: false,
+        priority: "low",
+        reason: `${preFlowQaAnswer.source}:${preFlowQaAnswer.detectedIntent}`,
+      };
+
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: preFlowQaIntentResult,
+      });
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: preFlowQaAnswer.reply,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation,
+        text: preFlowQaAnswer.reply,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      await updateConversationIntent({
+        conversation,
+        intent: preFlowQaIntentResult.intent,
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "Aarati pre-flow QA handled message",
+        source: preFlowQaAnswer.source,
+        detectedIntent: preFlowQaAnswer.detectedIntent,
         replied: true,
         sendSkipped: sendResult.skipped || false,
       });

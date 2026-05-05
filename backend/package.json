@@ -31,7 +31,8 @@
     "test:aarati-boundary-hotfix": "node scripts/testAaratiHumanBoundaryHotfix.mjs",
     "test:aarati-14-foundation": "node scripts/testAarati14Foundation.mjs",
     "test:aarati-ai-first-router": "node scripts/testAaratiAiFirstRouter.mjs",
-    "test:aarati-15b-hard-safety": "node scripts/testAarati15BHardSafety.mjs"
+    "test:aarati-15b-hard-safety": "node scripts/testAarati15BHardSafety.mjs",
+    "test:aarati-15c-preflow-qa": "node scripts/testAarati15CPreFlowQa.mjs"
   },
   "keywords": [],
   "author": "JobMate",
