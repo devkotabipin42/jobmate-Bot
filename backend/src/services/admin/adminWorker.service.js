@@ -118,11 +118,36 @@ function formatWorker(worker) {
 
     availability: worker.availability || "unknown",
     documentStatus: worker.documentStatus || "unknown",
+    documents: Array.isArray(worker.documents)
+      ? worker.documents.map(formatWorkerDocument)
+      : [],
+    documentCount: Array.isArray(worker.documents) ? worker.documents.length : 0,
+    latestDocument:
+      Array.isArray(worker.documents) && worker.documents.length
+        ? formatWorkerDocument(worker.documents[worker.documents.length - 1])
+        : null,
     profileStatus: worker.profileStatus || "new",
 
     score: worker.score || 0,
 
     createdAt: worker.createdAt,
     updatedAt: worker.updatedAt,
+  };
+}
+
+
+function formatWorkerDocument(document = {}) {
+  return {
+    id: document._id || document.id || "",
+    type: document.type || "other",
+    mediaId: document.mediaId || "",
+    mimeType: document.mimeType || "",
+    caption: document.caption || "",
+    filename: document.filename || "",
+    storageUrl: document.storageUrl || "",
+    source: document.source || "whatsapp",
+    status: document.status || "received",
+    verified: Boolean(document.verified),
+    uploadedAt: document.uploadedAt || null,
   };
 }
