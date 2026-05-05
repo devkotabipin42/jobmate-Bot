@@ -58,6 +58,18 @@ function isQuestionLike(text = "") {
 function detectIntent(text = "") {
   const value = String(text || "").toLowerCase();
 
+  if (/bitch|fuck|pagal|stupid|idiot|ghus|ghus khanxau|bribe|rishwat|घुस|रिसवत/i.test(value)) {
+    return "frustration_or_abuse";
+  }
+
+  if (/manav.*tarkar|manav.*taskar|human.*traffick|traffick|bechna|बेच्न|fake document|fake license|child worker|underage|passport rakh|salary nadine|illegal worker/i.test(value)) {
+    return "unsafe_illegal_request";
+  }
+
+  if (/malai.*paisa.*chah|malai.*paisa.*chai|paisa chayako|paisa chaiyo|loan|rin|ऋण|सापटी/i.test(value)) {
+    return "personal_money_request";
+  }
+
   if (/weather|mausam|मौसम|pani parcha|rain|garmi|chiso|aaja ko weather|aja ko weather/i.test(value)) {
     return "weather";
   }
@@ -90,7 +102,7 @@ function detectIntent(text = "") {
     return "support_unknown";
   }
 
-  if (/khana|k gardai|k cha|sanchai|hello|hi|namaste|good morning|good evening|how are you/i.test(value)) {
+  if (/khana|khana kanu|khana khanu|k gardai|k cha|kxa|kbr|khabar|sanchai|hello|hi|namaste|good morning|good evening|how are you/i.test(value)) {
     return "small_talk";
   }
 
@@ -111,6 +123,26 @@ ${nextStep}`.trim();
 
 function buildReplyForIntent(intent) {
   switch (intent) {
+    case "frustration_or_abuse":
+      return formatReply({
+        opener: "Sorry Mitra ji 🙏",
+        body: "Aghi ko reply ramro bhayena jasto lagyo. Ma JobMate team bata kaam khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.",
+        nextStep: "Tapai ko main kura ekchoti short ma pathaunu hola, ma sidha answer dinchhu.",
+      });
+
+    case "unsafe_illegal_request":
+      return formatReply({
+        opener: "Yo request JobMate rules anusar mil्दैन 🙏",
+        body: "JobMate le legal, safe ra voluntary employment/hiring process matra support garcha. Manav taskari, fake document, forced work ya illegal hiring ma JobMate le help gardaina.",
+        nextStep: "Legal business ko lagi staff chahiyeko ho bhane business name, location, role ra salary detail pathaunu hola.",
+      });
+
+    case "personal_money_request":
+      return formatReply({
+        body: "JobMate loan/paisa dine service haina. JobMate le kaam khojna, staff khojna, document/verification ra hiring support ma help garcha.",
+        nextStep: "Tapai lai income/kaam chahiyeko ho bhane location ra kasto kaam chahiyo pathaunu hola.",
+      });
+
     case "weather":
       return formatReply({
         body: "Ma live weather update herna sakdina. Tara JobMate ko kaam ma help garna sakchu — kaam khojna, staff khojna, document verification ya support.",

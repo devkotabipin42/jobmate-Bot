@@ -27,7 +27,8 @@
     "test:general-answer-gate": "node scripts/testJobMateGeneralAnswerGate.mjs",
     "test:aarati-reply-polish": "node scripts/testAaratiReplyPolish.mjs",
     "test:aarati-human-boundary": "node scripts/testAaratiHumanBoundary.mjs",
-    "test:aarati-human-intent-formatter": "node scripts/testAaratiHumanIntentFormatter.mjs"
+    "test:aarati-human-intent-formatter": "node scripts/testAaratiHumanIntentFormatter.mjs",
+    "test:aarati-boundary-hotfix": "node scripts/testAaratiHumanBoundaryHotfix.mjs"
   },
   "keywords": [],
   "author": "JobMate",

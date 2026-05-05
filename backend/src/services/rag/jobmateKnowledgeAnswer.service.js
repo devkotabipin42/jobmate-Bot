@@ -21,6 +21,10 @@ export function findJobMateKnowledgeAnswer({ normalized } = {}) {
 
   if (!shouldAnswerFromKnowledge(text)) return null;
 
+  if (/malai.*paisa.*chah|malai.*paisa.*chai|paisa chayako|paisa chaiyo|loan|rin|ऋण|सापटी/i.test(text)) {
+    return null;
+  }
+
   for (const topic of JOBMATE_KNOWLEDGE_TOPICS) {
     const matched = topic.patterns.some((pattern) => pattern.test(text));
 

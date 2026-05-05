@@ -34,6 +34,14 @@ function isActiveFlow(conversation = {}) {
   ].includes(state);
 }
 
+function isPersonalMoneyRequest(text = "") {
+  return /malai.*paisa.*chah|malai.*paisa.*chai|paisa chayako|paisa chaiyo|loan|rin|ऋण|सापटी/i.test(text);
+}
+
+function isUnsafeOrIllegalRequest(text = "") {
+  return /manav.*tarkar|manav.*taskar|human.*traffick|traffick|bechna| बेच्न|fake document|fake license|child worker|underage|passport rakh|salary nadine|illegal worker/i.test(text);
+}
+
 function isDirectJobOrHiringFlow(text = "") {
   const value = String(text || "").toLowerCase();
 
@@ -46,7 +54,7 @@ function isDirectJobOrHiringFlow(text = "") {
 }
 
 function isFrustration(text = "") {
-  return /are you mad|pagal|risayau|risako|kina bujhena|bujhdainau|wrong|galat|bakwas|stupid|idiot|mad ho|kasto bot|kasto reply/i.test(
+  return /are you mad|pagal|risayau|risako|kina bujhena|bujhdainau|wrong|galat|bakwas|stupid|idiot|bitch|fuck|gali|mad ho|kasto bot|kasto reply|ghus|ghus khanxau|bribe|rishwat|रिसवत|घुस/i.test(
     text
   );
 }
@@ -64,7 +72,7 @@ function isWeatherQuestion(text = "") {
 }
 
 function isSmallTalk(text = "") {
-  return /khana bhayo|khana khayau|khana khanu bhayo|k gardai|k cha|hello|hi|namaste|good morning|good evening|sanchai|thik cha|how are you/i.test(
+  return /khana bhayo|khana khayau|khana khanu bhayo|khana kanu bhayo|khana khanu vayo|khana khayo|k gardai|k cha|kxa|kbr|khabar|hello|hi|namaste|good morning|good evening|sanchai|thik cha|how are you/i.test(
     text
   );
 }
@@ -90,6 +98,30 @@ export function getAaratiHumanBoundaryAnswer({ normalized, conversation } = {}) 
 
   if (isDirectJobOrHiringFlow(value)) {
     return null;
+  }
+
+  if (isUnsafeOrIllegalRequest(value)) {
+    return {
+      intent: "unknown",
+      source: "aarati_human_boundary",
+      reply: `Yo request JobMate rules anusar mil्दैन 🙏
+
+JobMate le legal, safe ra voluntary employment/hiring process matra support garcha.
+
+Yedi tapai lai legal business ko lagi staff chahiyeko ho bhane business name, location, role ra salary detail pathaunu hola.`,
+    };
+  }
+
+  if (isPersonalMoneyRequest(value)) {
+    return {
+      intent: "unknown",
+      source: "aarati_human_boundary",
+      reply: `Bujhe Mitra ji 🙏
+
+JobMate loan/paisa dine service haina. JobMate le kaam khojna, staff khojna, document/verification ra hiring support ma help garcha.
+
+Tapai lai income/kaam chahiyeko ho bhane location ra kasto kaam chahiyo pathaunu hola.`,
+    };
   }
 
   if (isFrustration(value)) {
