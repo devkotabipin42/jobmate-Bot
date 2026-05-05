@@ -28,6 +28,7 @@ assertEqual("2 week availability", mapAvailabilityToWorkerEnum("within_2_weeks")
 assertEqual("documents yes", mapDocumentsToWorkerEnum("yes"), "ready");
 assertEqual("documents partial", mapDocumentsToWorkerEnum("partial"), "available_later");
 assertEqual("documents no", mapDocumentsToWorkerEnum("no"), "not_available");
+assertEqual("documents privacy concern", mapDocumentsToWorkerEnum("privacy_concern"), "not_available");
 
 const mapped = buildWorkerProfileUpdateFromAaratiProfile({
   contact: {

@@ -107,6 +107,14 @@ function parseAvailability(text) {
 
 function parseDocuments(text) {
   const t = String(text || "").trim().toLowerCase();
+
+  if (
+    /trust|leak|leaked|responsible|responsibility|safe|privacy|secure|security|misuse|dar|risk|bharosa/i.test(t) ||
+    /विश्वास|गोपनीय|सुरक्षित|चुहावट|दुरुपयोग|जिम्मेवारी|डर/i.test(t)
+  ) {
+    return "privacy_concern";
+  }
+
   if (t === "1" || /^(yes|cha|chha|छ|ho)$/i.test(t)) return "yes";
   if (t === "2" || /^(no|chaina|chhaina|छैन|hoina)$/i.test(t)) return "no";
   if (t === "3" || /partial|kehi|ali/i.test(t)) return "partial";
@@ -584,12 +592,22 @@ Aile document status choose garnu hola:
 3. Kehi chha, kehi chhaina`;
       },
 
-      completion: (profile) => `Dhanyabaad! Tapai ko detail JobMate ma save bhayo.
+      completion: (profile) => {
+        const privacyNote =
+          profile.documents === "privacy_concern"
+            ? `\n\nTapai ko chinta thik ho 🙏 Document pathaunu compulsory haina. JobMate team le document sirf verification/hiring process ko lagi herchha. Ahile document bina profile save gareko chhu; pachhi trust bhaye yahi WhatsApp ma pathauna saknuhunchha.`
+            : "";
 
+        return `Dhanyabaad 🙏 Tapai ko vivaran JobMate ma save bhayo.
+
+📋 Saved profile:
 - Kaam: ${profile.jobType || "-"}
 - District: ${profile.district || "-"}
 - Availability: ${profile.availability || "-"}
-- Documents: ${profile.documents || "-"}`,
+- Documents: ${profile.documents === "privacy_concern" ? "not provided due to privacy concern" : profile.documents || "-"}${privacyNote}
+
+Suitable kaam aayepachhi JobMate team le 24-48 ghanta vitra sampark garchha.`;
+      },
     };
 
 export const jobmateConfig = {

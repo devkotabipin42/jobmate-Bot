@@ -40,6 +40,7 @@ export function mapDocumentsToWorkerEnum(documents = "") {
 
   if (/ready|yes|cha|chha|license|citizenship|cv|document.*cha/i.test(value)) return "ready";
   if (/partial|kehi|available_later|later|pachi/i.test(value)) return "available_later";
+  if (/privacy_concern|privacy|trust|leak|safe|secure/i.test(value)) return "not_available";
   if (/no|chaina|chhaina|not_available|छैन/i.test(value)) return "not_available";
 
   return "unknown";
