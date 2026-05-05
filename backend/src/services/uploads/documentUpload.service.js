@@ -110,7 +110,7 @@ export function buildDocumentReceivedReply(document = {}) {
   return `Photo/document receive bhayo 🙏
 
 Maile tapai ko ${label} JobMate profile ma note gareko chhu.
-Hamro team le suitable kaam ko process ma yo herna sakchha.
+Hamro team le document check/verify garera zaruri pare sampark garchha.
 
-Aru document chha bhane pathauna saknuhunchha.`;
+Aru document chha bhane yahi WhatsApp ma photo/file pathauna saknuhunchha.`;
 }

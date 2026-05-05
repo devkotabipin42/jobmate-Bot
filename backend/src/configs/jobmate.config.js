@@ -561,11 +561,28 @@ const MESSAGES = ENABLE_AARATI_PERSONA
 3. Shift based
 4. Jun sukai`,
 
-      askDocuments: () => `Tapai sanga document chha?
+      askDocuments: (profile = {}) => {
+        const jobType = String(profile.jobType || "").toLowerCase();
 
-1. Chha
+        let hint = "Citizenship/nagarikta, CV, license, certificate jasto document bhaye photo/file yahi WhatsApp ma pathauna saknuhunchha.";
+
+        if (jobType.includes("driver") || jobType.includes("transport")) {
+          hint = "Driver/transport kaam ko lagi license ko photo important huncha. License cha bhane yahi WhatsApp ma photo pathauna saknuhunchha.";
+        } else if (jobType.includes("it") || jobType.includes("tech") || jobType.includes("office")) {
+          hint = "IT/office kaam ko lagi CV bhaye yahi WhatsApp ma file/photo pathauna saknuhunchha.";
+        } else if (jobType.includes("security")) {
+          hint = "Security kaam ko lagi citizenship/nagarikta वा experience document bhaye yahi WhatsApp ma photo pathauna saknuhunchha.";
+        }
+
+        return `Tapai sanga document chha? 🙏
+
+${hint}
+
+Aile document status choose garnu hola:
+1. Chha, photo/file pathauna sakchhu
 2. Chhaina
-3. Kehi chha, kehi chhaina`,
+3. Kehi chha, kehi chhaina`;
+      },
 
       completion: (profile) => `Dhanyabaad! Tapai ko detail JobMate ma save bhayo.
 
@@ -613,7 +630,7 @@ export const jobmateConfig = {
     },
     {
       key: "documents",
-      ask: () => MESSAGES.askDocuments,
+      ask: (profile) => MESSAGES.askDocuments(profile),
       parse: parseDocuments,
     },
   ],
