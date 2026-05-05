@@ -40,7 +40,7 @@ export async function getOrCreateConversation({
       },
     },
     {
-      new: true,
+      returnDocument: "after",
       upsert: true,
       setDefaultsOnInsert: true,
     }
@@ -83,7 +83,7 @@ export async function updateConversationIntent({
   }
 
   return Conversation.findByIdAndUpdate(conversation._id, update, {
-    new: true,
+    returnDocument: "after",
   });
 }
 
@@ -113,7 +113,7 @@ export async function updateConversationState({
   }
 
   return Conversation.findByIdAndUpdate(conversation._id, update, {
-    new: true,
+    returnDocument: "after",
   });
 }
 
@@ -138,7 +138,7 @@ export async function pauseConversationForHuman({
         lastActivityAt: new Date(),
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   );
 }
 
@@ -160,7 +160,7 @@ export async function markConversationOptedOut(conversation) {
         lastActivityAt: new Date(),
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   );
 }
 

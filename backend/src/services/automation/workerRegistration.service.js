@@ -606,7 +606,7 @@ async function upsertWorkerProfile({ contact, profileUpdate }) {
     { contactId: contact._id },
     update,
     {
-      new: true,
+      returnDocument: "after",
       upsert: true,
       setDefaultsOnInsert: true,
     }

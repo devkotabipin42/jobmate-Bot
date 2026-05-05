@@ -41,7 +41,7 @@ export async function upsertContactFromWhatsApp({
   };
 
   return Contact.findOneAndUpdate({ phone: normalizedPhone }, update, {
-    new: true,
+    returnDocument: "after",
     upsert: true,
     setDefaultsOnInsert: true,
   });
@@ -51,7 +51,7 @@ export async function updateContactType(contactId, contactType) {
   return Contact.findByIdAndUpdate(
     contactId,
     { $set: { contactType } },
-    { new: true }
+    { returnDocument: "after" }
   );
 }
 
@@ -59,7 +59,7 @@ export async function pauseContactForHuman(contactId) {
   return Contact.findByIdAndUpdate(
     contactId,
     { $set: { botMode: "human_paused" } },
-    { new: true }
+    { returnDocument: "after" }
   );
 }
 
@@ -72,6 +72,6 @@ export async function markContactOptedOut(contactId) {
         botMode: "human_paused",
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   );
 }

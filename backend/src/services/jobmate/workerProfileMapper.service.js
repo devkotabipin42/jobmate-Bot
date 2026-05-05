@@ -100,7 +100,7 @@ export function buildWorkerProfileUpdateFromAaratiProfile({
       },
     },
     options: {
-      new: true,
+      returnDocument: "after",
       upsert: true,
       setDefaultsOnInsert: true,
       runValidators: false,
