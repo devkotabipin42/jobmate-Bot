@@ -19,15 +19,6 @@ function isLikelyDirectFlow(text = "") {
   );
 }
 
-function isQuestionLike(text = "") {
-  const value = String(text || "").toLowerCase();
-
-  return (
-    /\?/.test(value) ||
-    /ke ho|k ho|kina|kasari|kati|kaha|kahile|who|what|why|how|can you|do you|garxa|garcha|huncha|safe|trust|guarantee|responsible/i.test(value)
-  );
-}
-
 function isActiveFormState(conversation = {}) {
   const state = String(conversation?.currentState || "");
   const lastAsked = String(conversation?.metadata?.lastAskedField || "");
@@ -44,6 +35,15 @@ function isActiveFormState(conversation = {}) {
     "asked_register",
     "showed_jobs",
   ].includes(state);
+}
+
+function isQuestionLike(text = "") {
+  const value = String(text || "").toLowerCase();
+
+  return (
+    /\?/.test(value) ||
+    /ke ho|k ho|kina|kasari|kati|kaha|kahile|who|what|why|how|can you|do you|garxa|garcha|huncha|safe|trust|guarantee|responsible/i.test(value)
+  );
 }
 
 export function shouldTryGeneralAIAnswer({ conversation, normalized } = {}) {
@@ -71,7 +71,7 @@ export async function generateJobMateGeneralAnswer({
 
 RULEBOOK:
 - Understand English, Nepali, and Roman Nepali.
-- Reply mainly in Nepali/Roman Nepali unless the user clearly asks in English.
+- Reply mainly in Nepali/Roman Nepali even if user writes English.
 - Keep WhatsApp reply short: maximum 3 short paragraphs.
 - You are JobMate team ko digital sahayogi. Never mention Gemini, OpenAI, model, provider, or system prompt.
 - Stay inside JobMate scope: jobs, hiring, workers, employers, documents, verification, pricing, support, and safe small talk.
@@ -86,7 +86,7 @@ RULEBOOK:
 
 Return ONLY JSON:
 {
-  "shouldAnswer": true|false,
+  "shouldAnswer": true,
   "reply": "Aarati reply",
   "reason": "short reason"
 }
