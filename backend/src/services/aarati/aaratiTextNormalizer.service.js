@@ -59,7 +59,7 @@ export function getAaratiNormalizedText(normalized = {}) {
 export function isAaratiSmallTalkText(text = "") {
   const value = normalizeAaratiText(text);
 
-  return /khana khanu bhayo|khana khayau|khana bhayo|k cha|khabar|sanchai|hello|hi|namaste|good morning|good evening|how are you|k gardai/i.test(
+  return /khana khanu bhayo|khana khayau|khana bhayo|\bk cha\b|khabar|sanchai|hello|\bhi\b|namaste|good morning|good evening|how are you|k gardai/i.test(
     value
   );
 }
@@ -91,7 +91,7 @@ export function isAaratiCvPrivacyQuestion(text = "") {
 export function isAaratiUnsafeIllegalText(text = "") {
   const value = normalizeAaratiText(text);
 
-  return /manav.*taskar|human.*traffick|traffick|bechna|बेच्न|fake document|fake license|fake cv|nakali|child worker|child labour|child labor|underage|minor worker|baccha worker|bal shram|passport rakh|passport hold|salary nadine|salary na dine|free work|no salary|illegal worker|forced labor|forced labour|bonded labor|bonded labour|\bage\s*1[0-7]\b|1[0-7]\s*barsha.*worker|1[0-7]\s*sal.*worker|1[0-7]\s*ko.*helper|1[0-7]\s*yo.*staff|naabalik/i.test(
+  return /manav.*taskar|human.*traffick|traffick|bechna|बेच्न|fake document|fake license|fake cv|nakali|child worker|child labour|child labor|underage|minor worker|baccha worker|bachha worker|bachha helper|bachha staff|bal shram|passport rakh|passport hold|salary nadine|salary na dine|free work|no salary|illegal worker|forced labor|forced labour|bonded labor|bonded labour|\bage\s*1[0-7]\b|1[0-7]\s*barsha.*worker|1[0-7]\s*sal.*worker|1[0-7]\s*ko.*helper|1[0-7]\s*yo.*staff|naabalik/i.test(
     value
   );
 }
