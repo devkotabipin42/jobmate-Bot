@@ -47,6 +47,33 @@ export function normalizeAaratiText(input = "") {
     .replace(/\bnadine\b/g, "nadine")
     .replace(/\bnadiney\b/g, "nadine")
     .replace(/\bmanav\b/g, "manav")
+    // ── Joined location + domain-word tokenizer (NEW 19E) ─────────────────
+    // Only known location aliases and common domain words are split.
+    // Input is already lowercased at this point.
+    .replace(/\bpokharma\b/g, "pokhara ma")
+    .replace(/\bpokharama\b/g, "pokhara ma")
+    .replace(/\bkathmanduma\b/g, "kathmandu ma")
+    .replace(/\bktmma\b/g, "kathmandu ma")
+    .replace(/\bbutwalma\b/g, "butwal ma")
+    .replace(/\bbutwlma\b/g, "butwal ma")
+    .replace(/\bbardaghatma\b/g, "bardaghat ma")
+    .replace(/\bbhardaghatma\b/g, "bardaghat ma")
+    .replace(/\bbhardghatma\b/g, "bardaghat ma")
+    .replace(/\bbhargatma\b/g, "bardaghat ma")
+    .replace(/\bbhairahawama\b/g, "bhairahawa ma")
+    .replace(/\bsiddharthanagamma\b/g, "siddharthanagar ma")
+    .replace(/\bparasima\b/g, "parasi ma")
+    .replace(/\bsunwalma\b/g, "sunwal ma")
+    .replace(/\bdevdahama\b/g, "devdaha ma")
+    .replace(/\bosakama\b/g, "osaka ma")
+    .replace(/\bjapanma\b/g, "japan ma")
+    .replace(/\bindiyama\b/g, "india ma")
+    .replace(/\bdubaima\b/g, "dubai ma")
+    .replace(/\bschoolko\b/g, "school ko")
+    .replace(/\bhotelko\b/g, "hotel ko")
+    .replace(/\bcompanyko\b/g, "company ko")
+    .replace(/\brestaurantko\b/g, "restaurant ko")
+    .replace(/\bofficeко\b/g, "office ko")
     .trim();
 
   return value;
@@ -155,4 +182,88 @@ export function isAaratiDirectMenuReply(text = "") {
 export function isAaratiRestartCommandText(text = "") {
   const value = String(text || "").toLowerCase().trim();
   return /^(start|restart|suru|menu|surugaram|suru garam|नया|नयाँ|सुरु|reset|feri suru|feri start)$/.test(value);
+}
+
+// ---------------------------------------------------------------------------
+// NEW 19E: extractNameFromIntro
+// Extracts a human name from intro phrases. Uses the RAW (un-normalized) text
+// so original casing is preserved for title-casing.
+// Returns title-cased name string, or null.
+// ---------------------------------------------------------------------------
+
+const _NAME_NOISE = new Set([
+  "test", "unknown", "user", "admin", "jobmate", "aarati", "bot",
+  "hello", "hi", "yes", "no", "ok", "na", "ta", "n", "a", "yo", "ma",
+]);
+const _JOB_ROLE_NOISE = new Set([
+  "driver", "waiter", "cook", "helper", "guard", "teacher", "nurse",
+  "manager", "staff", "worker", "cleaner", "cashier", "receptionist",
+  "security", "loader", "hotel", "fresher", "trainee", "labour", "labor",
+  "helper", "sweeper", "operator",
+]);
+const _ARTICLE_STOPS = new Set(["a", "an", "the", "from", "at", "in", "going", "working", "here", "not", "just"]);
+
+function _titleCase(str) {
+  return String(str)
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function _isValidName(extracted) {
+  if (!extracted || extracted.length < 2 || extracted.length > 40) return false;
+  if (/\d{4,}/.test(extracted)) return false; // phone-like
+  const words = extracted.toLowerCase().split(/\s+/);
+  if (_NAME_NOISE.has(words[0])) return false;
+  if (_ARTICLE_STOPS.has(words[0])) return false;
+  // Single-word match must not be a job role
+  if (words.length === 1 && _JOB_ROLE_NOISE.has(words[0])) return false;
+  return true;
+}
+
+export function extractNameFromIntro(text = "") {
+  const val = String(text || "").trim();
+
+  // Pattern: "my name is X [Y]"
+  let m = val.match(/\bmy name is ([a-zA-Z][a-zA-Z\s]{1,39})/i);
+  if (m && _isValidName(m[1].trim())) return _titleCase(m[1].trim());
+
+  // Pattern: "mero naam X ho" / "naam X ho"
+  m = val.match(/\bmero\s+naam\s+([a-zA-Z][a-zA-Z]{1,39}(?:\s+[a-zA-Z]{1,39})?)\s+ho\b/i);
+  if (m && _isValidName(m[1].trim())) return _titleCase(m[1].trim());
+
+  // Pattern: "mero name X ho?" / "mero name X"
+  m = val.match(/\bmero\s+name\s+(?:is\s+)?([a-zA-Z][a-zA-Z]{1,39}(?:\s+[a-zA-Z]{1,39})?)\b/i);
+  if (m && _isValidName(m[1].trim())) return _titleCase(m[1].trim());
+
+  // Pattern: "naam X ho"
+  m = val.match(/\bnaam\s+([a-zA-Z][a-zA-Z]{1,20})\s+ho\b/i);
+  if (m && _isValidName(m[1].trim())) return _titleCase(m[1].trim());
+
+  // Pattern: "I am FirstName LastName" (multi-word to avoid "I am a driver")
+  m = val.match(/\bi am ([a-zA-Z]{2,20}\s+[a-zA-Z]{2,20})\b/i);
+  if (m && _isValidName(m[1].trim())) return _titleCase(m[1].trim());
+
+  // Pattern: "this is FirstName [LastName]"
+  m = val.match(/\bthis is ([a-zA-Z][a-zA-Z]{1,20}(?:\s+[a-zA-Z]{1,20})?)\b/i);
+  if (m && _isValidName(m[1].trim())) return _titleCase(m[1].trim());
+
+  // Pattern: "ma FirstName LastName ho" (multi-word only — avoids "ma driver ho")
+  m = val.match(/\bma ([a-zA-Z]{2,20}\s+[a-zA-Z]{2,20})\s+ho\b/i);
+  if (m && _isValidName(m[1].trim())) return _titleCase(m[1].trim());
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// NEW 19E: isAaratiHesitationText
+// Detects user refusal or hesitation to share details/documents.
+// ---------------------------------------------------------------------------
+
+export function isAaratiHesitationText(text = "") {
+  const val = normalizeAaratiText(text);
+  return /detail.*pathauna.*sakdina|detail.*dina.*man.*chaina|aile.*pathaudina|share.*garna.*man.*chaina|share.*sakdina|cv.*dina.*man.*chaina|document.*dina.*sakdina|info.*dina.*sakdina|private.*ho\b|pachi.*bhanxu|aile.*bhanna.*mildaina|aile.*bhannu.*pardaina|comfortable.*chaina|sochi.*bhanxu|ma.*sakdina\b(?!.*job)|pathaudina\b|\bdar lagcha\b/i.test(
+    val
+  );
 }

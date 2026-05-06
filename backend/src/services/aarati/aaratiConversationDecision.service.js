@@ -37,6 +37,8 @@ import {
   isAaratiEmployerRequestText,
   isAaratiJobSeekerRequestText,
   isAaratiRestartCommandText,
+  extractNameFromIntro,        // NEW 19E
+  isAaratiHesitationText,      // NEW 19E
 } from "./aaratiTextNormalizer.service.js";
 
 // ---------------------------------------------------------------------------
@@ -60,6 +62,24 @@ const INVALID_LOCATION_SET = new Set([
   "kina bujdainau", "khana khayau", "bujhinas", "feri check gara",
   "refresh", "pheri khoja", "feri khoja", "namaste",
 ]);
+
+// ---------------------------------------------------------------------------
+// HELPER 0 — getDisplayName (NEW 19E)
+// Reads conversation.metadata.displayName and returns "FirstName ji" or "Mitra ji".
+// ---------------------------------------------------------------------------
+
+function getDisplayName(conversationState) {
+  const name = String(
+    conversationState?.metadata?.displayName ||
+    conversationState?.metadata?.preferredName ||
+    ""
+  ).trim();
+  if (name && name.length >= 2 && name.length <= 40) {
+    const firstName = name.split(" ")[0];
+    return `${firstName} ji`;
+  }
+  return "Mitra ji";
+}
 
 // ---------------------------------------------------------------------------
 // HELPER 1 — isForbiddenEmployerRequest
@@ -257,6 +277,7 @@ function makeDecision({
   blockWorkerFlow = false,
   blockJobSearch = false,
   clearCollectedFields = null, // NEW 19C: array of collectedData keys to unset
+  extractedName = null,        // NEW 19E: title-cased name to save to metadata.displayName
 } = {}) {
   return {
     category,
@@ -273,6 +294,7 @@ function makeDecision({
     blockWorkerFlow,
     blockJobSearch,
     clearCollectedFields,
+    extractedName,
   };
 }
 
@@ -346,6 +368,43 @@ export function isInvalidLocationValue(text = "") {
   // Frustration / small-talk fragments are never locations
   if (isAaratiFrustrationText(val) || isAaratiSmallTalkText(val)) return true;
   return false;
+}
+
+// ---------------------------------------------------------------------------
+// HELPER 6a — isHesitationPrivacy (NEW 19E)
+// Wraps the normalizer helper; catches "detail pathauna sakdina" etc.
+// ---------------------------------------------------------------------------
+
+function isHesitationPrivacy(val) {
+  return isAaratiHesitationText(val);
+}
+
+// ---------------------------------------------------------------------------
+// HELPER 6b — Teacher / school clarification (NEW 19E)
+// ---------------------------------------------------------------------------
+
+function isTeacherEmployerHiring(val) {
+  // Clear employer signal: "staff", "hire", "worker" alongside school+teacher
+  return (
+    /school.*teacher.*(?:staff|chahiyo|hire|worker|employee)|college.*teacher.*(?:staff|chahiyo|hire)|academy.*teacher.*(?:staff|chahiyo)/i.test(val) &&
+    /staff|hire|worker|employee|chahiyo/i.test(val)
+  );
+}
+
+function isTeacherJobSearch(val) {
+  // Clear jobseeker signal: "malai", "ma teacher", "teacher job chahiyo"
+  return /(?:malai|ma).*teacher.*(?:job|kaam)|teacher.*job.*chahiyo|teacher.*kaam.*chahiyo|teacher.*vacancy|school.*ma.*teacher.*job\b|teacher.*job.*(?:cha\b|xa\b|milcha)/i.test(
+    val
+  );
+}
+
+function isAmbiguousTeacherSchool(val) {
+  const hasTeacherSchool =
+    /school.*teacher|teacher.*school|schoolko.*teacher|teacher.*paincha|teacher.*milcha|teacher.*cha\b|teacher.*chahiyo\b/i.test(
+      val
+    );
+  if (!hasTeacherSchool) return false;
+  return !isTeacherEmployerHiring(val) && !isTeacherJobSearch(val);
 }
 
 // ---------------------------------------------------------------------------
@@ -443,6 +502,9 @@ export function decideAaratiNextAction({
     ""
   );
 
+  // Display name for personalised replies (NEW 19E)
+  const displayName = getDisplayName(conversationState);
+
   // ── 1. COMMAND ────────────────────────────────────────────────────────────
   if (isAaratiRestartCommandText(rawLower)) {
     const d = makeDecision({
@@ -457,6 +519,27 @@ export function decideAaratiNextAction({
     return d;
   }
 
+  // ── 1b. NAME_CAPTURE (NEW 19E) ────────────────────────────────────────────
+  // Only capture if no displayName already saved (don't ask again).
+  if (!conversationState?.metadata?.displayName) {
+    const extractedNameVal = extractNameFromIntro(text); // raw text preserves case
+    if (extractedNameVal) {
+      const firstName = extractedNameVal.split(" ")[0];
+      const d = makeDecision({
+        category: "name_capture",
+        action: "save_name_greet",
+        bypassFlow: true,
+        extractedName: extractedNameVal,
+        reply:
+          `${firstName} ji, dhanyabaad 🙏 Aba ma tapai lai ${firstName} ji bhanera sambodhan garchu.\n\n` +
+          `Tapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`,
+        reason: "name_introduction",
+      });
+      logDecision({ ...d, state, normalizedText: val });
+      return d;
+    }
+  }
+
   // ── 2. FORBIDDEN_EMPLOYER_REQUEST ─────────────────────────────────────────
   if (isForbiddenEmployerRequest(val)) {
     const d = makeDecision({
@@ -468,7 +551,7 @@ export function decideAaratiNextAction({
       blockJobSearch: true,
       blockLocationExtraction: true,
       reply:
-        "Yo request JobMate rules anusar mildaina Mitra ji 🙏\n\n" +
+        `Yo request JobMate rules anusar mildaina ${displayName} 🙏\n\n` +
         "Khana/basna matra diyera, bina salary, unpaid trial, ya underage worker rakhna mildaina.\n" +
         "JobMate le legal, safe ra fair salary bhayeko hiring matra support garcha.\n\n" +
         "Yedi legal salary sanga staff khojna ho bhane business name, location, role ra salary range pathaunu hola.",
@@ -490,7 +573,7 @@ export function decideAaratiNextAction({
       blockJobSearch: true,
       blockLocationExtraction: true,
       reply:
-        "Aghi ko jastai unpaid/khana-matra/illegal hiring request JobMate bata support garna mildaina Mitra ji 🙏\n\n" +
+        `Aghi ko jastai unpaid/khana-matra/illegal hiring request JobMate bata support garna mildaina ${displayName} 🙏\n\n` +
         "Legal salary ra safe duty condition bhaye matra staff search process agadi badhauna milcha.",
       nextStatePatch: { lastBlockedCategory: "forbidden_employer_request" },
       reason: "references_previous_illegal_request",
@@ -519,6 +602,28 @@ export function decideAaratiNextAction({
         "2. Chhaina\n" +
         "3. Kehi chha, kehi chhaina",
       reason: "document_privacy_question_in_flow",
+    });
+    logDecision({ ...d, state, normalizedText: val });
+    return d;
+  }
+
+  // ── 4b. HESITATION_PRIVACY (NEW 19E) ─────────────────────────────────────
+  // "Ma detail pathauna sakdina", "aile pathaudina", "private ho" etc.
+  // Respect user choice. Preserve state. Offer safe minimal next step.
+  if (isHesitationPrivacy(val)) {
+    const inFlow = Boolean(state && state !== "idle");
+    const d = makeDecision({
+      category: "hesitation_privacy",
+      action: "respect_hesitation",
+      bypassFlow: true,
+      preserveState: inFlow,
+      preserveCollectedData: true,
+      blockLocationExtraction: true,
+      reply:
+        `Thik cha ${displayName} 🙏 Detail pathauna man chaina bhane pressure chaina.\n\n` +
+        "Tapai comfortable hunuhunchha bhane basic kura matra pathauna saknu huncha — naam, location, kasto kaam khojdai hunuhunchha.\n\n" +
+        "Natra pachi pani kura garna milcha. Ma yahi chu.",
+      reason: "user_hesitation_respect",
     });
     logDecision({ ...d, state, normalizedText: val });
     return d;
@@ -576,7 +681,7 @@ export function decideAaratiNextAction({
       bypassFlow: true,
       blockLocationExtraction: true,
       reply:
-        "Sorry Mitra ji 🙏 Aghi ko reply clear bhayena jasto lagyo.\n\n" +
+        `Sorry ${displayName} 🙏 Aghi ko reply clear bhayena jasto lagyo.\n\n` +
         "Ma JobMate team bata job khojna, staff khojna, CV/document, pricing/support ko kura ma help garna sakchu.\n\n" +
         "Tapai ko main kura ek line ma pathaunu hola, ma sidha answer dinchhu.",
       reason: "frustration_signal",
@@ -616,8 +721,8 @@ export function decideAaratiNextAction({
       bypassFlow: true,
       blockLocationExtraction: true,
       reply: /website|coding|code.*garna|web.*app/i.test(rawLower)
-        ? "Website/coding ko kaam ma JobMate bata direct service dina mildaina 🙏\n\nTara IT/developer job khojna ho bhane location ra role pathaunu hola."
-        : "Yo kura JobMate ko main service bhitra pardaina Mitra ji 🙏\n\nMa JobMate team bata job khojna, staff khojna, CV/document guidance, pricing/support ra human team connect garne kura ma help garna sakchu.",
+        ? `Website/coding ko kaam ma JobMate bata direct service dina mildaina ${displayName} 🙏\n\nTara IT/developer job khojna ho bhane location ra role pathaunu hola.`
+        : `Yo kura JobMate ko main service bhitra pardaina ${displayName} 🙏\n\nMa JobMate team bata job khojna, staff khojna, CV/document guidance, pricing/support ra human team connect garne kura ma help garna sakchu.`,
       reason: "out_of_scope_request",
     });
     logDecision({ ...d, state, normalizedText: val });
@@ -654,8 +759,8 @@ export function decideAaratiNextAction({
       bypassFlow: true,
       blockLocationExtraction: true,
       reply:
-        "Ahile JobMate ko main focus Lumbini Province ho Mitra ji 🙏\n\n" +
-        "Kathmandu/Pokhara/Chitwan ko job aaile confirm garera dekhaina, wrong job dekhaunu mildaina.\n\n" +
+        `Ahile JobMate ko main focus Lumbini Province ho ${displayName} 🙏\n\n` +
+        "Yo area ko job aaile confirm garera dekhaina, wrong job dekhaunu mildaina.\n\n" +
         "Tapai Lumbini area, jastai Butwal/Bhairahawa/Bardaghat/Parasi tira job khojna chahanu huncha?",
       reason: "out_of_region",
     });
@@ -688,10 +793,30 @@ export function decideAaratiNextAction({
     return d;
   }
 
+  // ── 11b. AMBIGUOUS_TEACHER_SCHOOL_CLARIFICATION (NEW 19E) ────────────────
+  // Catches "schoolko lagi teacher painchha" — neither clearly employer nor jobseeker.
+  if (isAmbiguousTeacherSchool(val)) {
+    const d = makeDecision({
+      category: "ambiguous_teacher_school_clarification",
+      action: "ask_teacher_role_clarification",
+      bypassFlow: true,
+      preserveState: Boolean(state && state !== "idle"),
+      preserveCollectedData: true,
+      reply:
+        `School ko lagi teacher khojnu bhayeko ho ki tapai teacher job khojdai hunuhunchha, ${displayName}?\n\n` +
+        "1. School ko lagi teacher staff chahiyo\n" +
+        "2. Ma teacher job khojdai chu",
+      reason: "ambiguous_teacher_school",
+    });
+    logDecision({ ...d, state, normalizedText: val });
+    return d;
+  }
+
   // ── 12. VALID_EMPLOYER_HIRING ─────────────────────────────────────────────
   if (
     isAaratiEmployerRequestText(val) ||
-    /\d+\s*jana.*chahiyo|\d+\s*jana.*chaiyo|waiter.*chahiyo|cook.*chahiyo|helper.*chahiyo|guard.*chahiyo|driver.*chahiyo|receptionist.*chahiyo/i.test(val)
+    isTeacherEmployerHiring(val) ||
+    /\d+\s*jana.*chahiyo|\d+\s*jana.*chaiyo|waiter.*chahiyo|cook.*chahiyo|helper.*chahiyo|guard.*chahiyo|driver.*chahiyo|receptionist.*chahiyo|teacher.*staff.*chahiyo/i.test(val)
   ) {
     const d = makeDecision({
       category: "valid_employer_hiring",
@@ -705,9 +830,24 @@ export function decideAaratiNextAction({
   }
 
   // ── 13. VALID_JOB_SEARCH ─────────────────────────────────────────────────
+  // Teacher jobseeker (NEW 19E): "malai teacher job chahiyo butwalma"
+  if (isTeacherJobSearch(val)) {
+    const staleFieldsT = detectStaleCategoryFields(val, collectedData);
+    const d = makeDecision({
+      category: "valid_job_search",
+      action: "allow_job_search",
+      bypassFlow: false,
+      allowFlow: true,
+      clearCollectedFields: staleFieldsT,
+      reason: "teacher_job_search",
+    });
+    logDecision({ ...d, state, normalizedText: val });
+    return d;
+  }
+
   if (
     LUMBINI_PLACES.test(val) &&
-    /job|kaam|kam|vacancy|cha\b|xa\b|milcha|driver|hotel|security|sales|helper|cook|waiter|guard|receptionist|cashier/i.test(val)
+    /job|kaam|kam|vacancy|cha\b|xa\b|milcha|driver|hotel|security|sales|helper|cook|waiter|guard|receptionist|cashier|teacher/i.test(val)
   ) {
     // NEW 19C: detect stale collectedData from a previous different job search
     const staleFields = detectStaleCategoryFields(val, collectedData);

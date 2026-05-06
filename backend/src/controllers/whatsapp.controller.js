@@ -830,6 +830,10 @@ export async function receiveWhatsAppWebhook(req, res) {
           d19aPatch["metadata.lastBlockedCategory"] =
             d19aDecision.nextStatePatch.lastBlockedCategory;
         }
+        // NEW 19E: persist extracted name to conversation metadata
+        if (d19aDecision.extractedName && d19aDecision.category === "name_capture") {
+          d19aPatch["metadata.displayName"] = d19aDecision.extractedName;
+        }
         if (conversation?._id) {
           const ConvModel = conversation.constructor;
           await ConvModel.updateOne(
