@@ -76,6 +76,7 @@ import {
   reduceMenuRepetition,
   rememberLastContextPatch,
 } from "../services/aarati/aaratiConversationDirector.service.js";
+import { decideAaratiNextAction } from "../services/aarati/aaratiConversationDecision.service.js";
 import {
   buildDocumentReceivedReply,
   isSupportedDocumentMedia,
@@ -775,6 +776,103 @@ export async function receiveWhatsAppWebhook(req, res) {
       });
     }
 
+    // ── AARATI-19A: Conversation-Aware Decision Engine ────────────────────────
+    // Runs AFTER all early-exit handlers (safetyEvent, repairEvent,
+    // humanBoundary, hardSafety, preFlowQa, knowledge, aiFirst, generalAnswer,
+    // document media) and BEFORE classifyIntent / handleEmployerLead /
+    // handleWorkerRegistration / job search / Mapbox / location resolver.
+    if (env.BOT_MODE === "jobmate_hiring") {
+      const d19aText =
+        normalized.message.normalizedText || normalized.message.text || "";
+      const d19aDecision = decideAaratiNextAction({
+        text: d19aText,
+        normalizedText: d19aText,
+        conversationState: conversation,
+        collectedData: conversation?.metadata?.collectedData || {},
+        previousUserMessage:
+          conversation?.metadata?.lastUserMessage || "",
+        previousBotMessage: conversation?.metadata?.lastBotMessage || "",
+        lastGateDecision: conversation?.metadata?.lastGateDecision || {},
+        lastBlockedCategory:
+          conversation?.metadata?.lastBlockedCategory || "",
+      });
+
+      if (d19aDecision.bypassFlow && d19aDecision.reply) {
+        const d19aIntentResult = {
+          intent:
+            d19aDecision.category === "forbidden_employer_request" ||
+            d19aDecision.category === "referential_forbidden_request"
+              ? "frustrated"
+              : "unknown",
+          needsHuman: false,
+          priority: "low",
+          reason: `aarati_decision_19a:${d19aDecision.category}`,
+        };
+
+        const inboundMessage = await saveInboundMessage({
+          contact,
+          conversation,
+          normalized,
+          intentResult: d19aIntentResult,
+        });
+
+        // Persist lastGateDecision and lastBlockedCategory in conversation
+        // metadata; when preserveState=true do NOT touch currentState.
+        const d19aPatch = {
+          "metadata.lastGateDecision": {
+            category: d19aDecision.category,
+            action: d19aDecision.action,
+            bypassFlow: true,
+          },
+          "metadata.lastUserMessage": d19aText.slice(0, 200),
+        };
+        if (d19aDecision.nextStatePatch?.lastBlockedCategory) {
+          d19aPatch["metadata.lastBlockedCategory"] =
+            d19aDecision.nextStatePatch.lastBlockedCategory;
+        }
+        if (conversation?._id) {
+          const ConvModel = conversation.constructor;
+          await ConvModel.updateOne(
+            { _id: conversation._id },
+            { $set: d19aPatch },
+            { runValidators: false }
+          );
+        }
+
+        const sendResult = await sendWhatsAppTextMessage({
+          to: contact.phone,
+          text: d19aDecision.reply,
+        });
+
+        const outboundMessage = await saveOutboundMessage({
+          contact,
+          conversation,
+          text: d19aDecision.reply,
+          providerMessageId: sendResult.providerMessageId,
+          status: "sent",
+        });
+
+        await updateConversationIntent({
+          conversation,
+          intent: d19aIntentResult.intent,
+          lastInboundMessageId: inboundMessage._id,
+          lastOutboundMessageId: outboundMessage._id,
+        });
+
+        await markMessageProcessed(processedMessageId);
+
+        return res.status(200).json({
+          success: true,
+          message: "Aarati 19A decision engine handled message",
+          category: d19aDecision.category,
+          action: d19aDecision.action,
+          preserveState: d19aDecision.preserveState,
+          replied: true,
+          sendSkipped: sendResult.skipped || false,
+        });
+      }
+    }
+    // ── End AARATI-19A ────────────────────────────────────────────────────────
 
     if (env.BOT_MODE === "business_receptionist") {
       const businessIntentResult = {
