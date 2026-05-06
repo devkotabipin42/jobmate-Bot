@@ -871,8 +871,32 @@ export async function receiveWhatsAppWebhook(req, res) {
           sendSkipped: sendResult.skipped || false,
         });
       }
+      // NEW 19C: when a new valid job search has a different role than the
+      // stored collectedData, unset stale search fields so old jobType/category
+      // doesn't bleed into the new search.
+      if (
+        d19aDecision.allowFlow &&
+        d19aDecision.clearCollectedFields?.length &&
+        conversation?._id
+      ) {
+        const unsetPatch = {};
+        for (const field of d19aDecision.clearCollectedFields) {
+          unsetPatch[`metadata.collectedData.${field}`] = "";
+        }
+        const ConvModel19c = conversation.constructor;
+        await ConvModel19c.updateOne(
+          { _id: conversation._id },
+          { $unset: unsetPatch },
+          { runValidators: false }
+        );
+        if (conversation.metadata?.collectedData) {
+          for (const field of d19aDecision.clearCollectedFields) {
+            delete conversation.metadata.collectedData[field];
+          }
+        }
+      }
     }
-    // ── End AARATI-19A ────────────────────────────────────────────────────────
+    // ── End AARATI-19A/19C ───────────────────────────────────────────────────
 
     if (env.BOT_MODE === "business_receptionist") {
       const businessIntentResult = {

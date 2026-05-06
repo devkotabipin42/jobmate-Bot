@@ -1,5 +1,6 @@
 /**
- * AARATI-19A — Conversation-Aware Decision Engine
+ * AARATI-19C — Meaning-Based JobMate Policy Brain
+ * (extends AARATI-19A Conversation-Aware Decision Engine)
  *
  * Pure functions only. No DB calls, no async.
  *
@@ -10,6 +11,9 @@
  *   - current conversation state + collectedData
  *   - JobMate business rules, Lumbini location rules, legal/fair-labor rules
  *   - current step interrupt handling
+ *   - salary-deferred / unpaid-trial patterns (NEW 19C)
+ *   - foreign country location rejection (NEW 19C)
+ *   - stale collectedData detection + clearCollectedFields (NEW 19C)
  *
  * Must run BEFORE workerRegistration, employerLead, location resolver, Mapbox, job API.
  *
@@ -44,6 +48,10 @@ const LUMBINI_PLACES =
 
 const OUT_OF_REGION_PLACES =
   /kathmandu|\bktm\b|pokhara|chitwan|dharan|biratnagar|birgunj|dhangadhi|nepalgunj|hetauda|janakpur|lalitpur|bhaktapur|dhading|sindhuli/i;
+
+// Foreign countries / cities that are clearly outside Nepal entirely (NEW 19C)
+const CLEARLY_FOREIGN =
+  /\bjapan\b|\bosaka\b|\btokyo\b|\bindia\b|\bdelhi\b|\bmumbai\b|\bchina\b|\bbeijing\b|\busa\b|\bamerica\b|\bqatar\b|\bdoha\b|\bmalaysia\b|\bkualalampur\b|\buae\b|\bdubai\b|\babudhabi\b|\bkorea\b|\bseoul\b|\barab\b|\bsaudi\b|\bbidesh\b|videsha|\bforeign\b|\babroad\b|\buk\b.*job|\baustralia\b|\bcanada\b/i;
 
 // Strings that must NEVER be saved as location values
 const INVALID_LOCATION_SET = new Set([
@@ -88,6 +96,14 @@ function isForbiddenEmployerRequest(val) {
     /khana.*matra.*(?:diye|dinchu|dindai|dida|garne|garaunus|dinu\b)|bas.*khana.*(?:diye|dinchu|dida|garne|dinu\b)|khana.*basna.*(?:diye|dinchu|dida|garne)|khana.*diye.*(?:pugcha|pugdo|milcha|huncha)|basna.*matra.*diye|paisa.*nadine.*khana|khana.*matra.*worker|khana.*matra.*staff/i.test(val)
   ) return true;
 
+  // ── Salary-deferred / unpaid-trial (NEW 19C) ──────────────────────────────
+  // Catches: "salary paxi dinxu", "paila kaam garos pachi paisa dinchu",
+  //          "salary pachi herna", "salary pachi dinxu tara pahila kaam garos",
+  //          "trial ma kaam garos paisa pachi", "1 mahina free ma kaam garos"
+  if (
+    /salary.*paxi.*(?:dinxu|dinchhu|dine\b|herna\b|heramla\b|diu\b)|salary.*pachi.*(?:dinxu|dinchhu|dine\b|herna\b|heramla\b|diu\b)|paisa.*paxi.*(?:dinxu|dinchhu|dine\b)|paisa.*pachi.*(?:dinxu|dinchhu|dine\b)|paila.*kaam.*pachi.*paisa|kaam.*garos.*pachi.*paisa|pachi.*paisa.*dinchu|trial.*ma.*kaam.*paisa.*pachi|trial.*ma.*free.*kaam|1.*mahina.*free.*kaam|ek.*mahina.*free.*kaam|mahina.*free.*ma.*kaam|salary.*pachi.*heramla\b/i.test(val)
+  ) return true;
+
   return false;
 }
 
@@ -105,7 +121,7 @@ function isReferentialForbiddenRequest(val, lastBlockedCategory, prevUserMsg) {
   if (!prevWasForbidden) return false;
 
   // Note: normalizer converts "chaiyo" → "chahiyo", so patterns use chahiyo form
-  return /malai testai chah?iyo|tei chah?iyo|same chah?iyo|ho tei\b|tyo hunxa\b|testai worker|tei wala|malai ni tei|tyo type ko\b|tyestai chah?iyo|testai nai\b|eutai type|tei jastai/i.test(
+  return /malai testai chah?iyo|tei chah?iyo|same.*chah?iyo|ho tei\b|tyo hunxa\b|testai worker|tei wala|malai ni tei|tyo type ko\b|tyestai chah?iyo|testai nai\b|eutai type|tei jastai|same type\b/i.test(
     val
   );
 }
@@ -240,6 +256,7 @@ function makeDecision({
   blockEmployerFlow = false,
   blockWorkerFlow = false,
   blockJobSearch = false,
+  clearCollectedFields = null, // NEW 19C: array of collectedData keys to unset
 } = {}) {
   return {
     category,
@@ -255,6 +272,7 @@ function makeDecision({
     blockEmployerFlow,
     blockWorkerFlow,
     blockJobSearch,
+    clearCollectedFields,
   };
 }
 
@@ -328,6 +346,75 @@ export function isInvalidLocationValue(text = "") {
   // Frustration / small-talk fragments are never locations
   if (isAaratiFrustrationText(val) || isAaratiSmallTalkText(val)) return true;
   return false;
+}
+
+// ---------------------------------------------------------------------------
+// HELPER 6 — detectStaleCategoryFields (NEW 19C)
+// When the user starts a clearly different new job search (IT vs hotel vs driver
+// vs security), returns STALE_SEARCH_FIELDS so the controller can $unset them
+// from collectedData before passing to the job search pipeline.
+// Returns null when no stale data is detected.
+// ---------------------------------------------------------------------------
+
+const STALE_SEARCH_FIELDS = [
+  "jobType",
+  "category",
+  "searchCategoryAsked",
+  "jobSearchDone",
+  "noJobsFound",
+  "jobSearchResults",
+  "jobSearchError",
+  "jobSearchStrategy",
+];
+
+function detectStaleCategoryFields(val, collectedData = {}) {
+  const existingJobType = String(
+    collectedData?.jobType || collectedData?.category || ""
+  ).toLowerCase();
+
+  // Nothing stored yet — nothing to clear
+  if (!existingJobType || existingJobType === "other") return null;
+
+  // Detect what the NEW message is looking for
+  const wantsIT =
+    /\bdevelop(?:er)?\b|\bit\b.*\bjob\b|software.*\bjob\b|\bprogrammer\b|\bcoding.*\bjob\b|\btech.*\bjob\b|\bweb.*developer\b|\bapp.*developer\b/i.test(
+      val
+    );
+  const wantsHotel =
+    /\bhotel\b.*(?:\bjob\b|\bkaam\b)|\brestaurant\b.*(?:\bjob\b|\bkaam\b)|\bcook\b.*(?:\bjob\b|\bkaam\b)|\bwaiter\b.*(?:\bjob\b|\bkaam\b)|\bkhana.*ban\b.*\bjob\b/i.test(
+      val
+    );
+  const wantsDriver =
+    /\bdriver\b.*(?:\bjob\b|\bkaam\b)|\bdriving\b.*\bjob\b/i.test(val);
+  const wantsSecurity =
+    /\bguard\b.*(?:\bjob\b|\bkaam\b)|\bsecurity\b.*(?:\bjob\b|\bkaam\b)/i.test(
+      val
+    );
+  const wantsSales =
+    /\bsales\b.*(?:\bjob\b|\bkaam\b)|\bmarketing\b.*(?:\bjob\b|\bkaam\b)/i.test(
+      val
+    );
+
+  // Detect what the OLD stored data represents
+  const storedIT =
+    /develop|software|programm|it\b|tech|coding|web.*dev|app.*dev/i.test(
+      existingJobType
+    );
+  const storedHotel =
+    /hotel|restaurant|cook|waiter|hospitality|khana|food/i.test(existingJobType);
+  const storedDriver = /driver|driving/i.test(existingJobType);
+  const storedSecurity = /guard|security/i.test(existingJobType);
+  const storedSales = /sales|marketing/i.test(existingJobType);
+
+  const newDiffersFromOld =
+    (wantsIT && (storedHotel || storedDriver || storedSecurity || storedSales)) ||
+    (wantsHotel && (storedIT || storedDriver || storedSecurity || storedSales)) ||
+    (wantsDriver && (storedIT || storedHotel || storedSecurity || storedSales)) ||
+    (wantsSecurity && (storedIT || storedHotel || storedDriver || storedSales)) ||
+    (wantsSales && (storedIT || storedHotel || storedDriver || storedSecurity));
+
+  if (newDiffersFromOld) return STALE_SEARCH_FIELDS;
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -558,7 +645,7 @@ export function decideAaratiNextAction({
 
   // ── 10. OUT_OF_REGION_LOCATION ───────────────────────────────────────────
   if (
-    OUT_OF_REGION_PLACES.test(val) &&
+    (OUT_OF_REGION_PLACES.test(val) || CLEARLY_FOREIGN.test(val)) &&
     /job|kaam|kam|staff|worker|vacancy|hire|chahiyo|chaiyo|milcha/i.test(val)
   ) {
     const d = makeDecision({
@@ -622,12 +709,15 @@ export function decideAaratiNextAction({
     LUMBINI_PLACES.test(val) &&
     /job|kaam|kam|vacancy|cha\b|xa\b|milcha|driver|hotel|security|sales|helper|cook|waiter|guard|receptionist|cashier/i.test(val)
   ) {
+    // NEW 19C: detect stale collectedData from a previous different job search
+    const staleFields = detectStaleCategoryFields(val, collectedData);
     const d = makeDecision({
       category: "valid_job_search",
       action: "allow_job_search",
       bypassFlow: false,
       allowFlow: true,
-      reason: "lumbini_job_query",
+      clearCollectedFields: staleFields, // null when nothing to clear
+      reason: staleFields ? "lumbini_job_query_stale_reset" : "lumbini_job_query",
     });
     logDecision({ ...d, state, normalizedText: val });
     return d;
