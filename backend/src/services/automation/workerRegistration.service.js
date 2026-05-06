@@ -11,6 +11,11 @@ import { jobmateConfig } from "../../configs/jobmate.config.js";
 import { scheduleFollowup } from "../followups/followupScheduler.service.js";
 import { getActiveFlowSideReply } from "../../policies/aarati.rulebook.js";
 import { getAaratiActiveFlowSideReply } from "../aarati/aaratiActiveFlowSideReply.service.js";
+import {
+  detectNoFlowTrap,
+  buildNoFlowTrapReply,
+  shouldBlockWorkerFlowParsing,
+} from "../aarati/aaratiNoFlowTrapGate.service.js";
 
 // Runtime check (not module-load-time) so dotenv has time to load
 function isNewEngineEnabled() {
@@ -158,6 +163,18 @@ export async function handleWorkerRegistration({
       source: "active_flow_side_reply",
     };
   }
+
+  // Belt-and-suspenders: gate catches any trap that slipped past active flow side reply
+  if (shouldBlockWorkerFlowParsing({ text, conversation })) {
+    const trap = detectNoFlowTrap({ text, conversation });
+    return {
+      handled: true,
+      intent: trap === "frustration" ? "frustrated" : "worker_registration",
+      reply: buildNoFlowTrapReply({ trap, conversation }),
+      source: "no_flow_trap_gate",
+    };
+  }
+
   const displayName =
     contact?.displayName && !/recruiter|admin|business/i.test(contact.displayName)
       ? contact.displayName

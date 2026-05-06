@@ -25,8 +25,8 @@ export function findJobMateKnowledgeAnswer({ normalized } = {}) {
     return null;
   }
 
-  // Fair labor — "free ma kam garne worker" should be refused by hard safety, not routed to pricing
-  if (/free.*ma.*kaam.*garne.*worker|free.*labor|bina.*paisa.*kaam|bina.*salary.*kaam|free.*worker.*chahiyo|free.*staff.*chahiyo/i.test(text)) {
+  // Fair labor — should be refused by hard safety/gate, never routed to pricing
+  if (/free.*ma.*ka{1,2}m.*garne.*worker|free.*labor|bina.*paisa.*ka{1,2}m|bina.*salary.*ka{1,2}m|free.*worker.*chahiyo|free.*staff.*chahiyo|trial.*ko.*paisa.*nadi|overtime.*paisa.*nadi|paisa.*nadin\b|salary.*nadin\b/i.test(text)) {
     return null;
   }
 

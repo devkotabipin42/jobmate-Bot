@@ -63,6 +63,12 @@ import { generateAaratiAiFirstAnswer } from "../services/aarati/aaratiAiFirstRou
 import { getAaratiPreFlowQaAnswer } from "../services/aarati/aaratiPreFlowQaGuard.service.js";
 import { getAaratiActiveFlowSideReply } from "../services/aarati/aaratiActiveFlowSideReply.service.js";
 import { getAaratiHardSafetyBoundaryAnswer } from "../services/aarati/aaratiHardSafetyBoundary.service.js";
+import {
+  detectNoFlowTrap,
+  buildNoFlowTrapReply,
+  shouldBlockWorkerFlowParsing,
+  shouldBlockEmployerFlowParsing,
+} from "../services/aarati/aaratiNoFlowTrapGate.service.js";
 import { getAaratiEmployerDirectRoute } from "../services/aarati/aaratiEmployerDirectRouter.service.js";
 import { getUserTextForPolish, polishAaratiReply } from "../services/aarati/aaratiReplyPolish.service.js";
 import { generateJobMateGeneralAnswer } from "../services/rag/jobmateGeneralAnswer.service.js";
@@ -967,6 +973,13 @@ export async function receiveWhatsAppWebhook(req, res) {
           intent: "employer_lead",
           messageToSend: employerSideReply,
         };
+      } else if (shouldBlockEmployerFlowParsing({ text: employerFlowText, conversation })) {
+        const employerTrap = detectNoFlowTrap({ text: employerFlowText, conversation });
+        flowResult = {
+          intent: employerTrap === "frustration" ? "frustrated" : "unknown",
+          messageToSend: buildNoFlowTrapReply({ trap: employerTrap, conversation }),
+          source: "no_flow_trap_gate",
+        };
       } else {
         flowResult = await handleEmployerLead({
           contact,
@@ -982,11 +995,21 @@ export async function receiveWhatsAppWebhook(req, res) {
         Boolean(conversation?.metadata?.lastAskedField)
       )
     ) {
-      flowResult = await handleWorkerRegistration({
-        contact,
-        conversation,
-        normalizedMessage: normalized,
-      });
+      const workerFlowText = normalized.message.normalizedText || normalized.message.text || "";
+      if (shouldBlockWorkerFlowParsing({ text: workerFlowText, conversation })) {
+        const workerTrap = detectNoFlowTrap({ text: workerFlowText, conversation });
+        flowResult = {
+          intent: workerTrap === "frustration" ? "frustrated" : "unknown",
+          messageToSend: buildNoFlowTrapReply({ trap: workerTrap, conversation }),
+          source: "no_flow_trap_gate",
+        };
+      } else {
+        flowResult = await handleWorkerRegistration({
+          contact,
+          conversation,
+          normalizedMessage: normalized,
+        });
+      }
     }
 
     if (!flowResult && intentResult.intent === "job_search") {

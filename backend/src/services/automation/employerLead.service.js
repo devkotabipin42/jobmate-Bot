@@ -37,6 +37,11 @@ import {
 
 import { learnFromEmployerBrain } from "../rag/knowledgeLearning.service.js";
 import {
+  detectNoFlowTrap,
+  buildNoFlowTrapReply,
+  shouldBlockEmployerFlowParsing,
+} from "../aarati/aaratiNoFlowTrapGate.service.js";
+import {
   parseSalaryRange as mapperParseSalaryRange,
   parseWorkType as mapperParseWorkType,
 } from "./employer/employerLeadMapper.service.js";
@@ -74,6 +79,16 @@ export async function handleEmployerLead({
   const text = normalizedMessage?.message?.normalizedText || "";
   const rawText = normalizedMessage?.message?.text || "";
   const displayName = safeDisplayName(contact?.displayName);
+
+  // Belt-and-suspenders: block trap messages from saving businessName/role
+  if (shouldBlockEmployerFlowParsing({ text, conversation })) {
+    const trap = detectNoFlowTrap({ text, conversation });
+    return {
+      intent: trap === "frustration" ? "frustrated" : "unknown",
+      messageToSend: buildNoFlowTrapReply({ trap, conversation }),
+      source: "no_flow_trap_gate",
+    };
+  }
 
   const aaratiBrain = await understandEmployerMessage({
     text: rawText || text,
