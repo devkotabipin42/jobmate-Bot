@@ -66,6 +66,10 @@ import { getAaratiEmployerDirectRoute } from "../services/aarati/aaratiEmployerD
 import { getUserTextForPolish, polishAaratiReply } from "../services/aarati/aaratiReplyPolish.service.js";
 import { generateJobMateGeneralAnswer } from "../services/rag/jobmateGeneralAnswer.service.js";
 import {
+  reduceMenuRepetition,
+  rememberLastContextPatch,
+} from "../services/aarati/aaratiConversationDirector.service.js";
+import {
   buildDocumentReceivedReply,
   isSupportedDocumentMedia,
   saveWorkerDocumentMetadata,
@@ -1048,11 +1052,19 @@ export async function receiveWhatsAppWebhook(req, res) {
       }
     }
 
-    const replyText = buildReplyMessage({
+    const activeConversation = flowResult?.conversation || conversation;
+
+    const rawReplyText = buildReplyMessage({
       contact,
       intentResult,
       flowResult,
-      conversation: flowResult?.conversation || conversation,
+      conversation: activeConversation,
+    });
+
+    // Repetition guard: avoid sending the same generic menu twice in a row.
+    const replyText = reduceMenuRepetition({
+      reply: rawReplyText,
+      conversation: activeConversation,
     });
 
     const sendResult = await sendWhatsAppTextMessage({
@@ -1062,17 +1074,37 @@ export async function receiveWhatsAppWebhook(req, res) {
 
     const outboundMessage = await saveOutboundMessage({
       contact,
-      conversation: flowResult?.conversation || conversation,
+      conversation: activeConversation,
       text: replyText,
       providerMessageId: sendResult.providerMessageId,
       status: sendResult.skipped ? "sent" : "sent",
     });
 
     await updateConversationIntent({
-      conversation: flowResult?.conversation || conversation,
+      conversation: activeConversation,
       intent: flowResult?.intent || intentResult.intent,
       lastOutboundMessageId: outboundMessage._id,
     });
+
+    // Store lightweight context for next-message awareness (non-critical).
+    const contextPatch = rememberLastContextPatch({
+      text: normalized.message.text || normalized.message.normalizedText || "",
+      reply: replyText,
+      route: intentResult.intent,
+      conversation: activeConversation,
+    });
+    if (activeConversation?._id && Object.keys(contextPatch).length) {
+      const ConvModel = activeConversation.constructor;
+      ConvModel.updateOne(
+        { _id: activeConversation._id },
+        {
+          $set: Object.fromEntries(
+            Object.entries(contextPatch).map(([k, v]) => [`metadata.${k}`, v])
+          ),
+        },
+        { runValidators: false }
+      ).catch(() => {}); // non-critical — do not block the response
+    }
 
     await markMessageProcessed(processedMessageId);
 

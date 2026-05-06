@@ -28,13 +28,16 @@ assert(
   "should be true"
 );
 
+// AARATI-15E: "Butwal ma driver job cha?" passes AI-first router as an informational
+// question (no explicit "kaam chahiyo"/"job chahiyo"). AI-first or deterministic
+// fallback handles it with a bounded reply — it does NOT go to old job_search classifier.
 assert(
-  "AI-first router does not intercept job search",
+  "AI-first router handles informational job query (Butwal ma driver job cha?)",
   shouldUseAaratiAiFirstRouter({
     normalized: normalized("Butwal ma driver job cha?"),
     conversation: idle,
-  }) === false,
-  "job search should go to job flow"
+  }) === true,
+  "informational job query should be handled by AI-first router, not old classifier"
 );
 
 assert(

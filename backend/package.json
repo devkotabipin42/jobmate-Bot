@@ -34,7 +34,8 @@
     "test:aarati-15b-hard-safety": "node scripts/testAarati15BHardSafety.mjs",
     "test:aarati-15c-preflow-qa": "node scripts/testAarati15CPreFlowQa.mjs",
     "test:aarati-15e-fallback": "META_ACCESS_TOKEN=test MONGODB_URI=mongodb://localhost/test node scripts/testAarati15EProviderFallback.mjs",
-    "test:aarati-15f-flow-escape": "META_ACCESS_TOKEN=test MONGODB_URI=mongodb://localhost/test node scripts/testAarati15FFlowEscape.mjs"
+    "test:aarati-15f-flow-escape": "META_ACCESS_TOKEN=test MONGODB_URI=mongodb://localhost/test node scripts/testAarati15FFlowEscape.mjs",
+    "test:aarati-conversation-director": "META_ACCESS_TOKEN=test MONGODB_URI=mongodb://localhost/test node scripts/testAaratiConversationDirector.mjs"
   },
   "keywords": [],
   "author": "JobMate",
