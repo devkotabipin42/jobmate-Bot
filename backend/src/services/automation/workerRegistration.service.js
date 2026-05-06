@@ -700,9 +700,15 @@ function parseDistrict(text) {
 function parseAvailability(text) {
   if (AVAILABILITY_MAP[text]) return AVAILABILITY_MAP[text];
 
-  if (includesAny(text, ["immediate", "आजै", "तुरुन्त", "yo hapta"])) return "immediate";
-  if (includesAny(text, ["2 hapta", "१-२", "1-2"])) return "within_2_weeks";
-  if (includesAny(text, ["1 mahina", "month", "महिना"])) return "within_1_month";
+  if (includesAny(text, ["immediate", "आजै", "तुरुन्त", "yo hapta", "taurai", "turant"])) return "immediate";
+  if (includesAny(text, ["2 hapta", "१-२", "1-2", "within_2_weeks"])) return "within_2_weeks";
+  if (includesAny(text, ["1 mahina", "month", "महिना", "within_1_month"])) return "within_1_month";
+
+  // Aarati work-schedule strings (Bug fix #6: these must not silently become not_decided)
+  if (/full.?time|fulltime|din bhar/i.test(text)) return "immediate";      // full-time = ready now
+  if (/part.?time|parttime|aadha din/i.test(text)) return "within_1_month"; // part-time = flexible timing
+  if (/shift.*based|shiftbased/i.test(text)) return "within_2_weeks";      // shift = moderate flexibility
+  if (/jun sukai|any\b/i.test(text)) return "not_decided";
 
   return "not_decided";
 }
