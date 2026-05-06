@@ -61,6 +61,7 @@ import { getAaratiHumanBoundaryAnswer } from "../services/aarati/aaratiHumanBoun
 import { getAaratiHumanIntentFormattedAnswer } from "../services/aarati/aaratiHumanIntentFormatter.service.js";
 import { generateAaratiAiFirstAnswer } from "../services/aarati/aaratiAiFirstRouter.service.js";
 import { getAaratiPreFlowQaAnswer } from "../services/aarati/aaratiPreFlowQaGuard.service.js";
+import { getAaratiActiveFlowSideReply } from "../services/aarati/aaratiActiveFlowSideReply.service.js";
 import { getAaratiEmployerDirectRoute } from "../services/aarati/aaratiEmployerDirectRouter.service.js";
 import { getUserTextForPolish, polishAaratiReply } from "../services/aarati/aaratiReplyPolish.service.js";
 import { generateJobMateGeneralAnswer } from "../services/rag/jobmateGeneralAnswer.service.js";
@@ -901,12 +902,22 @@ export async function receiveWhatsAppWebhook(req, res) {
         step: conversation?.metadata?.qualificationStep,
       });
 
-      flowResult = await handleEmployerLead({
-        contact,
-        conversation,
-        normalizedMessage: normalized,
-        aiExtraction: aiBrain?.ai || null,
-      });
+      const employerFlowText = normalized.message.normalizedText || normalized.message.text || "";
+      const employerSideReply = getAaratiActiveFlowSideReply({ text: employerFlowText, conversation });
+
+      if (employerSideReply) {
+        flowResult = {
+          intent: "employer_lead",
+          messageToSend: employerSideReply,
+        };
+      } else {
+        flowResult = await handleEmployerLead({
+          contact,
+          conversation,
+          normalizedMessage: normalized,
+          aiExtraction: aiBrain?.ai || null,
+        });
+      }
     } else if (
       env.BOT_MODE === "jobmate_hiring" &&
       (

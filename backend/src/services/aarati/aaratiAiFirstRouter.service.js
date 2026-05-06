@@ -10,6 +10,7 @@ import {
   isAaratiPersonalMoneyText,
   isAaratiWeatherText,
   isAaratiMathHomeworkText,
+  isAaratiRestartCommandText,
 } from "./aaratiTextNormalizer.service.js";
 
 const SAFE_DB_INTENTS = new Set([
@@ -160,7 +161,7 @@ function detectAaratiDeterministicIntent(normalizedText = "") {
   if (/cv.*ban|cv.*bana|cv.*make|cv.*create|cv.*garna|resume.*ban|resume.*bana|cv.*help|cv.*lakh|make.*cv|create.*cv/i.test(v)) return "cv_help_question";
   if (/student|parttime|part.?time|college.*job|job.*student|studying|padhai.*garda.*job|padhai.*sanga.*kaam/i.test(v)) return "parttime_question";
   if (/politics|election|president|prime minister|party|religion|dharm|धर्म|राजनीति|bible|quran/i.test(v)) return "sensitive_unrelated";
-  if (/timi ko hau|tapai ko ho|timro naam|who are you|what are you|aarati.*k.*ho|jobmate.*k.*ho/i.test(v)) return "identity";
+  if (/timi ko hau|timi ko ho|tapai ko ho|timro naam|who are you|what are you|aarati.*k.*ho|jobmate.*k.*ho|are you real|bot ho\b|human ho/i.test(v)) return "identity";
   if (/jobmate.*guarantee|job guarantee|salary guarantee|guarantee din|sure job|pakka job|pakka.*milcha/i.test(v)) return "job_guarantee";
   if (/document.*safe|privacy|data.*safe|cv.*safe|license.*safe|citizenship.*safe|leak.*garne/i.test(v)) return "document_privacy_unknown";
   if (/price|pricing|fee|cost|monthly|plan|free.*ho|lagcha.*kati|kati.*lagcha/i.test(v)) return "pricing_unknown";
@@ -263,6 +264,7 @@ export function shouldUseAaratiAiFirstRouter({ normalized, conversation } = {}) 
   const text = normalizeAaratiText(rawText);
 
   if (!rawText || rawText.length < 3) return false;
+  if (isAaratiRestartCommandText(rawText)) return false;
   if (isActiveFlow(conversation)) return false;
   if (isAaratiDirectMenuReply(text)) return false;
 

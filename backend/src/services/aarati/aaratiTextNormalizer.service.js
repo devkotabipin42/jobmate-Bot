@@ -42,6 +42,8 @@ export function normalizeAaratiText(input = "") {
     .replace(/\barew\b/g, "are")
     .replace(/\btarkar\b/g, "taskar")
     .replace(/\btaskar\b/g, "taskar")
+    .replace(/\btme\b/g, "timi")
+    .replace(/\bkoho\b/g, "ko ho")
     .replace(/\bnadine\b/g, "nadine")
     .replace(/\bnadiney\b/g, "nadine")
     .replace(/\bmanav\b/g, "manav")
@@ -105,7 +107,7 @@ export function isAaratiJobSeekerRequestText(text = "") {
 export function isAaratiIdentityQuestionText(text = "") {
   const value = normalizeAaratiText(text);
 
-  return /timi ko hau|tapai ko ho|timro naam|who are you|what are you|aarati ko ho|jobmate k ho|jobmate ke ho|jobmate k h/i.test(
+  return /timi ko hau|timi ko ho|tapai ko ho|timro naam|who are you|what are you|aarati ko ho|jobmate k ho|jobmate ke ho|jobmate k h/i.test(
     value
   );
 }
@@ -132,4 +134,9 @@ export function isAaratiMathHomeworkText(text = "") {
 
 export function isAaratiDirectMenuReply(text = "") {
   return /^[1-9]$/.test(String(text || "").trim());
+}
+
+export function isAaratiRestartCommandText(text = "") {
+  const value = String(text || "").toLowerCase().trim();
+  return /^(start|restart|suru|menu|surugaram|suru garam|नया|नयाँ|सुरु|reset|feri suru|feri start)$/.test(value);
 }
