@@ -41,7 +41,8 @@
     "test:aarati-18a-universal-brain": "META_ACCESS_TOKEN=test MONGODB_URI=mongodb://localhost/test node scripts/testAarati18AUniversalHumanBrain.mjs",
     "test:aarati19a-conversation-decision": "node scripts/testAarati19AConversationDecision.mjs",
     "test:aarati19c-policy-brain": "node scripts/testAarati19CJobMatePolicyBrain.mjs",
-    "test:aarati19e-human-language": "node scripts/testAarati19EHumanLanguage.mjs"
+    "test:aarati19e-human-language": "node scripts/testAarati19EHumanLanguage.mjs",
+    "test:aarati19f-interrupt-resume": "node scripts/testAarati19FInterruptResume.mjs"
   },
   "keywords": [],
   "author": "JobMate",

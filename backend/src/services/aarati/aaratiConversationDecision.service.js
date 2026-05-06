@@ -477,10 +477,117 @@ function detectStaleCategoryFields(val, collectedData = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// Interrupt-Answer-Resume helpers (NEW 19F)
+//
+// When a bypass category fires inside an active flow step, append a soft
+// re-prompt so the user knows where to continue without losing their place.
+//
+// Rules:
+//   • Only for categories that set preserveState:true (user didn't switch intent)
+//   • NOT for forbidden/referential_forbidden/command/flow-switch categories
+//   • document_privacy_interrupt is excluded — its reply already embeds the menu
+//   • current_step_question_interrupt is excluded — buildStepQuestionReply already
+//     includes the menu
+// ---------------------------------------------------------------------------
+
+const RESUMABLE_CATEGORIES = new Set([
+  "hesitation_privacy",
+  "cv_privacy_support",
+  "frustration_or_insult",
+  "respect_trust",
+  "out_of_scope_service",
+  "small_talk_boundary",
+]);
+
+function getResumePrompt(state, collectedData = {}) {
+  const s = String(state || "").toLowerCase();
+
+  if (/ask_documents?|ask_doc\b/.test(s)) {
+    return (
+      "Aghi sodheko document status choose garnu hola 🙏\n" +
+      "1. Chha, pachi comfortable bhayepachhi pathaunchhu\n" +
+      "2. Chhaina\n" +
+      "3. Kehi chha, kehi chhaina"
+    );
+  }
+
+  if (/ask_avail|availability/.test(s)) {
+    return (
+      "Tapai lai kun milchha? 🙏\n" +
+      "1. Full-time (din bhar)\n" +
+      "2. Part-time (aadha din)\n" +
+      "3. Shift based\n" +
+      "4. Jun sukai"
+    );
+  }
+
+  if (/ask_location|ask_district/.test(s)) {
+    return (
+      "Tapai Lumbini bhitra kun area bata khojna chahanu huncha? 🙏\n" +
+      "Example: Butwal, Bardaghat, Bhairahawa, Parasi."
+    );
+  }
+
+  if (/ask_job.*type|ask_jobtype|ask_job\b/.test(s)) {
+    return (
+      "Kasto kaam khojna chahanu huncha? 🙏\n" +
+      "1. Hotel / Restaurant\n" +
+      "2. Driver\n" +
+      "3. Security Guard\n" +
+      "4. Sales / Marketing\n" +
+      "5. Cleaning / Helper\n" +
+      "6. IT / Tech\n" +
+      "7. Jun sukai (any)"
+    );
+  }
+
+  if (/asked_register|ask_register/.test(s)) {
+    return (
+      "Tapai register garna chahanu huncha? 🙏\n" +
+      "1. Hoo, register garchhu\n" +
+      "2. Aile hoina, pachi garchhu"
+    );
+  }
+
+  if (/ask_business.*name|ask_business\b/.test(s)) {
+    return "Tapai ko business / company ko naam pathaunu hola 🙏";
+  }
+
+  if (/ask_vacancy_role/.test(s)) {
+    return "Kun role ko lagi kati jana staff chahinchha? 🙏 Example: 2 jana waiter, 1 jana cook.";
+  }
+
+  if (/ask_vacancy\b/.test(s)) {
+    return "Tapai lai kati jana staff chahiyo ra kasto role ho? 🙏";
+  }
+
+  if (/employer_ask_salary|ask_salary/.test(s)) {
+    return "Salary range kati offer garna saknu huncha? 🙏 Example: NPR 15,000 - 20,000/month.";
+  }
+
+  return null;
+}
+
+function shouldAppendResumePrompt(category, state) {
+  if (!RESUMABLE_CATEGORIES.has(category)) return false;
+  const s = String(state || "");
+  return Boolean(s && s !== "idle");
+}
+
+// Mutates d.reply in-place; always returns d.
+function applyResume(d, state, collectedData) {
+  if (!shouldAppendResumePrompt(d.category, state)) return d;
+  const rp = getResumePrompt(state, collectedData);
+  if (rp) d.reply = `${d.reply || ""}\n\n${rp}`;
+  return d;
+}
+
+// ---------------------------------------------------------------------------
 // Main export: decideAaratiNextAction
-// Priority order: command → forbidden → referential_forbidden → document_privacy →
-//   step_interrupt → cv_privacy → frustration/respect → out_of_scope →
-//   pricing → out_of_region → recheck → employer → job_search → worker_reg →
+// Priority order: command → name_capture → forbidden → referential_forbidden →
+//   document_privacy → hesitation_privacy → step_interrupt → cv_privacy →
+//   frustration/respect → out_of_scope → pricing → out_of_region → recheck →
+//   ambiguous_teacher → employer → job_search → worker_reg →
 //   identity → small_talk → unknown_safe_fallback
 // ---------------------------------------------------------------------------
 
@@ -593,7 +700,7 @@ export function decideAaratiNextAction({
       blockLocationExtraction: true,
       blockJobSearch: true,
       reply:
-        "Dar lagnu normal ho Mitra ji 🙏\n\n" +
+        `Dar lagnu normal ho ${displayName} 🙏\n\n` +
         "JobMate le tapai ko CV/document sabai company lai blindly pathaudaina.\n" +
         "Hiring/verification purpose ko lagi matra use garincha, ra relevant verified employer sanga " +
         "tapai comfortable bhayepachhi matra share garna milcha.\n\n" +
@@ -603,6 +710,8 @@ export function decideAaratiNextAction({
         "3. Kehi chha, kehi chhaina",
       reason: "document_privacy_question_in_flow",
     });
+    // document_privacy_interrupt already embeds document options in reply;
+    // resume prompt not appended (would duplicate the 1/2/3 menu).
     logDecision({ ...d, state, normalizedText: val });
     return d;
   }
@@ -625,6 +734,7 @@ export function decideAaratiNextAction({
         "Natra pachi pani kura garna milcha. Ma yahi chu.",
       reason: "user_hesitation_respect",
     });
+    applyResume(d, state, collectedData);
     logDecision({ ...d, state, normalizedText: val });
     return d;
   }
@@ -658,7 +768,7 @@ export function decideAaratiNextAction({
       preserveCollectedData: true,
       blockLocationExtraction: true,
       reply:
-        "Dar lagnu normal ho Mitra ji 🙏\n\n" +
+        `Dar lagnu normal ho ${displayName} 🙏\n\n` +
         "JobMate ma tapai ko CV/document hiring purpose ko lagi matra use garincha. " +
         "Pahila CV pathauna compulsory chaina.\n\n" +
         "Tapai comfortable hunuhunchha bhane basic detail bata suru garna milcha:\n" +
@@ -666,6 +776,7 @@ export function decideAaratiNextAction({
         "CV/document pachi matra share garda huncha.",
       reason: "cv_privacy_question",
     });
+    applyResume(d, state, collectedData);
     logDecision({ ...d, state, normalizedText: val });
     return d;
   }
@@ -679,6 +790,8 @@ export function decideAaratiNextAction({
       category: "frustration_or_insult",
       action: "apologize_redirect",
       bypassFlow: true,
+      preserveState: Boolean(state && state !== "idle"),
+      preserveCollectedData: true,
       blockLocationExtraction: true,
       reply:
         `Sorry ${displayName} 🙏 Aghi ko reply clear bhayena jasto lagyo.\n\n` +
@@ -686,6 +799,7 @@ export function decideAaratiNextAction({
         "Tapai ko main kura ek line ma pathaunu hola, ma sidha answer dinchhu.",
       reason: "frustration_signal",
     });
+    applyResume(d, state, collectedData);
     logDecision({ ...d, state, normalizedText: val });
     return d;
   }
@@ -701,11 +815,12 @@ export function decideAaratiNextAction({
       preserveState: Boolean(state && state !== "idle"),
       preserveCollectedData: true,
       reply:
-        "Hajur Mitra ji, ma tapai sanga samman sanga kura garchu 🙏\n\n" +
+        `Hajur ${displayName}, ma tapai sanga samman sanga kura garchu 🙏\n\n` +
         "Aghi ko reply rude/unclear jasto lagyo bhane sorry. " +
         "Tapai ko kura short ma pathaunu hola, ma calm bhayera sidha help garchu.",
       reason: "respect_request",
     });
+    applyResume(d, state, collectedData);
     logDecision({ ...d, state, normalizedText: val });
     return d;
   }
@@ -719,12 +834,15 @@ export function decideAaratiNextAction({
       category: "out_of_scope_service",
       action: "scope_boundary",
       bypassFlow: true,
+      preserveState: Boolean(state && state !== "idle"),
+      preserveCollectedData: true,
       blockLocationExtraction: true,
       reply: /website|coding|code.*garna|web.*app/i.test(rawLower)
         ? `Website/coding ko kaam ma JobMate bata direct service dina mildaina ${displayName} 🙏\n\nTara IT/developer job khojna ho bhane location ra role pathaunu hola.`
         : `Yo kura JobMate ko main service bhitra pardaina ${displayName} 🙏\n\nMa JobMate team bata job khojna, staff khojna, CV/document guidance, pricing/support ra human team connect garne kura ma help garna sakchu.`,
       reason: "out_of_scope_request",
     });
+    applyResume(d, state, collectedData);
     logDecision({ ...d, state, normalizedText: val });
     return d;
   }
@@ -911,12 +1029,15 @@ export function decideAaratiNextAction({
       category: "small_talk_boundary",
       action: "warm_boundary",
       bypassFlow: true,
+      preserveState: Boolean(state && state !== "idle"),
+      preserveCollectedData: true,
       reply:
-        "Hajur Mitra ji 🙏 Ma JobMate team bata yahi help garna ready chu.\n\n" +
+        `Hajur ${displayName} 🙏 Ma JobMate team bata yahi help garna ready chu.\n\n` +
         "Personal kura bhanda JobMate ko kaam ma focus garum hai — " +
         "job khojna, staff khojna, CV/document, pricing/support ma help garna sakchu.",
       reason: "small_talk",
     });
+    applyResume(d, state, collectedData);
     logDecision({ ...d, state, normalizedText: val });
     return d;
   }
