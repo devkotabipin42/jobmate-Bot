@@ -67,7 +67,23 @@ export function isAaratiSmallTalkText(text = "") {
 export function isAaratiFrustrationText(text = "") {
   const value = normalizeAaratiText(text);
 
-  return /are you mad|pagal|risayau|risako|kina bujhena|bujhdainau|wrong|galat|bakwas|stupid|idiot|bitch|fuck|gali|mad ho|kasto bot|kasto reply|ghus|ghus khanchau|bribe|rishwat|रिसवत|घुस/i.test(
+  return /are you mad|pagal|risayau|risako|kina bujhena|bujhdainau|bujdainau|wrong|galat|bakwas|stupid|idiot|bitch|fuck|gali|mad ho|kasto bot|kasto reply|ghus|ghus khanchau|bribe|rishwat|रिसवत|घुस/i.test(
+    value
+  );
+}
+
+export function isAaratiFairLaborViolationText(text = "") {
+  const value = normalizeAaratiText(text);
+
+  return /free.*ma.*kaam.*garne.*worker|free.*labor.*dinus|bina.*paisa.*kaam.*garaunus|bina.*salary.*kaam|salary.*nadiikne.*worker|free.*ma.*kaam.*garaunus|no.*pay.*worker|unpaid.*worker|free.*worker.*chahiyo|free.*staff.*chahiyo|bina.*paisa.*staff/i.test(
+    value
+  );
+}
+
+export function isAaratiCvPrivacyQuestion(text = "") {
+  const value = normalizeAaratiText(text);
+
+  return /cv.*sabai.*company|cv.*company.*dekaunu|cv.*share.*sabai|resume.*sabai.*company|resume.*company.*lai.*dinu|mero.*cv.*sabai|mero.*resume.*sabai|cv.*baher.*pathau|cv.*leak|resume.*leak|document.*share.*sabai/i.test(
     value
   );
 }

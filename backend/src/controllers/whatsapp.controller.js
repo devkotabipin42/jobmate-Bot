@@ -62,6 +62,7 @@ import { getAaratiHumanIntentFormattedAnswer } from "../services/aarati/aaratiHu
 import { generateAaratiAiFirstAnswer } from "../services/aarati/aaratiAiFirstRouter.service.js";
 import { getAaratiPreFlowQaAnswer } from "../services/aarati/aaratiPreFlowQaGuard.service.js";
 import { getAaratiActiveFlowSideReply } from "../services/aarati/aaratiActiveFlowSideReply.service.js";
+import { getAaratiHardSafetyBoundaryAnswer } from "../services/aarati/aaratiHardSafetyBoundary.service.js";
 import { getAaratiEmployerDirectRoute } from "../services/aarati/aaratiEmployerDirectRouter.service.js";
 import { getUserTextForPolish, polishAaratiReply } from "../services/aarati/aaratiReplyPolish.service.js";
 import { generateJobMateGeneralAnswer } from "../services/rag/jobmateGeneralAnswer.service.js";
@@ -335,6 +336,58 @@ export async function receiveWhatsAppWebhook(req, res) {
         success: true,
         message: "Aarati human boundary handled message",
         source: humanBoundaryAnswer.source,
+        replied: true,
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
+
+    const hardSafetyAnswer =
+      env.BOT_MODE === "jobmate_hiring"
+        ? getAaratiHardSafetyBoundaryAnswer({ normalized })
+        : null;
+
+    if (hardSafetyAnswer) {
+      const hardSafetyIntentResult = {
+        intent: hardSafetyAnswer.intent || "unknown",
+        needsHuman: hardSafetyAnswer.detectedIntent === "frustration_or_abuse",
+        priority: hardSafetyAnswer.detectedIntent === "frustration_or_abuse" ? "medium" : "low",
+        reason: `${hardSafetyAnswer.source}:${hardSafetyAnswer.detectedIntent}`,
+      };
+
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: hardSafetyIntentResult,
+      });
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: hardSafetyAnswer.reply,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation,
+        text: hardSafetyAnswer.reply,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      await updateConversationIntent({
+        conversation,
+        intent: hardSafetyIntentResult.intent,
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "Aarati hard safety boundary handled message",
+        source: hardSafetyAnswer.source,
+        detectedIntent: hardSafetyAnswer.detectedIntent,
         replied: true,
         sendSkipped: sendResult.skipped || false,
       });

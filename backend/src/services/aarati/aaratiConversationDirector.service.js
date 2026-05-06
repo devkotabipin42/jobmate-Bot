@@ -121,7 +121,7 @@ export function detectHumanConversationMode({ text = "", conversation = {} } = {
 
   // Out of scope
   if (
-    /politics|election|religion|dharm|alcohol|drug|medicine|doctor|hospital/i.test(v)
+    /politics|election|religion|dharm|alcohol|drug|medicine|doctor|hospital|website.*bana|website.*ban|app.*bana|mobile app.*bana|web app.*bana|can you.*website|make.*website|create.*website|develop.*website/i.test(v)
   ) return "out_of_scope";
 
   return "unclear";

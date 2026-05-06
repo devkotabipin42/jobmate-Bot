@@ -167,6 +167,7 @@ function detectAaratiDeterministicIntent(normalizedText = "") {
   if (/price|pricing|fee|cost|monthly|plan|free.*ho|lagcha.*kati|kati.*lagcha/i.test(v)) return "pricing_unknown";
   if (/support|team.*contact|phone.*help|human.*help/i.test(v)) return "support_unknown";
   if (/khana khanu|k cha|khabar|sanchai|hello|hi\b|namaste|good morning|good evening|how are you|k gardai/i.test(v)) return "small_talk";
+  if (/website.*bana|website.*ban|app.*bana|mobile app.*bana|web app.*bana|can you.*website|make.*website|create.*website|develop.*website/i.test(v)) return "out_of_scope_tech";
 
   return "safe_unknown_question";
 }
@@ -229,6 +230,9 @@ function buildDeterministicFallbackReply(intent = "safe_unknown_question") {
 
     case "support_unknown":
       return `Mitra ji, JobMate support ko lagi ma yahi WhatsApp ma basic help garna sakchu 🙏\n\nComplex kura bhaye team lai forward garna milcha.\n\nTapai ko problem short ma pathaunu hola, ma sidha help garne try garchu.`;
+
+    case "out_of_scope_tech":
+      return `Mitra ji, website/app banaune kaam JobMate ko scope bhanda baahira parcha 🙏\n\nJobMate le job khojna, staff khojna, document/verification, pricing ra hiring support ma matra help garcha.\n\nTapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`;
 
     case "small_talk":
       return `Hajur Mitra ji, thik cha 🙏\n\nMa Aarati, JobMate team bata. Small kura garna milcha, tara mero main kaam tapai lai job/hiring support dinu ho.\n\nKaam khojna ho bhane location ra kaam type pathaunu hola. Staff khojna ho bhane business/role pathaunu hola.`;

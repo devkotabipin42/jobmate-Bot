@@ -83,7 +83,7 @@ function isInformationalQuestionInsideFlow(value = "") {
     /choose salary|salary.*myself|salary.*afai|afai.*salary|salary.*choose/i.test(value) ||
     /how fast.*job|kati chitto.*job|kati din.*job|job kahile.*milcha|job.*kati.*din/i.test(value) ||
     /interview kasari|interview process|interview hunxa|interview kasto/i.test(value) ||
-    /make my cv|cv.*bana|cv.*banai|resume.*bana|bio.*data.*bana/i.test(value) ||
+    /make my cv|cv.*bana|cv.*banai|resume.*bana|bio.*data.*bana|cv xaina|cv chaina|resume xaina|resume chaina|cv nai chaina|resume nai chaina/i.test(value) ||
     /timi ko ho|timi ko hau|tapai ko ho|who are you|what are you|aarati.*k.*ho|are you real|bot ho\b|human ho/i.test(value)
   );
 }
@@ -107,8 +107,8 @@ function buildInformationalSideBody(value = "") {
   if (/interview kasari|interview process|interview hunxa|interview kasto/i.test(value)) {
     return "Interview process employer anusar farak huncha. Usually employer le phone/WhatsApp bata contact garna sakcha, ani basic experience ra salary expectation bare sodhna sakcha.";
   }
-  if (/make my cv|cv.*bana|cv.*banai|resume.*bana|bio.*data.*bana/i.test(value)) {
-    return "JobMate le full CV banaidine service guarantee gardaina. Tara tapai ko profile detail save garna, document upload garna ra employer sanga share garna help garna sakcha.";
+  if (/make my cv|cv.*bana|cv.*banai|resume.*bana|bio.*data.*bana|cv xaina|cv chaina|resume xaina|resume chaina|cv nai chaina|resume nai chaina/i.test(value)) {
+    return "CV/resume chaina bhane pani JobMate ma profile save garna milcha — name, location, kasto kaam chahiyo, experience ra availability matra pug-cha. CV banaune support ko lagi JobMate team lai forward garna milcha.";
   }
   if (/timi ko ho|timi ko hau|tapai ko ho|who are you|what are you|aarati.*k.*ho|are you real|bot ho\b|human ho/i.test(value)) {
     return "Ma Aarati ho, JobMate team bata. Ma tapai lai kaam khojna, staff khojna, profile save garna, document/verification ra support ma help garna sakchu.";

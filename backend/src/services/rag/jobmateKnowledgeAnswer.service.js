@@ -25,6 +25,16 @@ export function findJobMateKnowledgeAnswer({ normalized } = {}) {
     return null;
   }
 
+  // Fair labor — "free ma kam garne worker" should be refused by hard safety, not routed to pricing
+  if (/free.*ma.*kaam.*garne.*worker|free.*labor|bina.*paisa.*kaam|bina.*salary.*kaam|free.*worker.*chahiyo|free.*staff.*chahiyo/i.test(text)) {
+    return null;
+  }
+
+  // CV privacy — "mero cv sabai company lai" should answer data policy, not generic knowledge topic
+  if (/cv.*sabai.*company|cv.*company.*dekaunu|cv.*share.*sabai|resume.*sabai.*company|mero.*cv.*sabai|cv.*baher.*pathau|cv.*leak|resume.*leak/i.test(text)) {
+    return null;
+  }
+
   for (const topic of JOBMATE_KNOWLEDGE_TOPICS) {
     const matched = topic.patterns.some((pattern) => pattern.test(text));
 
