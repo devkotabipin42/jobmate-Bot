@@ -77,6 +77,7 @@ import {
   rememberLastContextPatch,
 } from "../services/aarati/aaratiConversationDirector.service.js";
 import { decideAaratiNextAction } from "../services/aarati/aaratiConversationDecision.service.js";
+import { decideFollowupReplyContext } from "../services/aarati/aaratiFollowupReplyContextGuard.service.js";
 import {
   buildDocumentReceivedReply,
   isSupportedDocumentMedia,
@@ -157,6 +158,80 @@ export async function receiveWhatsAppWebhook(req, res) {
       contact,
       channel: "whatsapp",
     });
+
+    // ── AARATI-20A: Follow-up Reply Context Guard ────────────────────────────
+    // Priority #2 in routing ladder — BEFORE safety guards, classifyIntent,
+    // employer parser, Mapbox, and all other classifiers.
+    // Intercepts numeric replies (1/2/3) when conversation is awaiting a
+    // follow-up reply (e.g. candidate_reengagement sent by jobmate_followup).
+    if (env.BOT_MODE === "jobmate_hiring") {
+      const followupText =
+        normalized.message.normalizedText ||
+        normalized.message.text ||
+        "";
+      const followupDecision = decideFollowupReplyContext({
+        text: followupText,
+        phone: contact.phone,
+        conversation,
+      });
+
+      if (followupDecision.shouldHandle) {
+        const patch20a = { ...(followupDecision.metadataPatch || {}) };
+        if (followupDecision.nextState) {
+          patch20a["currentState"] = followupDecision.nextState;
+        }
+
+        const ConvModel = conversation.constructor;
+        await ConvModel.updateOne(
+          { _id: conversation._id },
+          { $set: patch20a },
+          { runValidators: false }
+        );
+
+        const inboundMessage20a = await saveInboundMessage({
+          contact,
+          conversation,
+          normalized,
+          intentResult: {
+            intent: "followup_reply",
+            needsHuman: false,
+            priority: "low",
+            reason: followupDecision.reason,
+          },
+        });
+
+        const sendResult20a = await sendWhatsAppTextMessage({
+          to: contact.phone,
+          text: followupDecision.replyText,
+        });
+
+        const outboundMessage20a = await saveOutboundMessage({
+          contact,
+          conversation,
+          text: followupDecision.replyText,
+          providerMessageId: sendResult20a.providerMessageId,
+          status: "sent",
+        });
+
+        await updateConversationIntent({
+          conversation,
+          intent: "followup_reply",
+          lastInboundMessageId: inboundMessage20a._id,
+          lastOutboundMessageId: outboundMessage20a._id,
+        });
+
+        await markMessageProcessed(processedMessageId);
+
+        return res.status(200).json({
+          success: true,
+          message: "Aarati 20A follow-up reply context guard handled message",
+          reason: followupDecision.reason,
+          replied: true,
+          sendSkipped: sendResult20a.skipped || false,
+        });
+      }
+    }
+    // ── End AARATI-20A guard ──────────────────────────────────────────────────
 
     const safetyEvent =
       env.BOT_MODE === "jobmate_hiring"

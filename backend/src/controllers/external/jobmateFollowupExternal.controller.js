@@ -1,4 +1,8 @@
 import { sendWhatsAppTextMessage } from "../../services/whatsapp/whatsappClient.service.js";
+import { Contact } from "../../models/Contact.model.js";
+import { Conversation } from "../../models/Conversation.model.js";
+
+const FOLLOWUP_REPLY_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 const normalizePhone = (phone = "") => {
   const digits = String(phone).replace(/\D/g, "");
@@ -77,6 +81,51 @@ export const receiveJobmateFollowup = async (req, res) => {
       phone: normalizedPhone,
       providerMessageId: sendResult?.providerMessageId || null
     });
+
+    // ── AARATI-20A: Store follow-up context for the reply guard ──────────────
+    // When the user replies (e.g. "1"), the WhatsApp webhook will read
+    // metadata.awaitingFollowupReply and route the reply before any
+    // employer parser, classifier, or Mapbox call sees it.
+    // Non-fatal: failure to store context is logged but does not fail the response.
+    try {
+      const followupContact = await Contact.findOne({ phone: normalizedPhone }).lean();
+      if (followupContact?._id) {
+        await Conversation.updateOne(
+          { contactId: followupContact._id, channel: "whatsapp" },
+          {
+            $set: {
+              "metadata.awaitingFollowupReply": true,
+              "metadata.followupSource": "jobmate_followup",
+              "metadata.followupType": type || "unknown",
+              "metadata.followupLogId": followUpLogId || null,
+              "metadata.followupExpiresAt": new Date(Date.now() + FOLLOWUP_REPLY_EXPIRY_MS),
+              "metadata.expectedInputs": ["1", "2", "3"],
+              "metadata.lastOutboundContext": {
+                source: "jobmate_followup",
+                type: type || "unknown",
+                options: {
+                  "1": "still_looking",
+                  "2": "not_looking",
+                  "3": "update_location_job_type",
+                },
+              },
+            },
+          },
+          { runValidators: false }
+        );
+        console.log("[external-jobmate-followup] follow-up context stored", {
+          phone: normalizedPhone,
+          type,
+          followUpLogId,
+        });
+      }
+    } catch (contextError) {
+      console.warn(
+        "[external-jobmate-followup] failed to store follow-up context (non-fatal):",
+        contextError.message
+      );
+    }
+    // ── End AARATI-20A context store ──────────────────────────────────────────
 
     return res.status(200).json({
       success: true,
