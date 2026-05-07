@@ -230,7 +230,7 @@ export async function receiveWhatsAppWebhook(req, res) {
           conversation,
           normalized,
           intentResult: {
-            intent: "followup_reply",
+            intent: nextConversationIntent20a,
             needsHuman: false,
             priority: "low",
             reason: followupDecision.reason,
