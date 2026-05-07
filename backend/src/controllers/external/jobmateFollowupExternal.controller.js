@@ -1,31 +1,22 @@
 import { sendWhatsAppTextMessage } from "../../services/whatsapp/whatsappClient.service.js";
 import { Contact } from "../../models/Contact.model.js";
 import { Conversation } from "../../models/Conversation.model.js";
+// Use the SAME canonicalization as the WhatsApp inbound path so phone keys match.
+import { normalizePhone as sharedNormalizePhone } from "../../utils/normalizePhone.js";
 
 const FOLLOWUP_REPLY_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-const normalizePhone = (phone = "") => {
+// canonicalPhone: strips all non-digits and applies Nepal/Japan country-code logic.
+// Must match whatever the WhatsApp inbound path stores in Contact.phone.
+const canonicalizePhone = (phone = "") => {
+  const shared = sharedNormalizePhone(phone);
+  if (shared) return shared;
+
+  // Fallback for Japan numbers not covered by the shared utility.
   const digits = String(phone).replace(/\D/g, "");
-
   if (!digits) return "";
-
-  // Already international Nepal
-  if (digits.startsWith("977")) return digits;
-
-  // Already international Japan
   if (digits.startsWith("81")) return digits;
-
-  // Japan local mobile test number: 080xxxxxxxx / 090xxxxxxxx / 070xxxxxxxx
-  if (/^0[789]0\d{8}$/.test(digits)) {
-    return `81${digits.slice(1)}`;
-  }
-
-  // Nepal local mobile: 98xxxxxxxx / 97xxxxxxxx
-  if (/^9[78]\d{8}$/.test(digits)) {
-    return `977${digits}`;
-  }
-
-  // Fallback: keep digits so Meta error is honest
+  if (/^0[789]0\d{8}$/.test(digits)) return `81${digits.slice(1)}`;
   return digits;
 };
 
@@ -52,7 +43,7 @@ export const receiveJobmateFollowup = async (req, res) => {
       metadata = {}
     } = req.body;
 
-    const normalizedPhone = normalizePhone(phone);
+    const normalizedPhone = canonicalizePhone(phone);
 
     if (!normalizedPhone || !message) {
       return res.status(400).json({
@@ -83,24 +74,23 @@ export const receiveJobmateFollowup = async (req, res) => {
     });
 
     // ── AARATI-20A: Store follow-up context for the reply guard ──────────────
-    // When the user replies (e.g. "1"), the WhatsApp webhook will read
-    // metadata.awaitingFollowupReply and route the reply before any
-    // employer parser, classifier, or Mapbox call sees it.
+    // Context is stored under metadata.collectedData (Mixed type) so Mongoose
+    // strict-mode does NOT silently strip these custom fields on write or read.
     // Non-fatal: failure to store context is logged but does not fail the response.
     try {
       const followupContact = await Contact.findOne({ phone: normalizedPhone }).lean();
       if (followupContact?._id) {
-        await Conversation.updateOne(
+        const updatedConv = await Conversation.findOneAndUpdate(
           { contactId: followupContact._id, channel: "whatsapp" },
           {
             $set: {
-              "metadata.awaitingFollowupReply": true,
-              "metadata.followupSource": "jobmate_followup",
-              "metadata.followupType": type || "unknown",
-              "metadata.followupLogId": followUpLogId || null,
-              "metadata.followupExpiresAt": new Date(Date.now() + FOLLOWUP_REPLY_EXPIRY_MS),
-              "metadata.expectedInputs": ["1", "2", "3"],
-              "metadata.lastOutboundContext": {
+              "metadata.collectedData.awaitingFollowupReply": true,
+              "metadata.collectedData.followupSource": "jobmate_followup",
+              "metadata.collectedData.followupType": type || "unknown",
+              "metadata.collectedData.followupLogId": followUpLogId || null,
+              "metadata.collectedData.followupExpiresAt": new Date(Date.now() + FOLLOWUP_REPLY_EXPIRY_MS),
+              "metadata.collectedData.expectedInputs": ["1", "2", "3"],
+              "metadata.collectedData.lastOutboundContext": {
                 source: "jobmate_followup",
                 type: type || "unknown",
                 options: {
@@ -111,12 +101,30 @@ export const receiveJobmateFollowup = async (req, res) => {
               },
             },
           },
-          { runValidators: false }
+          { returnDocument: "after", runValidators: false }
         );
-        console.log("[external-jobmate-followup] follow-up context stored", {
+
+        if (updatedConv) {
+          const cd = updatedConv.metadata?.collectedData || {};
+          console.log("AARATI_20A_CONTEXT_SAVED", {
+            phone: normalizedPhone,
+            canonicalPhone: normalizedPhone,
+            conversationId: String(updatedConv._id),
+            awaitingFollowupReply: cd.awaitingFollowupReply ?? false,
+            followupType: cd.followupType ?? null,
+            currentState: updatedConv.currentState,
+            state: updatedConv.currentState,
+            activeFlow: updatedConv.currentIntent,
+          });
+        } else {
+          console.warn("[external-jobmate-followup] no conversation found for contact", {
+            phone: normalizedPhone,
+            contactId: String(followupContact._id),
+          });
+        }
+      } else {
+        console.warn("[external-jobmate-followup] contact not found, cannot store follow-up context", {
           phone: normalizedPhone,
-          type,
-          followUpLogId,
         });
       }
     } catch (contextError) {

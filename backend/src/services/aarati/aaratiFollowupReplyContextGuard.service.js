@@ -30,10 +30,12 @@ const REENGAGEMENT_OPT_3 =
   /^(3|update|location|job type|change|location update|job update)$/i;
 
 // ── Utility: convert flat key/value map → MongoDB dot-notation patch ──────
+// Fields are stored under metadata.collectedData (Mixed type) so Mongoose
+// strict mode does NOT strip them. Reading back works via the Mixed path.
 function buildMetaPatch(fields) {
   const patch = {};
   for (const [key, value] of Object.entries(fields)) {
-    patch[`metadata.${key}`] = value;
+    patch[`metadata.collectedData.${key}`] = value;
   }
   return patch;
 }
@@ -113,7 +115,9 @@ function handleCandidateReengagement(val) {
  *   human handoff flags, language, safety metadata.
  */
 export function decideFollowupReplyContext({ text, phone, conversation }) {
-  const meta = conversation?.metadata || {};
+  // Follow-up context is stored under metadata.collectedData (Mixed type)
+  // so it survives Mongoose strict-mode casting on both write and read.
+  const meta = conversation?.metadata?.collectedData || {};
 
   // ── Activation check 1: must be awaiting a follow-up reply ──────────────
   if (!meta.awaitingFollowupReply) {

@@ -1,9 +1,8 @@
 /**
- * AARATI-20A — Follow-up Reply Context Guard Tests
+ * AARATI-20A — Follow-up Reply Context Guard Tests (Hotfix revision)
  *
- * Verifies that decideFollowupReplyContext correctly intercepts numeric
- * replies when conversation is awaiting a follow-up reply, and passes
- * through all other messages unchanged.
+ * Follow-up context is stored in metadata.collectedData (Mixed type) so
+ * Mongoose strict-mode does NOT silently strip these fields on write or read.
  *
  * Groups:
  *   A. Activation checks — guard passes through when no context
@@ -13,6 +12,7 @@
  *   E. Unrecognised input while awaiting reply
  *   F. Expired follow-up context
  *   G. Unknown follow-up type — generic ack for 1/2/3
+ *   H. Production regression — employer state must NOT override follow-up context
  *
  * Pure unit tests — no DB, no WhatsApp.
  */
@@ -36,16 +36,24 @@ function section(title) {
   console.log(`\n── ${title} ──`);
 }
 
-/** Build a minimal conversation object with follow-up metadata */
-function withFollowup(overrides = {}) {
+/**
+ * Build a minimal conversation object with follow-up context stored
+ * under metadata.collectedData (the Mixed field that Mongoose preserves).
+ */
+function withFollowup(collectedDataOverrides = {}, convOverrides = {}) {
   return {
+    currentState: "idle",
+    currentIntent: "unknown",
     metadata: {
-      awaitingFollowupReply: true,
-      followupSource: "jobmate_followup",
-      followupType: "candidate_reengagement",
-      followupExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      ...overrides,
+      collectedData: {
+        awaitingFollowupReply: true,
+        followupSource: "jobmate_followup",
+        followupType: "candidate_reengagement",
+        followupExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        ...collectedDataOverrides,
+      },
     },
+    ...convOverrides,
   };
 }
 
@@ -63,7 +71,7 @@ assert("no metadata → reason=no_followup_context", a1.reason === "no_followup_
 const a2 = decideFollowupReplyContext({
   text: "1",
   phone: "9779800000001",
-  conversation: { metadata: { awaitingFollowupReply: false, followupSource: "jobmate_followup" } },
+  conversation: { metadata: { collectedData: { awaitingFollowupReply: false, followupSource: "jobmate_followup" } } },
 });
 assert("awaitingFollowupReply=false → shouldHandle=false", a2.shouldHandle === false);
 assert("awaitingFollowupReply=false → reason=no_followup_context", a2.reason === "no_followup_context");
@@ -72,7 +80,7 @@ assert("awaitingFollowupReply=false → reason=no_followup_context", a2.reason =
 const a3 = decideFollowupReplyContext({
   text: "1",
   phone: "9779800000001",
-  conversation: { metadata: { awaitingFollowupReply: true, followupSource: "other_system" } },
+  conversation: { metadata: { collectedData: { awaitingFollowupReply: true, followupSource: "other_system" } } },
 });
 assert("wrong followupSource → shouldHandle=false", a3.shouldHandle === false);
 assert("wrong followupSource → reason=wrong_followup_source", a3.reason === "wrong_followup_source");
@@ -87,9 +95,11 @@ assert('"1" → shouldHandle=true', b1.shouldHandle === true);
 assert('"1" → reason=candidate_reengagement_still_looking', b1.reason === "candidate_reengagement_still_looking");
 assert('"1" → clearFollowupContext=true', b1.clearFollowupContext === true);
 assert('"1" → nextState=awaiting_job_search_query', b1.nextState === "awaiting_job_search_query");
-assert('"1" → metadataPatch clears awaitingFollowupReply', b1.metadataPatch?.["metadata.awaitingFollowupReply"] === false);
-assert('"1" → metadataPatch sets stillLooking=true', b1.metadataPatch?.["metadata.stillLooking"] === true);
+assert('"1" → metadataPatch uses collectedData path', "metadata.collectedData.awaitingFollowupReply" in (b1.metadataPatch || {}));
+assert('"1" → metadataPatch clears awaitingFollowupReply', b1.metadataPatch?.["metadata.collectedData.awaitingFollowupReply"] === false);
+assert('"1" → metadataPatch sets stillLooking=true', b1.metadataPatch?.["metadata.collectedData.stillLooking"] === true);
 assert('"1" → reply has job search prompt', /kun location|kasto job/i.test(b1.replyText || ""), `reply: ${(b1.replyText || "").slice(0, 120)}`);
+assert('"1" → reply does NOT say "1 jana staff"', !/1 jana staff/i.test(b1.replyText || ""), `reply: ${(b1.replyText || "").slice(0, 120)}`);
 
 // Nepali alias for option 1
 const b2 = decideFollowupReplyContext({ text: "ho", phone: "9779800000001", conversation: withFollowup() });
@@ -108,7 +118,7 @@ assert('"2" → shouldHandle=true', c1.shouldHandle === true);
 assert('"2" → reason=candidate_reengagement_not_looking', c1.reason === "candidate_reengagement_not_looking");
 assert('"2" → clearFollowupContext=true', c1.clearFollowupContext === true);
 assert('"2" → nextState=null', c1.nextState === null);
-assert('"2" → metadataPatch sets stillLooking=false', c1.metadataPatch?.["metadata.stillLooking"] === false);
+assert('"2" → metadataPatch sets stillLooking=false', c1.metadataPatch?.["metadata.collectedData.stillLooking"] === false);
 assert('"2" → reply acknowledges not looking', /aile job naparne|note gariyo/i.test(c1.replyText || ""), `reply: ${(c1.replyText || "").slice(0, 120)}`);
 
 // Nepali alias
@@ -162,18 +172,78 @@ const g1 = decideFollowupReplyContext({
   phone: "9779800000001",
   conversation: withFollowup({ followupType: "some_future_type" }),
 });
-assert("unknown type + \"1\" → shouldHandle=true", g1.shouldHandle === true);
-assert("unknown type + \"1\" → reason=unknown_followup_type_generic_ack", g1.reason === "unknown_followup_type_generic_ack");
-assert("unknown type + \"1\" → clearFollowupContext=true", g1.clearFollowupContext === true);
-assert("unknown type + \"1\" → reply acknowledges", /note gariyo|follow-up/i.test(g1.replyText || ""), `reply: ${(g1.replyText || "").slice(0, 120)}`);
+assert('unknown type + "1" → shouldHandle=true', g1.shouldHandle === true);
+assert('unknown type + "1" → reason=unknown_followup_type_generic_ack', g1.reason === "unknown_followup_type_generic_ack");
+assert('unknown type + "1" → clearFollowupContext=true', g1.clearFollowupContext === true);
+assert('unknown type + "1" → reply acknowledges', /note gariyo|follow-up/i.test(g1.replyText || ""), `reply: ${(g1.replyText || "").slice(0, 120)}`);
 
 const g2 = decideFollowupReplyContext({
   text: "ke ho",
   phone: "9779800000001",
   conversation: withFollowup({ followupType: "some_future_type" }),
 });
-assert("unknown type + unrecognised text → shouldHandle=false", g2.shouldHandle === false);
-assert("unknown type + unrecognised text → reason=text_not_matching_expected_input", g2.reason === "text_not_matching_expected_input");
+assert('unknown type + unrecognised text → shouldHandle=false', g2.shouldHandle === false);
+assert('unknown type + unrecognised text → reason=text_not_matching_expected_input', g2.reason === "text_not_matching_expected_input");
+
+// ============================================================
+// H. PRODUCTION REGRESSION
+// ============================================================
+section("H. Production regression — employer state must NOT override follow-up context");
+
+// Test 1: follow-up context present, inbound phone matches, text "1" => guard hits.
+// Simulates: external followup saved context, WhatsApp delivers reply "1".
+const h1 = decideFollowupReplyContext({
+  text: "1",
+  phone: "9779743474919",   // canonical phone (same as WhatsApp inbound)
+  conversation: withFollowup(
+    {},  // normal follow-up context
+    {}   // default conv state
+  ),
+});
+assert('[H1] phone 9779743474919, text "1" → guard hit', h1.shouldHandle === true, `reason: ${h1.reason}`);
+assert('[H1] reason=candidate_reengagement_still_looking', h1.reason === "candidate_reengagement_still_looking");
+
+// Test 2: conversation has OLD employer state ask_vacancy_role + awaitingFollowupReply=true
+// => follow-up guard wins, employer flow never reached.
+const h2 = decideFollowupReplyContext({
+  text: "1",
+  phone: "9779743474919",
+  conversation: withFollowup(
+    {},  // normal follow-up context
+    { currentState: "ask_vacancy_role", currentIntent: "employer_lead" }
+  ),
+});
+assert('[H2] ask_vacancy_role + awaitingFollowupReply=true + "1" → guard hits', h2.shouldHandle === true, `reason: ${h2.reason}`);
+assert('[H2] reason=candidate_reengagement_still_looking (not employer flow)', h2.reason === "candidate_reengagement_still_looking");
+
+// Test 3: guard reply must never say "1 jana staff" regardless of employer state.
+assert('[H3] h2 reply does NOT contain "1 jana staff"', !/1 jana staff/i.test(h2.replyText || ""), `reply: ${(h2.replyText || "").slice(0, 120)}`);
+
+// Test 4: plain "1" with NO awaitingFollowupReply (no follow-up context) => guard misses.
+// This proves employer flow is unaffected when there is no follow-up context.
+const h4 = decideFollowupReplyContext({
+  text: "1",
+  phone: "9779743474919",
+  conversation: {
+    currentState: "ask_vacancy_role",
+    currentIntent: "employer_lead",
+    metadata: { collectedData: {} },  // no awaitingFollowupReply
+  },
+});
+assert('[H4] no awaitingFollowupReply, "1" → guard misses (employer flow unaffected)', h4.shouldHandle === false);
+assert('[H4] reason=no_followup_context', h4.reason === "no_followup_context");
+
+// Test 5: normal "malai 1 jana staff chaiyo" with no follow-up context => guard misses.
+const h5 = decideFollowupReplyContext({
+  text: "malai 1 jana staff chaiyo",
+  phone: "9779743474919",
+  conversation: {
+    currentState: "idle",
+    metadata: { collectedData: {} },
+  },
+});
+assert('[H5] "malai 1 jana staff chaiyo", no context → guard misses', h5.shouldHandle === false);
+assert('[H5] reason=no_followup_context', h5.reason === "no_followup_context");
 
 // ============================================================
 // Summary

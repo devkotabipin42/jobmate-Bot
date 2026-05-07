@@ -169,6 +169,22 @@ export async function receiveWhatsAppWebhook(req, res) {
         normalized.message.normalizedText ||
         normalized.message.text ||
         "";
+
+      // Diagnostic: log what the conversation metadata looks like at this point.
+      // If awaitingFollowupReply is false/undefined here, context was not saved.
+      const _cd20a = conversation.metadata?.collectedData || {};
+      console.log("AARATI_20A_PRE_DECISION_CONTEXT", {
+        phone: contact.phone,
+        canonicalPhone: contact.phone,
+        conversationId: String(conversation._id),
+        text: followupText,
+        awaitingFollowupReply: _cd20a.awaitingFollowupReply ?? false,
+        followupType: _cd20a.followupType ?? null,
+        currentState: conversation.currentState,
+        state: conversation.currentState,
+        activeFlow: conversation.currentIntent,
+      });
+
       const followupDecision = decideFollowupReplyContext({
         text: followupText,
         phone: contact.phone,
@@ -176,6 +192,14 @@ export async function receiveWhatsAppWebhook(req, res) {
       });
 
       if (followupDecision.shouldHandle) {
+        console.log("AARATI_20A_GUARD_HIT", {
+          phone: contact.phone,
+          canonicalPhone: contact.phone,
+          conversationId: String(conversation._id),
+          choice: followupText,
+          followupType: _cd20a.followupType ?? null,
+          reason: followupDecision.reason,
+        });
         const patch20a = { ...(followupDecision.metadataPatch || {}) };
         if (followupDecision.nextState) {
           patch20a["currentState"] = followupDecision.nextState;
