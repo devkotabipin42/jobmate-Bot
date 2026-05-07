@@ -291,13 +291,7 @@ export async function receiveWhatsAppWebhook(req, res) {
       if (jobSearchResult.shouldHandle) {
         const ConvModel20b = conversation.constructor;
 
-        // Apply state patch (collectedData + currentState + currentIntent).
-        await ConvModel20b.updateOne(
-          { _id: conversation._id },
-          { $set: jobSearchResult.statePatch },
-          { runValidators: false }
-        );
-
+        // Save inbound message first (before state patch so we capture raw intent).
         const inboundMsg20b = await saveInboundMessage({
           contact,
           conversation,
@@ -311,7 +305,9 @@ export async function receiveWhatsAppWebhook(req, res) {
         });
 
         if (jobSearchResult.shouldSearchJobs) {
-          // ── Both location + jobType known: run job search ─────────────────
+          // ── AARATI-20B+20C: Both location + jobType known — run job search ──
+          // Run search BEFORE applying state patch so we can set the correct
+          // next state based on whether the API timed out or returned results.
           console.log("AARATI_20B_JOB_SEARCH_EXECUTED", {
             phone: contact.phone,
             conversationId: String(conversation._id),
@@ -325,25 +321,77 @@ export async function receiveWhatsAppWebhook(req, res) {
             category: jobSearchResult.query.category || "",
           });
 
-          const replyText20b = formatJobsForWhatsApp({
-            jobs: searchResult20b.jobs || [],
-            location: jobSearchResult.query.location || "",
-            keyword: jobSearchResult.query.keyword || "",
-          });
+          // ── AARATI-20C: Distinguish API timeout from true zero results ─────
+          // searchJobMateJobs returns ok:false when the HTTP request failed or
+          // timed out. ok:true with count:0 means the API responded with no jobs.
+          // "No jobs found" is only accurate when the API actually responded.
+          const isApiTimeout =
+            !searchResult20b.ok ||
+            searchResult20b.reason === "JOBMATE_API_FAILED_OR_TIMEOUT";
 
-          // Save lastJobSearch into collectedData for reference.
+          let replyText20b;
+          let finalStatePatch20b;
+
+          if (isApiTimeout) {
+            // API timed out — preserve the search query as pendingJobSearch so
+            // the next message from the user (even "job chaiyo") automatically
+            // merges the saved location+jobType and retries the search via the
+            // existing pending-merge logic in handleAaratiJobSearchContinuation.
+            const loc20c = jobSearchResult.query.location || "";
+            const kw20c = jobSearchResult.query.keyword || "";
+
+            replyText20b =
+              `JobMate system bata job list fetch garna ali time lagyo 🙏\n` +
+              `Tapai ko ${loc20c}${kw20c ? ` ${kw20c}` : ""} job search save gariyo.\n` +
+              `Hamro team le check garera suitable job aayo bhane contact garnecha.`;
+
+            finalStatePatch20b = {
+              "metadata.collectedData.lastJobSearch": {
+                query: jobSearchResult.query,
+                count: 0,
+                strategy: "api_failed_or_timeout",
+                jobSearchError: "JOBMATE_API_FAILED_OR_TIMEOUT",
+                searchedAt: new Date(),
+              },
+              // Keep pending so the guard can merge + retry on next turn.
+              "metadata.collectedData.pendingJobSearch": {
+                location: jobSearchResult.query.location || null,
+                jobType: jobSearchResult.query.keyword || null,
+                retryCount: 0,
+              },
+              currentState: "awaiting_job_search_query",
+              currentIntent: "job_search",
+            };
+
+            console.log("AARATI_20C_JOB_SEARCH_TIMEOUT", {
+              phone: contact.phone,
+              conversationId: String(conversation._id),
+              query: jobSearchResult.query,
+              preservedPending: { location: loc20c, jobType: kw20c },
+            });
+          } else {
+            // API responded (has jobs or genuinely zero results) — truthful reply.
+            replyText20b = formatJobsForWhatsApp({
+              jobs: searchResult20b.jobs || [],
+              location: jobSearchResult.query.location || "",
+              keyword: jobSearchResult.query.keyword || "",
+            });
+
+            finalStatePatch20b = {
+              ...jobSearchResult.statePatch,   // pendingJobSearch:null, currentState:job_search_results
+              "metadata.collectedData.lastJobSearch": {
+                query: jobSearchResult.query,
+                count: searchResult20b.count || 0,
+                strategy: searchResult20b.strategy || "",
+                jobSearchError: null,
+                searchedAt: new Date(),
+              },
+            };
+          }
+
           await ConvModel20b.updateOne(
             { _id: conversation._id },
-            {
-              $set: {
-                "metadata.collectedData.lastJobSearch": {
-                  query: jobSearchResult.query,
-                  count: searchResult20b.count || 0,
-                  strategy: searchResult20b.strategy || "",
-                  searchedAt: new Date(),
-                },
-              },
-            },
+            { $set: finalStatePatch20b },
             { runValidators: false }
           );
 
@@ -360,10 +408,12 @@ export async function receiveWhatsAppWebhook(req, res) {
             status: "sent",
           });
 
+          const nextState20bFinal = finalStatePatch20b.currentState || "job_search_results";
+
           await updateConversationIntent({
             conversation,
             intent: "job_search",
-            state: "job_search_results",
+            state: nextState20bFinal,
             lastInboundMessageId: inboundMsg20b._id,
             lastOutboundMessageId: outboundMsg20b._id,
           });
@@ -372,7 +422,9 @@ export async function receiveWhatsAppWebhook(req, res) {
 
           return res.status(200).json({
             success: true,
-            message: "Aarati 20B job search continuation — jobs found and sent",
+            message: isApiTimeout
+              ? "Aarati 20C job search — API timeout, context preserved for retry"
+              : "Aarati 20B job search continuation — results sent",
             reason: jobSearchResult.reason,
             replied: true,
             sendSkipped: sendResult20b.skipped || false,
@@ -380,6 +432,13 @@ export async function receiveWhatsAppWebhook(req, res) {
         }
 
         // ── Partial (location only / jobType only) or reprompt ──────────────
+        // Apply state patch now (partial cases always have a deterministic next state).
+        await ConvModel20b.updateOne(
+          { _id: conversation._id },
+          { $set: jobSearchResult.statePatch },
+          { runValidators: false }
+        );
+
         const logLabel =
           jobSearchResult.reason === "JOB_SEARCH_REPROMPT"
             ? "AARATI_20B_JOB_SEARCH_REPROMPT"
@@ -405,7 +464,6 @@ export async function receiveWhatsAppWebhook(req, res) {
           status: "sent",
         });
 
-        // currentState from statePatch (already applied above).
         const nextState20b =
           jobSearchResult.statePatch?.currentState ||
           conversation.currentState;
