@@ -43,7 +43,8 @@
     "test:aarati19c-policy-brain": "node scripts/testAarati19CJobMatePolicyBrain.mjs",
     "test:aarati19e-human-language": "node scripts/testAarati19EHumanLanguage.mjs",
     "test:aarati19f-interrupt-resume": "node scripts/testAarati19FInterruptResume.mjs",
-    "test:aarati20a-followup-reply-context-guard": "node scripts/testAarati20AFollowupReplyContextGuard.mjs"
+    "test:aarati20a-followup-reply-context-guard": "node scripts/testAarati20AFollowupReplyContextGuard.mjs",
+    "test:aarati20b-job-search-continuation": "node scripts/testAarati20BJobSearchContinuation.mjs"
   },
   "keywords": [],
   "author": "JobMate",

@@ -78,6 +78,7 @@ import {
 } from "../services/aarati/aaratiConversationDirector.service.js";
 import { decideAaratiNextAction } from "../services/aarati/aaratiConversationDecision.service.js";
 import { decideFollowupReplyContext } from "../services/aarati/aaratiFollowupReplyContextGuard.service.js";
+import { handleAaratiJobSearchContinuation } from "../services/aarati/aaratiJobSearchContinuation.service.js";
 import {
   buildDocumentReceivedReply,
   isSupportedDocumentMedia,
@@ -270,6 +271,165 @@ export async function receiveWhatsAppWebhook(req, res) {
       }
     }
     // ── End AARATI-20A guard ──────────────────────────────────────────────────
+
+    // ── AARATI-20B: Job Search Continuation Guard ─────────────────────────────
+    // Priority #3 — after 20A follow-up guard, before safety/AI/classifier/
+    // employer/worker parsers.  Handles the multi-turn "location + job type"
+    // conversation that starts after a candidate_reengagement "1" reply.
+    // Deterministic: no Gemini, no Mapbox, no employer parser.
+    if (env.BOT_MODE === "jobmate_hiring") {
+      const jobSearchText =
+        normalized.message.normalizedText ||
+        normalized.message.text ||
+        "";
+
+      const jobSearchResult = handleAaratiJobSearchContinuation({
+        text: jobSearchText,
+        conversation,
+      });
+
+      if (jobSearchResult.shouldHandle) {
+        const ConvModel20b = conversation.constructor;
+
+        // Apply state patch (collectedData + currentState + currentIntent).
+        await ConvModel20b.updateOne(
+          { _id: conversation._id },
+          { $set: jobSearchResult.statePatch },
+          { runValidators: false }
+        );
+
+        const inboundMsg20b = await saveInboundMessage({
+          contact,
+          conversation,
+          normalized,
+          intentResult: {
+            intent: "job_search",
+            needsHuman: false,
+            priority: "low",
+            reason: jobSearchResult.reason,
+          },
+        });
+
+        if (jobSearchResult.shouldSearchJobs) {
+          // ── Both location + jobType known: run job search ─────────────────
+          console.log("AARATI_20B_JOB_SEARCH_EXECUTED", {
+            phone: contact.phone,
+            conversationId: String(conversation._id),
+            query: jobSearchResult.query,
+            reason: jobSearchResult.reason,
+          });
+
+          const searchResult20b = await searchJobMateJobs({
+            keyword: jobSearchResult.query.keyword || "",
+            location: jobSearchResult.query.location || "",
+            category: jobSearchResult.query.category || "",
+          });
+
+          const replyText20b = formatJobsForWhatsApp({
+            jobs: searchResult20b.jobs || [],
+            location: jobSearchResult.query.location || "",
+            keyword: jobSearchResult.query.keyword || "",
+          });
+
+          // Save lastJobSearch into collectedData for reference.
+          await ConvModel20b.updateOne(
+            { _id: conversation._id },
+            {
+              $set: {
+                "metadata.collectedData.lastJobSearch": {
+                  query: jobSearchResult.query,
+                  count: searchResult20b.count || 0,
+                  strategy: searchResult20b.strategy || "",
+                  searchedAt: new Date(),
+                },
+              },
+            },
+            { runValidators: false }
+          );
+
+          const sendResult20b = await sendWhatsAppTextMessage({
+            to: contact.phone,
+            text: replyText20b,
+          });
+
+          const outboundMsg20b = await saveOutboundMessage({
+            contact,
+            conversation,
+            text: replyText20b,
+            providerMessageId: sendResult20b.providerMessageId,
+            status: "sent",
+          });
+
+          await updateConversationIntent({
+            conversation,
+            intent: "job_search",
+            state: "job_search_results",
+            lastInboundMessageId: inboundMsg20b._id,
+            lastOutboundMessageId: outboundMsg20b._id,
+          });
+
+          await markMessageProcessed(processedMessageId);
+
+          return res.status(200).json({
+            success: true,
+            message: "Aarati 20B job search continuation — jobs found and sent",
+            reason: jobSearchResult.reason,
+            replied: true,
+            sendSkipped: sendResult20b.skipped || false,
+          });
+        }
+
+        // ── Partial (location only / jobType only) or reprompt ──────────────
+        const logLabel =
+          jobSearchResult.reason === "JOB_SEARCH_REPROMPT"
+            ? "AARATI_20B_JOB_SEARCH_REPROMPT"
+            : "AARATI_20B_JOB_SEARCH_PARTIAL_SAVED";
+
+        console.log(logLabel, {
+          phone: contact.phone,
+          conversationId: String(conversation._id),
+          reason: jobSearchResult.reason,
+          query: jobSearchResult.query,
+        });
+
+        const sendResult20bPartial = await sendWhatsAppTextMessage({
+          to: contact.phone,
+          text: jobSearchResult.replyText,
+        });
+
+        const outboundMsg20bPartial = await saveOutboundMessage({
+          contact,
+          conversation,
+          text: jobSearchResult.replyText,
+          providerMessageId: sendResult20bPartial.providerMessageId,
+          status: "sent",
+        });
+
+        // currentState from statePatch (already applied above).
+        const nextState20b =
+          jobSearchResult.statePatch?.currentState ||
+          conversation.currentState;
+
+        await updateConversationIntent({
+          conversation,
+          intent: "job_search",
+          state: nextState20b,
+          lastInboundMessageId: inboundMsg20b._id,
+          lastOutboundMessageId: outboundMsg20bPartial._id,
+        });
+
+        await markMessageProcessed(processedMessageId);
+
+        return res.status(200).json({
+          success: true,
+          message: "Aarati 20B job search continuation handled message",
+          reason: jobSearchResult.reason,
+          replied: true,
+          sendSkipped: sendResult20bPartial.skipped || false,
+        });
+      }
+    }
+    // ── End AARATI-20B guard ──────────────────────────────────────────────────
 
     const safetyEvent =
       env.BOT_MODE === "jobmate_hiring"
