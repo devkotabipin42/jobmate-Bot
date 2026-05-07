@@ -15,6 +15,7 @@ import adminWorkerMatchRoutes from "./routes/adminWorkerMatch.routes.js";
 import adminJobApplicationRoutes from "./routes/adminJobApplication.routes.js";
 import adminEmployerLeadVerificationRoutes from "./routes/adminEmployerLeadVerification.routes.js";
 import adminPendingKnowledgeRoutes from "./routes/adminPendingKnowledge.routes.js";
+import jobmateFollowupExternalRoutes from './routes/external/jobmateFollowupExternal.routes.js'
 import { startFollowupRunner } from "./services/followups/followupRunner.service.js";
 
 const app = express();
@@ -50,6 +51,7 @@ app.get("/health", (req, res) => {
 app.use("/api/whatsapp", whatsappRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin/matches", adminJobMatchRoutes);
+app.use('/api/external', jobmateFollowupExternalRoutes)
 app.use("/api/admin/followups", adminFollowupRoutes);
 app.use("/api/admin/notifications", adminNotificationRoutes);
 app.use("/api/admin/employer-leads", adminWorkerMatchRoutes);
