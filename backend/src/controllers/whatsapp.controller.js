@@ -201,9 +201,22 @@ export async function receiveWhatsAppWebhook(req, res) {
           reason: followupDecision.reason,
         });
         const patch20a = { ...(followupDecision.metadataPatch || {}) };
+
+        const nextConversationIntent20a =
+          followupDecision.nextState === "awaiting_job_search_query"
+            ? "job_search"
+            : "unknown";
+
         if (followupDecision.nextState) {
           patch20a["currentState"] = followupDecision.nextState;
+        } else {
+          patch20a["currentState"] = "idle";
         }
+
+        // Critical AARATI-20A fix:
+        // Once candidate follow-up is handled, do NOT leave old employer_lead active.
+        // Otherwise the next short reply like "driver" or "1" falls back into employer flow.
+        patch20a["currentIntent"] = nextConversationIntent20a;
 
         const ConvModel = conversation.constructor;
         await ConvModel.updateOne(
@@ -239,7 +252,8 @@ export async function receiveWhatsAppWebhook(req, res) {
 
         await updateConversationIntent({
           conversation,
-          intent: "followup_reply",
+          intent: nextConversationIntent20a,
+          state: followupDecision.nextState || "idle",
           lastInboundMessageId: inboundMessage20a._id,
           lastOutboundMessageId: outboundMessage20a._id,
         });
