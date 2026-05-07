@@ -28,6 +28,7 @@ const conversationSchema = new mongoose.Schema(
         "opt_out",
         "frustrated",
         "unknown",
+        'followup_reply',
       ],
       default: "unknown",
       index: true,
