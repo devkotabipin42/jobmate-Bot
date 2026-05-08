@@ -78,6 +78,7 @@ import {
 } from "../services/aarati/aaratiConversationDirector.service.js";
 import { decideAaratiNextAction } from "../services/aarati/aaratiConversationDecision.service.js";
 import { decideFollowupReplyContext } from "../services/aarati/aaratiFollowupReplyContextGuard.service.js";
+import { detectAaratiEmployerIntentRecovery } from "../services/aarati/aaratiEmployerIntentRecovery.service.js";
 import { handleAaratiJobSearchControlGuard } from "../services/aarati/aaratiJobSearchControlGuard.service.js";
 import { handleAaratiJobSearchContinuation } from "../services/aarati/aaratiJobSearchContinuation.service.js";
 import {
@@ -362,6 +363,85 @@ export async function receiveWhatsAppWebhook(req, res) {
       }
     }
     // ── End AARATI-20E guard ──────────────────────────────────────────────────
+
+    // ── AARATI-20F: Employer intent recovery guard ───────────────────────────
+    // Runs early so "malai manxe chahiyo" / "staff khojna" enters employer flow
+    // before generic AI/human boundary replies can swallow it.
+    if (env.BOT_MODE === "jobmate_hiring") {
+      const employerRecoveryText20f =
+        normalized.message.normalizedText ||
+        normalized.message.text ||
+        "";
+
+      const employerRecovery20f = detectAaratiEmployerIntentRecovery({
+        text: employerRecoveryText20f,
+        conversation,
+      });
+
+      if (employerRecovery20f.shouldHandle) {
+        console.log("AARATI_20F_EMPLOYER_INTENT_RECOVERY_HIT", {
+          phone: contact.phone,
+          conversationId: String(conversation._id),
+          text: employerRecoveryText20f,
+          reason: employerRecovery20f.reason,
+          previousState: conversation.currentState,
+          previousIntent: conversation.currentIntent,
+        });
+
+        if (conversation?._id) {
+          const ConvModel20f = conversation.constructor;
+          await ConvModel20f.updateOne(
+            { _id: conversation._id },
+            { $set: employerRecovery20f.statePatch },
+            { runValidators: false }
+          );
+        }
+
+        const inboundMessage20f = await saveInboundMessage({
+          contact,
+          conversation,
+          normalized,
+          intentResult: {
+            intent: "employer_lead",
+            needsHuman: false,
+            priority: "medium",
+            reason: employerRecovery20f.reason,
+          },
+        });
+
+        const sendResult20f = await sendWhatsAppTextMessage({
+          to: contact.phone,
+          text: employerRecovery20f.replyText,
+        });
+
+        const outboundMessage20f = await saveOutboundMessage({
+          contact,
+          conversation,
+          text: employerRecovery20f.replyText,
+          providerMessageId: sendResult20f.providerMessageId,
+          status: "sent",
+        });
+
+        await updateConversationIntent({
+          conversation,
+          intent: "employer_lead",
+          state: "ask_vacancy_role",
+          lastInboundMessageId: inboundMessage20f._id,
+          lastOutboundMessageId: outboundMessage20f._id,
+        });
+
+        await markMessageProcessed(processedMessageId);
+
+        return res.status(200).json({
+          success: true,
+          message: "Aarati 20F employer intent recovery handled message",
+          reason: employerRecovery20f.reason,
+          replied: true,
+          sendSkipped: sendResult20f.skipped || false,
+        });
+      }
+    }
+    // ── End AARATI-20F guard ─────────────────────────────────────────────────
 
     // ── AARATI-20B: Job Search Continuation Guard ─────────────────────────────
     // Priority #3 — after 20A follow-up guard, before safety/AI/classifier/
