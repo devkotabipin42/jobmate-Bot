@@ -1,5 +1,5 @@
 /**
- * AARATI-20D — Job Search Confirmation / Profile Save Tests
+ * AARATI-20D / 20D-HR — Job Search Confirmation / Profile Save Tests
  *
  * Verifies that when user sees job_search_results and replies with a
  * confirmation phrase, the last valid job search context is used to save
@@ -16,6 +16,8 @@
  *   H. No lastJobSearch → shouldHandle=false
  *   I. Non-confirmation text in job_search_results → does not intercept
  *   J. Regression — no employer flow, no Gemini, no Mapbox
+ *   K. HR fix — AI/19A path stores lastJobSearch at metadata.lastJobSearch
+ *      (not collectedData) — guard must activate from both locations
  */
 
 import {
@@ -92,7 +94,9 @@ const a1 = isJobSearchConfirmationActivation({
   conversation: { currentState: "idle", metadata: { collectedData: {} } },
 });
 assert("[A1] idle state → active=false", a1.active === false);
-assert("[A1] reason=NOT_IN_CONFIRM_STATE", a1.reason === "NOT_IN_CONFIRM_STATE");
+// idle is in CONFIRM_STATES (HR fix allows it for post-search confirmation);
+// without lastJobSearch the reason is NO_LAST_JOB_SEARCH_QUERY not NOT_IN_CONFIRM_STATE.
+assert("[A1] reason=NO_LAST_JOB_SEARCH_QUERY (idle without lastJobSearch)", a1.reason === "NO_LAST_JOB_SEARCH_QUERY");
 
 // ask_vacancy_role (employer state)
 const a2 = isJobSearchConfirmationActivation({
@@ -297,6 +301,147 @@ assert("[J1] guard runs synchronously (< 5ms)", jMs < 5, `took ${jMs}ms`);
 assert("[J1] result is not a Promise (no Gemini/Mapbox)", !(j1 instanceof Promise));
 assert("[J1] employer flow not involved (reason not employer-related)", !String(j1.reason || "").toLowerCase().includes("employer"));
 assert("[J1] no 'ok hubxa' in profileUpdate", !JSON.stringify(j1.profileUpdate || {}).includes("ok hubxa"));
+
+// ══════════════════════════════════════════════════════════════════════════
+// K. HR FIX — AI/19A path stores lastJobSearch at metadata.lastJobSearch
+//    (not metadata.collectedData.lastJobSearch).
+//    Guard must detect both storage locations.
+// ══════════════════════════════════════════════════════════════════════════
+section("K. HR fix — AI-path lastJobSearch at metadata (not collectedData)");
+
+// Simulate exactly what the AI/19A controller path writes:
+// conversation.metadata = { ...sanitizeConversationMetadata(conversation.metadata), lastJobSearch: {...} }
+function convWithAiPathResults(overrides = {}) {
+  return {
+    currentState: "job_search_results",
+    currentIntent: "job_search",
+    metadata: {
+      // NO collectedData.lastJobSearch — AI path writes top-level
+      collectedData: {},
+      lastJobSearch: {
+        query: { location: "Bhardaghat", keyword: "marketing", category: "" },
+        count: 3,
+        strategy: "strict",
+        jobs: [],
+        searchedAt: new Date(),
+      },
+      lastQuestion: "job_search_results",
+      ...overrides,
+    },
+  };
+}
+
+// K1: AI-path lastJobSearch — activation must fire
+const k1 = isJobSearchConfirmationActivation({
+  text: "ok hubxa",
+  conversation: convWithAiPathResults(),
+});
+assert("[K1] AI-path lastJobSearch → active=true", k1.active === true, `reason: ${k1.reason}`);
+assert("[K1] query.location=Bhardaghat (from metadata.lastJobSearch)", k1.query?.location === "Bhardaghat", `got: ${k1.query?.location}`);
+assert("[K1] reason=ACTIVATION_OK", k1.reason === "ACTIVATION_OK");
+
+// K2: AI-path — decideJobSearchConfirmationAction uses correct location (not "ok hubxa")
+const k2 = decideJobSearchConfirmationAction({
+  text: "ok hubxa",
+  conversation: convWithAiPathResults(),
+  workerProfile: workerProfile({ availability: "immediate", documentStatus: "ready" }),
+});
+assert("[K2] shouldHandle=true (AI path)", k2.shouldHandle === true, `reason: ${k2.reason}`);
+assert("[K2] queryUsed.location=Bhardaghat (NOT 'ok hubxa')", k2.queryUsed?.location === "Bhardaghat", `got: ${k2.queryUsed?.location}`);
+assert("[K2] profileUpdate.$set.location.area=Bhardaghat", k2.profileUpdate?.$set?.["location.area"] === "Bhardaghat");
+assert("[K2] no 'ok hubxa' in profileUpdate", !JSON.stringify(k2.profileUpdate || {}).includes("ok hubxa"));
+assert("[K2] reason=FULL_SAVE", k2.reason === "FULL_SAVE");
+assert("[K2] reply mentions Bhardaghat", /bhardaghat/i.test(k2.replyText || ""), `reply: ${(k2.replyText || "").slice(0, 120)}`);
+
+// K3: AI-path + missing availability → asks availability using correct context
+const k3 = decideJobSearchConfirmationAction({
+  text: "ok",
+  conversation: convWithAiPathResults(),
+  workerProfile: workerProfile({ availability: "unknown", documentStatus: "unknown" }),
+});
+assert("[K3] AI-path missing availability → reason=NEEDS_AVAILABILITY", k3.reason === "NEEDS_AVAILABILITY");
+assert("[K3] profileUpdate.$set.location.area=Bhardaghat", k3.profileUpdate?.$set?.["location.area"] === "Bhardaghat");
+assert("[K3] no 'ok' saved as area", !JSON.stringify(k3.profileUpdate || {}).includes('"ok"'));
+
+// K4: AI-path "job chaiyo" → uses lastJobSearch, no Gemini/Mapbox
+const k4 = decideJobSearchConfirmationAction({
+  text: "job chaiyo",
+  conversation: convWithAiPathResults(),
+  workerProfile: workerProfile(),
+});
+assert("[K4] 'job chaiyo' AI-path → shouldHandle=true", k4.shouldHandle === true);
+assert("[K4] queryUsed.location=Bhardaghat (NOT 'job chaiyo')", k4.queryUsed?.location === "Bhardaghat");
+assert("[K4] no 'job chaiyo' in profileUpdate", !JSON.stringify(k4.profileUpdate || {}).includes("job chaiyo"));
+assert("[K4] result not a Promise (no AI call)", !(k4 instanceof Promise));
+
+// K5: Mid-flow state ask_availability + lastJobSearch (AI path) → must NOT intercept
+const k5 = isJobSearchConfirmationActivation({
+  text: "hunxa",
+  conversation: {
+    currentState: "ask_availability",
+    currentIntent: "worker_registration",
+    metadata: {
+      collectedData: {},
+      lastJobSearch: {
+        query: { location: "Bhardaghat", keyword: "marketing" },
+        searchedAt: new Date(),
+      },
+    },
+  },
+});
+assert("[K5] ask_availability + lastJobSearch + 'hunxa' → active=false (worker-reg flow protected)", k5.active === false, `reason: ${k5.reason}`);
+assert("[K5] reason=NOT_IN_CONFIRM_STATE", k5.reason === "NOT_IN_CONFIRM_STATE");
+
+// K6: ask_document_status → must NOT intercept
+const k6 = isJobSearchConfirmationActivation({
+  text: "cha",
+  conversation: {
+    currentState: "ask_document_status",
+    currentIntent: "worker_registration",
+    metadata: {
+      collectedData: {},
+      lastJobSearch: {
+        query: { location: "Butwal", keyword: "driver" },
+        searchedAt: new Date(),
+      },
+    },
+  },
+});
+assert("[K6] ask_document_status + lastJobSearch + 'cha' → active=false", k6.active === false);
+
+// K7: idle state + AI-path lastJobSearch (fresh) + "ok hubxa" → activate
+const k7 = isJobSearchConfirmationActivation({
+  text: "ok hubxa",
+  conversation: {
+    currentState: "idle",
+    currentIntent: "unknown",
+    metadata: {
+      collectedData: {},
+      lastJobSearch: {
+        query: { location: "Bhardaghat", keyword: "marketing" },
+        searchedAt: new Date(), // fresh
+      },
+    },
+  },
+});
+assert("[K7] idle + fresh AI-path lastJobSearch + 'ok hubxa' → active=true", k7.active === true, `reason: ${k7.reason}`);
+
+// K8: employer state → must NOT intercept even with lastJobSearch
+const k8 = isJobSearchConfirmationActivation({
+  text: "ok",
+  conversation: {
+    currentState: "ask_vacancy_role",
+    currentIntent: "employer_lead",
+    metadata: {
+      collectedData: {},
+      lastJobSearch: {
+        query: { location: "Bhardaghat", keyword: "marketing" },
+        searchedAt: new Date(),
+      },
+    },
+  },
+});
+assert("[K8] ask_vacancy_role + lastJobSearch + 'ok' → active=false (employer protected)", k8.active === false);
 
 // ══════════════════════════════════════════════════════════════════════════
 // Summary

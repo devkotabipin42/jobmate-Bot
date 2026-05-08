@@ -1,5 +1,5 @@
 /**
- * AARATI-20D — Job Search Confirmation / Profile Save
+ * AARATI-20D / 20D-HR — Job Search Confirmation / Profile Save
  *
  * Runs at routing priority #4 — after 20A (follow-up guard), 20B (job search
  * continuation), and before safety guards, Mapbox, Gemini, worker registration.
@@ -7,6 +7,15 @@
  * Handles the case where a user sees job search results and replies with a
  * confirmation phrase ("ok hubxa", "yes", "save", "job chaiyo", etc.) intending
  * to register their profile using the last valid job search context.
+ *
+ * HR fix: lastJobSearch is stored in TWO locations depending on which flow ran:
+ *   - 20B path  → metadata.collectedData.lastJobSearch
+ *   - AI/19A path → metadata.lastJobSearch (top-level)
+ * Both are now read and merged.
+ *
+ * Activation also fires when lastJobSearch exists in either location (not only
+ * when state === "job_search_results"), so confirmations after a short state
+ * change still work. Mid-flow states (20B/worker-reg) are excluded.
  *
  * Pure functions — no DB calls. Caller (controller) handles DB reads/writes.
  *
@@ -23,10 +32,33 @@
 const LAST_JOB_SEARCH_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // ── States where profile save confirmation is valid ───────────────────────
-// "awaiting_job_search_query" is intentionally excluded: in that state the
-// 20B guard intercepts first (pending merge logic), so 20D is never reached.
+// Primary explicit state. Activation also fires when lastJobSearch exists
+// (either storage location) unless the state is in FLOW_STATES_EXCLUDE.
 const CONFIRM_STATES = new Set([
   "job_search_results",
+  "idle", // user may confirm shortly after state resets, within TTL
+]);
+
+// ── States that have their own active flow — 20D must NOT intercept ───────
+// 20B handles all awaiting_job_search_* states.
+// Worker-reg mid-flow states capture availability/document answers; 20D
+// must not treat "hunxa" as a profile-save confirmation in those states.
+const FLOW_STATES_EXCLUDE = new Set([
+  "awaiting_job_search_query",
+  "awaiting_job_search_location",
+  "awaiting_job_search_jobtype",
+  "ask_availability",
+  "ask_document_status",
+  "ask_job_type",
+  "ask_district",
+  "ask_location",
+  "ask_vacancy_role",
+  "ask_business_name",
+  "ask_business_name_after_ai",
+  "ask_vacancy",
+  "ask_urgency",
+  "ask_salary_range",
+  "ask_work_type",
 ]);
 
 // ── Confirmation phrases ───────────────────────────────────────────────────
@@ -73,9 +105,16 @@ function cd(conversation) {
   return conversation?.metadata?.collectedData || {};
 }
 
-// ── Utility: get lastJobSearch from collectedData ─────────────────────────
+// ── Utility: get lastJobSearch from either storage location ───────────────
+// 20B guard stores in metadata.collectedData.lastJobSearch.
+// AI/19A path stores in metadata.lastJobSearch (top-level).
+// Both are checked; collectedData wins if both exist.
 function getLastJobSearch(conversation) {
-  return cd(conversation).lastJobSearch || null;
+  return (
+    conversation?.metadata?.collectedData?.lastJobSearch ||
+    conversation?.metadata?.lastJobSearch ||
+    null
+  );
 }
 
 // ── Utility: check if a value means "unknown / not set" ──────────────────
@@ -104,19 +143,30 @@ function preferenceFor(keyword) {
 export function isJobSearchConfirmationActivation({ text, conversation }) {
   const state = conversation?.currentState || "idle";
 
-  if (!CONFIRM_STATES.has(state)) {
+  // Mid-flow states have active handlers — never intercept them.
+  if (FLOW_STATES_EXCLUDE.has(state)) {
     return { active: false, reason: "NOT_IN_CONFIRM_STATE" };
   }
 
+  // Phrase check (cheap, no DB).
   const val = String(text || "").toLowerCase().trim();
-
   if (!CONFIRM_RE.test(val)) {
     return { active: false, reason: "NOT_A_CONFIRMATION_PHRASE" };
   }
 
+  // lastJobSearch from EITHER storage location (20B path OR AI/19A path).
   const lastJobSearch = getLastJobSearch(conversation);
+  const hasValidSearch = !!(lastJobSearch?.query?.location || lastJobSearch?.query?.keyword);
 
-  if (!lastJobSearch?.query?.location && !lastJobSearch?.query?.keyword) {
+  // Activate if:
+  //   a) Explicit confirm state (job_search_results, idle), OR
+  //   b) lastJobSearch exists in either location — covers AI-path flows where
+  //      state may have already been job_search_results when search ran.
+  if (!CONFIRM_STATES.has(state) && !hasValidSearch) {
+    return { active: false, reason: "NOT_IN_CONFIRM_STATE" };
+  }
+
+  if (!hasValidSearch) {
     return { active: false, reason: "NO_LAST_JOB_SEARCH_QUERY" };
   }
 
