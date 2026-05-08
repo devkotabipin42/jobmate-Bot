@@ -80,6 +80,11 @@ import { decideAaratiNextAction } from "../services/aarati/aaratiConversationDec
 import { decideFollowupReplyContext } from "../services/aarati/aaratiFollowupReplyContextGuard.service.js";
 import { handleAaratiJobSearchContinuation } from "../services/aarati/aaratiJobSearchContinuation.service.js";
 import {
+  isJobSearchConfirmationActivation,
+  decideJobSearchConfirmationAction,
+} from "../services/aarati/aaratiJobSearchConfirmation.service.js";
+import { WorkerProfile } from "../models/WorkerProfile.model.js";
+import {
   buildDocumentReceivedReply,
   isSupportedDocumentMedia,
   saveWorkerDocumentMetadata,
@@ -488,6 +493,132 @@ export async function receiveWhatsAppWebhook(req, res) {
       }
     }
     // ── End AARATI-20B guard ──────────────────────────────────────────────────
+
+    // ── AARATI-20D: Job Search Confirmation / Profile Save Guard ─────────────
+    // Priority #4 — after 20B, before safety guards, Mapbox, Gemini, worker reg.
+    // When user sees job_search_results and replies with a confirmation phrase
+    // ("ok hubxa", "yes", "job chaiyo", etc.), use lastJobSearch.query to save
+    // the profile. NEVER save raw confirmation text as area/location.
+    if (env.BOT_MODE === "jobmate_hiring") {
+      const confirmText20d =
+        normalized.message.normalizedText ||
+        normalized.message.text ||
+        "";
+
+      const activation20d = isJobSearchConfirmationActivation({
+        text: confirmText20d,
+        conversation,
+      });
+
+      if (activation20d.active) {
+        // Fetch existing WorkerProfile to check availability/documents.
+        const workerProfile20d = await WorkerProfile.findOne({
+          contactId: contact._id,
+        }).lean();
+
+        const confirm20d = decideJobSearchConfirmationAction({
+          text: confirmText20d,
+          conversation,
+          workerProfile: workerProfile20d,
+        });
+
+        if (confirm20d.shouldHandle) {
+          console.log("AARATI_20D_JOB_SEARCH_CONFIRM_HIT", {
+            phone: contact.phone,
+            conversationId: String(conversation._id),
+            reason: confirm20d.reason,
+            queryUsed: confirm20d.queryUsed,
+            missingField: confirm20d.missingField,
+          });
+
+          if (confirm20d.queryUsed?.location || confirm20d.queryUsed?.keyword) {
+            console.log("AARATI_20D_PROFILE_CONTEXT_FROM_LAST_SEARCH", {
+              phone: contact.phone,
+              location: confirm20d.queryUsed?.location,
+              keyword: confirm20d.queryUsed?.keyword,
+              rawText: confirmText20d,
+            });
+          }
+
+          // Proof: raw confirmation text is NOT used as location.
+          console.log("AARATI_20D_BLOCKED_RAW_CONFIRMATION_AS_LOCATION", {
+            rawText: confirmText20d,
+            usedLocation: confirm20d.queryUsed?.location || "(none)",
+            usedKeyword: confirm20d.queryUsed?.keyword || "(none)",
+          });
+
+          const ConvModel20d = conversation.constructor;
+
+          // Apply conversation state patch.
+          await ConvModel20d.updateOne(
+            { _id: conversation._id },
+            { $set: confirm20d.nextConvPatch },
+            { runValidators: false }
+          );
+
+          // Apply worker profile update (if any — null for idempotent case).
+          if (confirm20d.profileUpdate) {
+            await WorkerProfile.findOneAndUpdate(
+              { contactId: contact._id },
+              {
+                $setOnInsert: {
+                  contactId: contact._id,
+                  fullName: contact.displayName || "",
+                  phone: contact.phone,
+                  source: "whatsapp",
+                },
+                ...confirm20d.profileUpdate,
+              },
+              { returnDocument: "after", upsert: true, setDefaultsOnInsert: true }
+            );
+          }
+
+          const inboundMsg20d = await saveInboundMessage({
+            contact,
+            conversation,
+            normalized,
+            intentResult: {
+              intent: "worker_registration",
+              needsHuman: false,
+              priority: "low",
+              reason: `aarati_20d:${confirm20d.reason}`,
+            },
+          });
+
+          const sendResult20d = await sendWhatsAppTextMessage({
+            to: contact.phone,
+            text: confirm20d.replyText,
+          });
+
+          const outboundMsg20d = await saveOutboundMessage({
+            contact,
+            conversation,
+            text: confirm20d.replyText,
+            providerMessageId: sendResult20d.providerMessageId,
+            status: "sent",
+          });
+
+          await updateConversationIntent({
+            conversation,
+            intent: "worker_registration",
+            state: confirm20d.nextState || "idle",
+            lastInboundMessageId: inboundMsg20d._id,
+            lastOutboundMessageId: outboundMsg20d._id,
+          });
+
+          await markMessageProcessed(processedMessageId);
+
+          return res.status(200).json({
+            success: true,
+            message: "Aarati 20D job search confirmation handled",
+            reason: confirm20d.reason,
+            replied: true,
+            sendSkipped: sendResult20d.skipped || false,
+          });
+        }
+      }
+    }
+    // ── End AARATI-20D guard ──────────────────────────────────────────────────
 
     const safetyEvent =
       env.BOT_MODE === "jobmate_hiring"
