@@ -78,6 +78,7 @@ import {
 } from "../services/aarati/aaratiConversationDirector.service.js";
 import { decideAaratiNextAction } from "../services/aarati/aaratiConversationDecision.service.js";
 import { decideFollowupReplyContext } from "../services/aarati/aaratiFollowupReplyContextGuard.service.js";
+import { handleAaratiJobSearchControlGuard } from "../services/aarati/aaratiJobSearchControlGuard.service.js";
 import { handleAaratiJobSearchContinuation } from "../services/aarati/aaratiJobSearchContinuation.service.js";
 import {
   isJobSearchConfirmationActivation,
@@ -276,6 +277,91 @@ export async function receiveWhatsAppWebhook(req, res) {
       }
     }
     // ── End AARATI-20A guard ──────────────────────────────────────────────────
+
+    // ── AARATI-20E: Job search control/confirmation guard ─────────────────────
+    // Runs before AARATI-20B continuation so control words like "hus", "ok",
+    // "job chaiyo", and "start" do not retry the previous job search forever.
+    if (env.BOT_MODE === "jobmate_hiring") {
+      const controlText20e =
+        normalized.message.normalizedText ||
+        normalized.message.text ||
+        "";
+
+      const controlDecision20e = handleAaratiJobSearchControlGuard({
+        text: controlText20e,
+        conversation,
+      });
+
+      if (controlDecision20e.shouldHandle) {
+        console.log(
+          controlDecision20e.intent === "restart"
+            ? "AARATI_20E_CONTROL_COMMAND_HIT"
+            : "AARATI_20E_CONFIRMATION_BEFORE_SEARCH_HIT",
+          {
+            phone: contact.phone,
+            conversationId: String(conversation._id),
+            text: controlText20e,
+            reason: controlDecision20e.reason,
+          }
+        );
+
+        if (controlDecision20e.statePatch && conversation?._id) {
+          const ConvModel20e = conversation.constructor;
+          await ConvModel20e.updateOne(
+            { _id: conversation._id },
+            { $set: controlDecision20e.statePatch },
+            { runValidators: false }
+          );
+        }
+
+        const inboundMessage20e = await saveInboundMessage({
+          contact,
+          conversation,
+          normalized,
+          intentResult: {
+            intent: controlDecision20e.intent || "unknown",
+            needsHuman: false,
+            priority: "low",
+            reason: controlDecision20e.reason,
+          },
+        });
+
+        const sendResult20e = await sendWhatsAppTextMessage({
+          to: contact.phone,
+          text: controlDecision20e.replyText,
+        });
+
+        const outboundMessage20e = await saveOutboundMessage({
+          contact,
+          conversation,
+          text: controlDecision20e.replyText,
+          providerMessageId: sendResult20e.providerMessageId,
+          status: "sent",
+        });
+
+        await updateConversationIntent({
+          conversation,
+          intent: controlDecision20e.intent || "unknown",
+          state:
+            controlDecision20e.statePatch?.currentState ||
+            conversation.currentState ||
+            "idle",
+          lastInboundMessageId: inboundMessage20e._id,
+          lastOutboundMessageId: outboundMessage20e._id,
+        });
+
+        await markMessageProcessed(processedMessageId);
+
+        return res.status(200).json({
+          success: true,
+          message: "Aarati 20E job search control guard handled message",
+          reason: controlDecision20e.reason,
+          replied: true,
+          sendSkipped: sendResult20e.skipped || false,
+        });
+      }
+    }
+    // ── End AARATI-20E guard ──────────────────────────────────────────────────
 
     // ── AARATI-20B: Job Search Continuation Guard ─────────────────────────────
     // Priority #3 — after 20A follow-up guard, before safety/AI/classifier/
