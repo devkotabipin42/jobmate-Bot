@@ -91,6 +91,10 @@ import {
   isSupportedDocumentMedia,
   saveWorkerDocumentMetadata,
 } from "../services/uploads/documentUpload.service.js";
+import {
+  buildLeadAgentConversationPatch,
+  handleJobMateLeadAgentMessage,
+} from "../services/jobmateLeadAgent/jobmateLeadAgent.service.js";
 
 /**
  * Meta WhatsApp webhook verification.
@@ -166,6 +170,75 @@ export async function receiveWhatsAppWebhook(req, res) {
       contact,
       channel: "whatsapp",
     });
+
+    if (env.BOT_MODE === "jobmate_hiring") {
+      const leadAgentResult = await handleJobMateLeadAgentMessage({
+        contact,
+        conversation,
+        normalizedMessage: normalized,
+      });
+
+      if (leadAgentResult?.handled) {
+        const leadAgentIntentResult = {
+          intent: toWebhookMessageIntent(leadAgentResult),
+          needsHuman: Boolean(leadAgentResult.needsHuman),
+          priority: leadAgentResult.priority || "low",
+          reason: leadAgentResult.reason || "jobmate_lead_agent",
+        };
+
+        const inboundMessage = await saveInboundMessage({
+          contact,
+          conversation,
+          normalized,
+          intentResult: leadAgentIntentResult,
+        });
+
+        const sendResult = await sendWhatsAppTextMessage({
+          to: contact.phone,
+          text: leadAgentResult.reply,
+        });
+
+        const outboundMessage = await saveOutboundMessage({
+          contact,
+          conversation,
+          text: leadAgentResult.reply,
+          providerMessageId: sendResult.providerMessageId,
+          status: "sent",
+        });
+
+        const patch = buildLeadAgentConversationPatch({
+          result: leadAgentResult,
+          inboundMessageId: inboundMessage._id,
+          outboundMessageId: outboundMessage._id,
+        });
+
+        if (patch && conversation?._id) {
+          const ConvModel = conversation.constructor;
+          await ConvModel.updateOne(
+            { _id: conversation._id },
+            patch,
+            { runValidators: false }
+          );
+        }
+
+        if (["worker_registration", "employer_lead"].includes(leadAgentIntentResult.intent)) {
+          contact = await applyContactIntentState(contact, leadAgentIntentResult);
+        }
+
+        await markMessageProcessed(processedMessageId);
+
+        return res.status(200).json({
+          success: true,
+          message: "JobMate lead agent handled message",
+          intent: leadAgentIntentResult.intent,
+          reason: leadAgentResult.reason,
+          replied: true,
+          leadDraftCreated: Boolean(leadAgentResult.leadDraft),
+          taskDraftCreated: Boolean(leadAgentResult.taskDraft),
+          sendSkipped: sendResult.skipped || false,
+        });
+      }
+    }
 
     // ── AARATI-20A: Follow-up Reply Context Guard ────────────────────────────
     // Priority #2 in routing ladder — BEFORE safety guards, classifyIntent,
@@ -1967,6 +2040,20 @@ function sanitizeWebhookError(error) {
     type: error?.response?.data?.error?.type || null,
     fbtrace_id: error?.response?.data?.error?.fbtrace_id || null,
   };
+}
+
+function toWebhookMessageIntent(leadAgentResult = {}) {
+  if (leadAgentResult.intent === "reset") return "restart";
+
+  if (
+    ["worker_registration", "employer_lead"].includes(
+      leadAgentResult.conversationIntent
+    )
+  ) {
+    return leadAgentResult.conversationIntent;
+  }
+
+  return "unknown";
 }
 
 function applyConversationIntentOverride({ intentResult, conversation, normalized }) {

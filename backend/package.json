@@ -46,7 +46,8 @@
     "test:aarati20a-followup-reply-context-guard": "node scripts/testAarati20AFollowupReplyContextGuard.mjs",
     "test:aarati20b-job-search-continuation": "node scripts/testAarati20BJobSearchContinuation.mjs",
     "test:aarati20c-job-search-timeout": "node scripts/testAarati20CJobSearchTimeout.mjs",
-    "test:aarati20d-job-search-confirmation": "node scripts/testAarati20DJobSearchConfirmation.mjs"
+    "test:aarati20d-job-search-confirmation": "node scripts/testAarati20DJobSearchConfirmation.mjs",
+    "test:jobmate-lead-agent-clean": "node scripts/testJobMateLeadAgentClean.mjs"
   },
   "keywords": [],
   "author": "JobMate",
