@@ -2347,6 +2347,27 @@ function applyConversationIntentOverride({ intentResult, conversation, normalize
     };
   }
 
+  const isWorkerFlowActive =
+    activeWorkerStates.includes(conversation?.currentState) ||
+    conversation?.currentIntent === "worker_registration" ||
+    conversation?.metadata?.activeFlow === "worker_registration" ||
+    ["jobType", "district", "availability", "documents"].includes(
+      conversation?.metadata?.lastAskedField
+    );
+
+  if (
+    isWorkerFlowActive &&
+    !["restart", "opt_out", "human_handoff", "frustrated"].includes(intentResult.intent)
+  ) {
+    return {
+      ...intentResult,
+      intent: "worker_registration",
+      needsHuman: false,
+      priority: "low",
+      reason: "Locked to active worker flow",
+    };
+  }
+
   // If user is clearly searching jobs, do not force old worker registration state.
   if (intentResult.intent === "job_search") {
     return intentResult;

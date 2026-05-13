@@ -103,7 +103,24 @@ function isGreeting(value = "") {
 }
 
 function isWorkerStart(value = "") {
+  const normalizedValue = value.replace(/[?.]+$/g, "").trim();
+  const commonWorkerVariants = new Set([
+    "ajob kojna",
+    "job kojna",
+    "kaam kojna",
+    "kam kojna",
+    "job khojna",
+    "kaam khojna",
+    "kam khojna",
+    "kaam xa",
+    "job xa",
+    "rojgar chahiyo",
+    "jagir chahiyo",
+  ]);
+
   return (
+    commonWorkerVariants.has(normalizedValue) ||
+    /\b(a?job|kaam|kam|work|jagir|rojgar)\s+(khojna|kojna|khojdai|chahiyo|chaiyo|chayo|chaincha|chahinchha|xa|cha|chha|available)\b/i.test(value) ||
     /\b(kaam|kam|job|work|jagir)\s+(xa|cha|chha|available)\b/i.test(value) ||
     /\b(kaam|kam|job|work|jagir)\b.*\b(painxa|paincha|pauxa|pauna|mila|milcha|milchha)\b/i.test(value) ||
     /\b(job|kaam|kam|work|jagir)\s+(chahiyo|chaiyo|chayo|khojdai|khojeko|khojna|chaincha|chahinchha)\b/i.test(value) ||

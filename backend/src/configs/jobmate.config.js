@@ -33,7 +33,17 @@ const ENABLE_AARATI_PERSONA = process.env.ENABLE_AARATI_PERSONA !== "false";
 const ENABLE_AARATI_LLM = process.env.ENABLE_AARATI_LLM !== "false";
 
 // Job type parsing
-const JOB_TYPES = {
+const WORKER_REGISTRATION_JOB_TYPES = {
+  "1": "Driver / Transport",
+  "2": "Security Guard",
+  "3": "Hotel / Restaurant",
+  "4": "Construction / Labor",
+  "5": "Farm / Agriculture",
+  "6": "Shop / Retail",
+  "7": "Other",
+};
+
+const JOB_SEARCH_CATEGORY_TYPES = {
   "1": "IT/Tech",
   "2": "Driver/Transport",
   "3": "Hospitality",
@@ -42,6 +52,33 @@ const JOB_TYPES = {
   "6": "Construction/Labor",
   "7": "Other",
 };
+
+const WORKER_REGISTRATION_STATES = new Set([
+  "ask_job_type",
+  "ask_jobType",
+  "ask_district",
+  "ask_availability",
+  "ask_document_status",
+  "ask_documents",
+  "asked_register",
+]);
+
+const WORKER_REGISTRATION_FIELDS = new Set([
+  "jobType",
+  "district",
+  "availability",
+  "documents",
+]);
+
+const JOB_SEARCH_TRANSIENT_PROFILE_KEYS = [
+  "jobSearchDone",
+  "noJobsFound",
+  "jobSearchError",
+  "jobSearchStrategy",
+  "jobSearchResults",
+  "searchCategoryAsked",
+  "pendingJobSearch",
+];
 
 const REGISTER_INTENT_PATTERN = /^(register|registr|profile|save|ho|yes|ok|okay|1|mero detail save|detail save|register garchu|garidinu|garidau)/i;
 
@@ -80,19 +117,66 @@ Tapai kun type/sector ko kaam khojdai hunuhunchha?
 7. Jun sukai / any`;
 }
 
-function parseJobType(text) {
-  const trimmed = String(text || "").trim();
-  if (JOB_TYPES[trimmed]) return JOB_TYPES[trimmed];
+function normalizeSimpleText(text = "") {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s/-]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-  const lower = trimmed.toLowerCase();
-  if (/(frontend|front end|react|developer|it|computer|software|web|coding|programmer)/i.test(lower)) return "IT/Tech";
-  if (/(hotel|restaurant|waiter|kitchen|cook|cafe)/i.test(lower)) return "Hospitality";
-  if (/(driver|gadi|license|truck|bus|bike|delivery)/i.test(lower)) return "Driver/Transport";
-  if (/(security|guard|watchman)/i.test(lower)) return "Security";
-  if (/(shop|sales|retail|pasal|counter)/i.test(lower)) return "Shop/Retail";
-  if (/(factory|helper|labor|labour|construction|mistri|plumber|electrician)/i.test(lower)) return "Construction/Labor";
-  if (/(farm|agriculture|kheti|krishi)/i.test(lower)) return "Farm/Agriculture";
+function toDisplayTitle(text = "") {
+  return String(text || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .map((word) => {
+      if (!word) return word;
+      if (word.includes("/")) {
+        return word
+          .split("/")
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+          .join("/");
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
+function parseJobType(text, { workerRegistration = false } = {}) {
+  const trimmed = String(text || "").trim();
+  const numericMap = workerRegistration
+    ? WORKER_REGISTRATION_JOB_TYPES
+    : JOB_SEARCH_CATEGORY_TYPES;
+  if (numericMap[trimmed]) return numericMap[trimmed];
+
+  const lower = normalizeSimpleText(trimmed);
+  if (/(marketing|marketting|sales|field marketing|promotion|promoter|parchar)/i.test(lower)) return "Marketing/Sales";
+  if (/(hotel|restaurant|waiter|kitchen|cook|cafe)/i.test(lower)) return "Hotel / Restaurant";
+  if (/(driver|gadi|license|truck|bus|bike|delivery)/i.test(lower)) return "Driver / Transport";
+  if (/(security|guard|watchman)/i.test(lower)) return "Security Guard";
+  if (/(farm|agriculture|kheti|krishi)/i.test(lower)) return "Farm / Agriculture";
+  if (/(shop|retail|pasal|counter|shop helper)/i.test(lower)) return "Shop / Retail";
+  if (/(factory|helper|labor|labour|construction|mistri|plumber|electrician)/i.test(lower)) return "Construction / Labor";
+  if (/(frontend|front end|react|developer|\bit\b|computer|software|web|coding|programmer)/i.test(lower)) return "IT/Tech";
   if (/(jun sukai|junsukai|any|other|jasto bhaye pani)/i.test(lower)) return "Other";
+  return null;
+}
+
+function parseJobTypeReply(text, profile = {}, context = {}) {
+  const workerRegistration = isWorkerRegistrationActiveContext(context);
+  const parsed = parseJobType(text, { workerRegistration });
+  if (parsed) return parsed;
+
+  const value = String(text || "").trim();
+  const clean = normalizeSimpleText(value);
+  if (
+    /^[a-zA-Z][a-zA-Z\s/-]{2,40}$/.test(value) &&
+    !/(ma|maa|area|district|nawalparasi|rupandehi|kapilvastu|palpa|dang|banke|butwal|parasi|bardaghat|bhardaghat|bhairahawa)$/i.test(clean)
+  ) {
+    return toDisplayTitle(value);
+  }
+
   return null;
 }
 
@@ -199,11 +283,130 @@ function resolveLocalLocationFromText(cleanText) {
   return null;
 }
 
-async function jobmateExtractor({ text, profile }) {
+function locationUpdatesFromResolved(localLocation) {
+  const canonical = localLocation?.resolved?.canonical || localLocation?.detectedText || "";
+  const district = localLocation?.resolved?.district || canonical;
+
+  return {
+    location: canonical,
+    area: canonical,
+    district,
+    province: localLocation?.resolved?.province || "Lumbini",
+    isInsideLumbini: true,
+    isOutsideLumbini: false,
+  };
+}
+
+function isWorkerRegistrationActiveContext({
+  conversation,
+  lastAskedField,
+  currentState,
+} = {}) {
+  const metadata = conversation?.metadata || {};
+  const state = currentState || conversation?.currentState || "";
+
+  return (
+    conversation?.currentIntent === "worker_registration" ||
+    metadata.activeFlow === "worker_registration" ||
+    WORKER_REGISTRATION_STATES.has(state) ||
+    WORKER_REGISTRATION_FIELDS.has(lastAskedField)
+  );
+}
+
+function sanitizeWorkerRegistrationProfile({
+  profile = {},
+  conversation,
+  lastAskedField,
+  currentState,
+  text,
+} = {}) {
+  const cleaned = { ...profile };
+
+  if (!isWorkerRegistrationActiveContext({ conversation, lastAskedField, currentState })) {
+    return cleaned;
+  }
+
+  for (const key of JOB_SEARCH_TRANSIENT_PROFILE_KEYS) {
+    delete cleaned[key];
+  }
+
+  const cleanText = normalizeSimpleText(text);
+  if (
+    lastAskedField === "jobType" &&
+    cleanText &&
+    normalizeSimpleText(cleaned.location) === cleanText
+  ) {
+    delete cleaned.location;
+  }
+
+  return cleaned;
+}
+
+function shouldRunWorkerRegistrationSearchStep({
+  conversation,
+  lastAskedField,
+  currentState,
+} = {}) {
+  return !isWorkerRegistrationActiveContext({
+    conversation,
+    lastAskedField,
+    currentState,
+  });
+}
+
+function parseDistrictReply(text) {
+  const t = String(text || "").trim();
+  const map = {
+    "1": "Nawalparasi West",
+    "2": "Rupandehi",
+    "3": "Kapilvastu",
+    "4": "Palpa",
+    "5": "Dang",
+    "6": "Banke",
+  };
+
+  if (map[t]) return map[t];
+
+  const localLocation = resolveLocalLocationFromText(t);
+  if (localLocation) {
+    return localLocation.resolved.district || localLocation.resolved.canonical;
+  }
+
+  const resolved = resolveLumbiniLocation(t);
+  return resolved?.district || resolved?.canonical || t;
+}
+
+async function jobmateExtractor({ text, profile, conversation, lastAskedField, currentState }) {
   const updates = {};
   const cleanText = String(text || "").trim();
 
   if (!cleanText) return updates;
+
+  const activeWorkerRegistration = isWorkerRegistrationActiveContext({
+    conversation,
+    lastAskedField,
+    currentState,
+  });
+
+  if (activeWorkerRegistration && lastAskedField === "jobType") {
+    const jobType = parseJobTypeReply(cleanText, profile, {
+      conversation,
+      lastAskedField,
+      currentState,
+    });
+    if (jobType) {
+      updates.jobType = jobType;
+    }
+    return updates;
+  }
+
+  if (activeWorkerRegistration && lastAskedField === "district") {
+    const localLocation = resolveLocalLocationFromText(cleanText);
+    if (localLocation) {
+      Object.assign(updates, locationUpdatesFromResolved(localLocation));
+    }
+    return updates;
+  }
 
   if (isAaratiIdentityQuestion(cleanText)) {
     updates.pendingAaratiReply = AARATI_SAMPLE_REPLIES.botQuestion;
@@ -246,8 +449,9 @@ async function jobmateExtractor({ text, profile }) {
 
     if (isFreshSearch) {
       updates.location = localLocation.detectedText;
+      updates.area = localLocation.resolved.canonical || localLocation.detectedText;
       updates.district = localLocation.resolved.district || localLocation.resolved.canonical;
-      updates.province = "Lumbini";
+      updates.province = localLocation.resolved.province || "Lumbini";
       updates.isInsideLumbini = true;
       updates.isOutsideLumbini = false;
       updates.jobSearchDone = false;
@@ -634,27 +838,12 @@ export const jobmateConfig = {
     {
       key: "jobType",
       ask: () => MESSAGES.askJobType,
-      parse: parseJobType,
+      parse: parseJobTypeReply,
     },
     {
       key: "district",
       ask: (profile) => MESSAGES.askDistrict(profile),
-      parse: (text) => {
-        const t = String(text || "").trim();
-        const map = {
-          "1": "Nawalparasi West",
-          "2": "Rupandehi",
-          "3": "Kapilvastu",
-          "4": "Palpa",
-          "5": "Dang",
-          "6": "Banke",
-        };
-
-        if (map[t]) return map[t];
-
-        const resolved = resolveLumbiniLocation(t);
-        return resolved?.district || resolved?.canonical || t;
-      },
+      parse: parseDistrictReply,
       skipIf: (profile) => Boolean(profile.district),
     },
     {
@@ -672,6 +861,8 @@ export const jobmateConfig = {
     },
   ],
   searchStep: aaratiSearchStep,
+  shouldRunSearchStep: shouldRunWorkerRegistrationSearchStep,
+  sanitizeProfile: sanitizeWorkerRegistrationProfile,
   shortCircuit: (profile) => {
     if (profile.isOutsideLumbini) {
       const loc = profile.location || "tyo area";

@@ -12,8 +12,33 @@ export async function runConversationEngine({
 }) {
   const text = normalizedMessage?.message?.normalizedText || "";
   const metadata = conversation?.metadata || {};
-  const profile = { ...(metadata.collectedData || {}) };
+  let profile = { ...(metadata.collectedData || {}) };
   const lastAskedField = metadata.lastAskedField || null;
+  const baseContext = {
+    contact,
+    conversation,
+    normalizedMessage,
+    text,
+    lastAskedField,
+    currentState: conversation?.currentState || null,
+    currentIntent: conversation?.currentIntent || null,
+  };
+  const sanitizeProfile = (nextProfile, stage) => {
+    if (typeof config.sanitizeProfile !== "function") {
+      return nextProfile;
+    }
+
+    try {
+      return config.sanitizeProfile({
+        ...baseContext,
+        profile: nextProfile,
+        stage,
+      }) || nextProfile;
+    } catch (error) {
+      console.error("⚠️ sanitizeProfile failed:", error?.message);
+      return nextProfile;
+    }
+  };
 
   // Step 1: If user is replying to a specific question, parse that reply FIRST.
   // (Parse before extractor so numeric replies like "5" get assigned correctly.)
@@ -21,7 +46,7 @@ export async function runConversationEngine({
     const field = config.requiredFields.find((f) => f.key === lastAskedField);
     if (field && typeof field.parse === "function") {
       try {
-        const parsed = field.parse(text, profile);
+        const parsed = field.parse(text, profile, baseContext);
         if (parsed !== null && parsed !== undefined && parsed !== "") {
           profile[lastAskedField] = parsed;
         }
@@ -36,20 +61,35 @@ export async function runConversationEngine({
   let extracted = {};
   if (typeof config.extractor === "function") {
     try {
-      extracted = (await config.extractor({ text, profile, contact })) || {};
+      extracted = (await config.extractor({ ...baseContext, profile })) || {};
     } catch (error) {
       console.error("⚠️ Extractor failed:", error?.message);
     }
   }
   Object.assign(profile, extracted);
+  profile = sanitizeProfile(profile, "after_extractor");
 
   // Step 2.4: Run search step if defined (e.g., job search before profile collection)
   // Only runs once — uses profile.jobSearchDone flag to avoid repeats.
-  if (typeof config.searchStep === "function") {
+  let shouldRunSearchStep = typeof config.searchStep === "function";
+  if (shouldRunSearchStep && typeof config.shouldRunSearchStep === "function") {
+    try {
+      shouldRunSearchStep = Boolean(config.shouldRunSearchStep({
+        ...baseContext,
+        profile,
+      }));
+    } catch (error) {
+      console.error("⚠️ shouldRunSearchStep failed:", error?.message);
+      shouldRunSearchStep = false;
+    }
+  }
+
+  if (shouldRunSearchStep && typeof config.searchStep === "function") {
     try {
       const searchResult = await config.searchStep(profile, text);
       if (searchResult) {
         Object.assign(profile, searchResult.profileUpdates || {});
+        profile = sanitizeProfile(profile, "after_search");
         // Persist and return search reply
         if (conversation && conversation._id) {
           try {
@@ -88,6 +128,7 @@ export async function runConversationEngine({
   if (typeof config.shortCircuit === "function") {
     const shortReply = config.shortCircuit(profile);
     if (shortReply) {
+      profile = sanitizeProfile(profile, "before_short_circuit");
       // Persist and return early
       if (conversation && conversation._id) {
         try {
@@ -132,6 +173,7 @@ export async function runConversationEngine({
   let isComplete = false;
 
   if (!nextField) {
+    profile = sanitizeProfile(profile, "before_completion");
     messageToSend =
       typeof config.completionMessage === "function"
         ? config.completionMessage(profile)
@@ -148,6 +190,7 @@ export async function runConversationEngine({
       }
     }
   } else {
+    profile = sanitizeProfile(profile, "before_next_question");
     messageToSend =
       typeof nextField.ask === "function"
         ? nextField.ask(profile)

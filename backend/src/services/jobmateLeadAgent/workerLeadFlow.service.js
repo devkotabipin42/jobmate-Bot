@@ -16,6 +16,17 @@ const REQUIRED_WORKER_FIELDS = [
   "mobilityPreference",
 ];
 
+const WORKER_AREA_ALIASES = [
+  ["jimirbar", "Jimirbar"],
+  ["jimirebar", "Jimirbar"],
+  ["jimirbaar", "Jimirbar"],
+  ["bardaghat", "Bardaghat"],
+  ["butwal", "Butwal"],
+  ["parasi", "Parasi"],
+  ["bhairahawa", "Bhairahawa"],
+  ["sunwal", "Sunwal"],
+];
+
 export function handleWorkerLeadFlow({
   contact = {},
   state = {},
@@ -23,17 +34,21 @@ export function handleWorkerLeadFlow({
   startedByIntent = false,
 } = {}) {
   const previousData = state?.flow === "worker" ? state.data || {} : {};
-  const extracted = extractWorkerDetails({ text, contact });
+  const extracted = normalizeWorkerStepExtraction({
+    extracted: extractWorkerDetails({ text, contact, currentStep: state?.step }),
+    previousData,
+    currentStep: state?.step,
+  });
   const mergedData = removeEmptyValues({
     ...previousData,
     ...extracted,
     phone: contact?.phone || previousData.phone || "",
   });
-  const data = applySkipForCurrentStep({
+  const data = normalizeWorkerLeadData(applySkipForCurrentStep({
     data: mergedData,
     currentStep: state?.step,
     text,
-  });
+  }));
 
   const missing = getMissingWorkerFields(data);
 
@@ -133,31 +148,35 @@ export function buildWorkerResumePrompt({ state = {} } = {}) {
   return buildWorkerPrompt({ missing, data, startedByIntent: false });
 }
 
-export function extractWorkerDetails({ text = "", contact = {} } = {}) {
+export function extractWorkerDetails({ text = "", contact = {}, currentStep = "" } = {}) {
   const role = findRole(text);
   const fallbackRole = parseWorkerRoleFallback(text);
   const location = findLocation(text);
+  const locationValue = location?.found
+    ? {
+        area: location.canonical,
+        district: location.district || "",
+        province: location.province || "Lumbini",
+        country: "Nepal",
+      }
+    : parseLooseLocation(text);
+  const preferredArea = parsePreferredArea(text) ||
+    (currentStep === "mobilityPreference" ? preferredAreaFromLocation(locationValue) : "");
+  const shouldCaptureLocation = currentStep !== "mobilityPreference" || !preferredArea;
   const name = parsePersonName(text) || safeDisplayName(contact?.displayName);
 
   return removeEmptyValues({
     fullName: name,
     providedPhone: parsePhoneNumber(text),
     age: parseAge(text),
-    jobType: fallbackRole.includes(" / ") ? fallbackRole : role?.found ? role.label : fallbackRole,
-    location: location?.found
-      ? {
-          area: location.canonical,
-          district: location.district || "",
-          province: location.province || "Lumbini",
-          country: "Nepal",
-        }
-      : parseLooseLocation(text),
+    jobType: resolveWorkerJobType({ role, fallbackRole }),
+    ...(shouldCaptureLocation ? { location: locationValue } : {}),
     experience: parseExperience(text),
     availability: parseAvailability(text),
     expectedSalary: parseSalaryRange(text),
     documentStatus: parseDocumentStatus(text),
     travelPreference: parseTravelPreference(text),
-    preferredArea: parsePreferredArea(text),
+    preferredArea,
   });
 }
 
@@ -178,7 +197,7 @@ function buildWorkerPrompt({ missing = [], data = {}, startedByIntent = false } 
   }
 
   if (startedByIntent) {
-    return "JobMate ma worker registration free ho. Tapai ko lead human approval pachi matra matching ma jancha.\n\nKun kaam khojnu bhayo, kun area ma, experience kati cha, ra kahile bata available hunuhunchha?";
+    return "Tapai kasto kaam khojnu bhayeko ho? Job type, area/location, experience ra availability pathaunus.";
   }
 
   return `Aba ${askText} pathaunu hola.`;
@@ -236,6 +255,7 @@ function parseAge(text = "") {
 
 function parseWorkerRoleFallback(text = "") {
   const value = String(text || "").toLowerCase();
+  const compact = value.replace(/[?.]+$/g, "").trim();
 
   if (/\b(jasto\s+sukai|jun\s+sukai|j\s+sukai|any\s+work|jasto\s+ni|je\s+pani)\b/i.test(value)) {
     return "General Helper / Any suitable work";
@@ -243,6 +263,10 @@ function parseWorkerRoleFallback(text = "") {
 
   if (/\bshop\s+helper\b/i.test(value) && /\bhotel\b/i.test(value)) {
     return "Shop Helper / Hotel Helper";
+  }
+
+  if (/^(marketing|marketting)$/.test(compact)) {
+    return "Marketing";
   }
 
   const roles = [
@@ -263,6 +287,16 @@ function parseWorkerRoleFallback(text = "") {
 
   const found = roles.find(([needle]) => value.includes(needle));
   return found?.[1] || "";
+}
+
+function resolveWorkerJobType({ role = {}, fallbackRole = "" } = {}) {
+  if (fallbackRole === "Marketing" || fallbackRole.includes(" / ")) {
+    return fallbackRole;
+  }
+
+  if (role?.found) return role.label;
+
+  return fallbackRole;
 }
 
 function parseLooseLocation(text = "") {
@@ -430,18 +464,74 @@ function parsePreferredArea(text = "") {
       .join("/");
   }
 
-  const twoArea = value.match(/\b(bardaghat|butwal|parasi|bhairahawa|jimirbar|sunwal)\b.*\b(bardaghat|butwal|parasi|bhairahawa|jimirbar|sunwal)\b.*\b(duita|duba?i|milcha|milchha|ok)\b/i);
-  if (twoArea && twoArea[1].toLowerCase() !== twoArea[2].toLowerCase()) {
-    return [...new Set((value.match(/\b(bardaghat|butwal|parasi|bhairahawa|jimirbar|sunwal)\b/gi) || [])
-      .map((part) => part.toLowerCase()))]
-      .map((part) => titleCase(part))
-      .join(", ");
+  const knownAreas = findKnownWorkerAreaMentions(value);
+  if (knownAreas.length >= 2 && /\b(duita|duba?i|milcha|milchha|ok|thik|huncha|hunchha)\b/i.test(value)) {
+    return knownAreas.join(", ");
   }
 
   const areaMilcha = value.match(/\b([a-z][a-z\s.'-]{1,30})\s+area\s+(?:milcha|ok|thik|huncha|hunchha)\b/i);
   if (!areaMilcha) return "";
 
   return titleCase(cleanPhrase(areaMilcha[1]));
+}
+
+function preferredAreaFromLocation(location = null) {
+  return location?.area || "";
+}
+
+function findKnownWorkerAreaMentions(text = "") {
+  const value = String(text || "").toLowerCase();
+  const mentions = [];
+
+  for (const [alias, canonical] of WORKER_AREA_ALIASES) {
+    const pattern = new RegExp(`\\b${escapeRegExp(alias)}\\b`, "gi");
+    let match = pattern.exec(value);
+
+    while (match) {
+      mentions.push({ index: match.index, canonical });
+      match = pattern.exec(value);
+    }
+  }
+
+  const seen = new Set();
+  return mentions
+    .sort((a, b) => a.index - b.index)
+    .map((mention) => mention.canonical)
+    .filter((canonical) => {
+      if (seen.has(canonical)) return false;
+      seen.add(canonical);
+      return true;
+    });
+}
+
+function escapeRegExp(value = "") {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeWorkerLeadData(data = {}) {
+  if (!data.jobType) return data;
+
+  return {
+    ...data,
+    roleInterest: data.jobType,
+  };
+}
+
+function normalizeWorkerStepExtraction({
+  extracted = {},
+  previousData = {},
+  currentStep = "",
+} = {}) {
+  if (
+    currentStep !== "location" &&
+    previousData?.location?.area &&
+    extracted?.location?.area
+  ) {
+    const { location, ...rest } = extracted;
+    return rest;
+  }
+
+  return extracted;
 }
 
 function applySkipForCurrentStep({ data = {}, currentStep = "", text = "" } = {}) {
