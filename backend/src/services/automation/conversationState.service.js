@@ -1,4 +1,7 @@
 import { Conversation } from "../../models/Conversation.model.js";
+import {
+  JOBMATE_MAIN_MENU_CONTEXT,
+} from "./startRestartMenu.service.js";
 
 /**
  * Find or create one conversation per contact + channel.
@@ -174,7 +177,55 @@ function metadataToDotNotation(metadata = {}) {
   return result;
 }
 
-export async function resetConversationForRestart(conversation) {
+export function buildConversationResetMetadata(existingMetadata = {}, {
+  menuActive = true,
+  lastQuestion = null,
+} = {}) {
+  return {
+    qualificationStep: 0,
+    lastQuestion,
+    lastAskedField: null,
+    collectedData: {},
+    activeFlow: null,
+    workerRegistration: {},
+    employerLead: {},
+    lastJobSearch: null,
+    selectedJob: null,
+    selectedJobs: [],
+    previousParserResult: null,
+    pendingCompletion: false,
+    pendingCompletionFlag: false,
+    profileSavedFromLastSearch: false,
+    restartedAt: new Date(),
+    source: existingMetadata.source || "whatsapp",
+    futureVoiceReady:
+      typeof existingMetadata.futureVoiceReady === "boolean"
+        ? existingMetadata.futureVoiceReady
+        : true,
+    menuContext: {
+      type: JOBMATE_MAIN_MENU_CONTEXT,
+      active: Boolean(menuActive),
+      shownAt: menuActive ? new Date() : null,
+    },
+    jobmateLeadAgent: {
+      flow: null,
+      step: null,
+      data: {},
+      leadDrafts: [],
+      taskDrafts: [],
+      status: "idle",
+      updatedAt: new Date().toISOString(),
+    },
+    businessReceptionist: {
+      lastQuestion: "",
+      selectedService: "",
+      customerName: "",
+      updatedAt: null,
+    },
+  };
+}
+
+export async function resetConversationForRestart(conversation, options = {}) {
   if (!conversation?._id) {
     throw new Error("Conversation is required for restart reset");
   }
@@ -184,22 +235,7 @@ export async function resetConversationForRestart(conversation) {
 
   const existingMetadata = conversation.metadata || {};
 
-  conversation.metadata = {
-    qualificationStep: 0,
-    lastQuestion: null,
-    restartedAt: new Date(),
-    source: existingMetadata.source || "whatsapp",
-    futureVoiceReady:
-      typeof existingMetadata.futureVoiceReady === "boolean"
-        ? existingMetadata.futureVoiceReady
-        : true,
-    businessReceptionist: {
-      lastQuestion: "",
-      selectedService: "",
-      customerName: "",
-      updatedAt: null,
-    },
-  };
+  conversation.metadata = buildConversationResetMetadata(existingMetadata, options);
 
   await conversation.save();
 

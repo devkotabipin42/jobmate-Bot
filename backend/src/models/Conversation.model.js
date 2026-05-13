@@ -121,6 +121,54 @@ const conversationSchema = new mongoose.Schema(
         type: String,
         default: null,
       },
+      activeFlow: {
+        type: String,
+        default: null,
+      },
+      workerRegistration: {
+        type: mongoose.Schema.Types.Mixed,
+        default: () => ({}),
+      },
+      employerLead: {
+        type: mongoose.Schema.Types.Mixed,
+        default: () => ({}),
+      },
+      lastJobSearch: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null,
+      },
+      selectedJob: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null,
+      },
+      selectedJobs: {
+        type: mongoose.Schema.Types.Mixed,
+        default: () => [],
+      },
+      previousParserResult: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null,
+      },
+      pendingCompletion: {
+        type: Boolean,
+        default: false,
+      },
+      pendingCompletionFlag: {
+        type: Boolean,
+        default: false,
+      },
+      profileSavedFromLastSearch: {
+        type: Boolean,
+        default: false,
+      },
+      menuContext: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null,
+      },
+      jobmateLeadAgent: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null,
+      },
     },
   },
   {

@@ -12,6 +12,12 @@ import {
   markConversationOptedOut,
   resetConversationForRestart,
 } from "../services/automation/conversationState.service.js";
+import {
+  buildJobMateMainMenuReply,
+  isStartRestartMenuCommand,
+  resolveMainMenuSelection,
+  shouldHandleMainMenuSelection,
+} from "../services/automation/startRestartMenu.service.js";
 
 import {
   reserveMessageForProcessing,
@@ -170,6 +176,167 @@ export async function receiveWhatsAppWebhook(req, res) {
       contact,
       channel: "whatsapp",
     });
+
+    const startMenuText =
+      normalized.message.normalizedText ||
+      normalized.message.text ||
+      "";
+
+    if (env.BOT_MODE === "jobmate_hiring" && isStartRestartMenuCommand(startMenuText)) {
+      const menuReply = buildJobMateMainMenuReply();
+      const resetConversation = await resetConversationForRestart(conversation, {
+        menuActive: true,
+        lastQuestion: menuReply,
+      });
+
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation: resetConversation,
+        normalized,
+        intentResult: {
+          intent: "unknown",
+          needsHuman: false,
+          priority: "low",
+          reason: "hard_start_restart_menu_reset",
+        },
+      });
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: menuReply,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation: resetConversation,
+        text: menuReply,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      await updateConversationIntent({
+        conversation: resetConversation,
+        intent: "unknown",
+        state: "idle",
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "JobMate start/restart menu reset handled message",
+        reason: "hard_start_restart_menu_reset",
+        replied: true,
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
+
+    if (
+      env.BOT_MODE === "jobmate_hiring" &&
+      shouldHandleMainMenuSelection({ text: startMenuText, conversation })
+    ) {
+      const menuSelection = resolveMainMenuSelection(startMenuText);
+      const resetConversation = await resetConversationForRestart(conversation, {
+        menuActive: false,
+        lastQuestion: null,
+      });
+
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation: resetConversation,
+        normalized,
+        intentResult: {
+          intent: menuSelection.intent,
+          needsHuman: false,
+          priority: "low",
+          reason: menuSelection.reason,
+        },
+      });
+
+      let flowResult = null;
+
+      if (menuSelection.flow === "worker") {
+        flowResult = await handleWorkerRegistration({
+          contact,
+          conversation: resetConversation,
+          normalizedMessage: normalized,
+        });
+      } else if (menuSelection.flow === "employer") {
+        flowResult = await handleEmployerLead({
+          contact,
+          conversation: resetConversation,
+          normalizedMessage: normalized,
+          aiExtraction: null,
+        });
+      } else {
+        flowResult = await handleJobMateLeadAgentMessage({
+          contact,
+          conversation: resetConversation,
+          normalizedMessage: buildSyntheticNormalizedMessage({
+            normalized,
+            text: "sahakari partnership garna cha",
+          }),
+        });
+      }
+
+      const activeConversation = flowResult?.conversation || resetConversation;
+      const replyText = flowResult?.reply || flowResult?.messageToSend || "";
+
+      if (flowResult?.state && menuSelection.flow === "sahakari") {
+        const patch = buildLeadAgentConversationPatch({
+          result: flowResult,
+          inboundMessageId: inboundMessage._id,
+        });
+
+        if (patch && activeConversation?._id) {
+          const ConvModel = activeConversation.constructor;
+          await ConvModel.updateOne(
+            { _id: activeConversation._id },
+            patch,
+            { runValidators: false }
+          );
+        }
+      }
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: replyText,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation: activeConversation,
+        text: replyText,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      const conversationIntent =
+        menuSelection.flow === "sahakari"
+          ? flowResult?.conversationIntent || "unknown"
+          : menuSelection.intent;
+
+      await updateConversationIntent({
+        conversation: activeConversation,
+        intent: conversationIntent,
+        state: flowResult?.currentState || activeConversation.currentState || "idle",
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "JobMate main menu selection handled message",
+        reason: menuSelection.reason,
+        intent: menuSelection.intent,
+        replied: true,
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
 
     if (env.BOT_MODE === "jobmate_hiring") {
       const leadAgentResult = await handleJobMateLeadAgentMessage({
@@ -2054,6 +2221,18 @@ function toWebhookMessageIntent(leadAgentResult = {}) {
   }
 
   return "unknown";
+}
+
+function buildSyntheticNormalizedMessage({ normalized = {}, text = "" } = {}) {
+  return {
+    ...normalized,
+    message: {
+      ...(normalized.message || {}),
+      text,
+      normalizedText: String(text || "").toLowerCase(),
+      type: "text",
+    },
+  };
 }
 
 function applyConversationIntentOverride({ intentResult, conversation, normalized }) {
