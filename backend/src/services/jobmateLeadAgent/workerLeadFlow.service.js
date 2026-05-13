@@ -27,6 +27,17 @@ const WORKER_AREA_ALIASES = [
   ["sunwal", "Sunwal"],
 ];
 
+const REAL_WORKER_CATEGORY_MENU = [
+  "1. Driver / Transport",
+  "2. Hotel / Helper",
+  "3. Security Guard",
+  "4. Shop / Retail",
+  "5. Construction / Labor",
+  "6. Farm / Agriculture",
+  "7. Sales / Marketing",
+  "8. Aru real kaam",
+].join("\n");
+
 export function handleWorkerLeadFlow({
   contact = {},
   state = {},
@@ -34,11 +45,45 @@ export function handleWorkerLeadFlow({
   startedByIntent = false,
 } = {}) {
   const previousData = state?.flow === "worker" ? state.data || {} : {};
+  const activeGuard = detectWorkerActiveFlowGuard({
+    text,
+    state,
+    previousData,
+    startedByIntent,
+  });
+
+  if (activeGuard) {
+    return buildWorkerActiveFlowGuardResult({
+      guard: activeGuard,
+      state,
+      data: previousData,
+    });
+  }
+
+  const rawExtracted = extractWorkerDetails({ text, contact, currentStep: state?.step });
   const extracted = normalizeWorkerStepExtraction({
-    extracted: extractWorkerDetails({ text, contact, currentStep: state?.step }),
+    extracted: rawExtracted,
     previousData,
     currentStep: state?.step,
   });
+  const unclearCount = getNextWorkerUnclearCount({
+    state,
+    text,
+    extracted,
+    startedByIntent,
+  });
+
+  if (unclearCount > 1) {
+    return buildWorkerActiveFlowGuardResult({
+      guard: {
+        type: "repeated_unclear",
+        workerUnclearCount: unclearCount,
+      },
+      state,
+      data: previousData,
+    });
+  }
+
   const mergedData = removeEmptyValues({
     ...previousData,
     ...extracted,
@@ -59,6 +104,10 @@ export function handleWorkerLeadFlow({
       step: missing[0],
       status: "collecting",
       data,
+      guard: {
+        ...(state?.guard || {}),
+        workerUnclearCount: unclearCount,
+      },
       updatedAt: new Date().toISOString(),
     };
 
@@ -201,6 +250,181 @@ function buildWorkerPrompt({ missing = [], data = {}, startedByIntent = false } 
   }
 
   return `Aba ${askText} pathaunu hola.`;
+}
+
+function detectWorkerActiveFlowGuard({
+  text = "",
+  state = {},
+  previousData = {},
+  startedByIntent = false,
+} = {}) {
+  if (startedByIntent || state?.flow !== "worker") return null;
+
+  if (isUnrealisticWorkerInput(text)) {
+    return { type: "unrealistic_job_input" };
+  }
+
+  if (isWorkerGuaranteeQuestion(text)) {
+    return { type: "worker_job_guarantee_question" };
+  }
+
+  if (isWorkerWhenToSendQuestion(text)) {
+    return { type: "worker_when_to_send_question" };
+  }
+
+  if (isWorkerWhereHowToSendQuestion(text)) {
+    return { type: "worker_where_how_to_send_question" };
+  }
+
+  return null;
+}
+
+function buildWorkerActiveFlowGuardResult({
+  guard = {},
+  state = {},
+  data = {},
+} = {}) {
+  const nextState = {
+    ...state,
+    flow: "worker",
+    step: state?.step || "jobType",
+    status: "collecting",
+    data: {
+      ...(data || {}),
+    },
+    guard: {
+      ...(state?.guard || {}),
+      workerUnclearCount: guard.workerUnclearCount || state?.guard?.workerUnclearCount || 0,
+      lastWorkerGuard: guard.type,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+
+  const currentState = `jobmate_worker_${nextState.step}`;
+
+  return {
+    handled: true,
+    intent: "worker_lead",
+    conversationIntent: "worker_registration",
+    currentState,
+    state: nextState,
+    reply: buildWorkerGuardReply(guard.type),
+    needsHuman: false,
+    priority: "low",
+    reason: `worker_active_flow_guard:${guard.type}`,
+  };
+}
+
+function buildWorkerGuardReply(type = "") {
+  if (type === "unrealistic_job_input") {
+    return [
+      "Mitra ji, yo kaam haru practical/verified job category bhitra pardaina jasto lagyo 🙏 JobMate ma driver, hotel/helper, security, shop/retail, construction/labor, agriculture, sales/marketing jasta real kaam ko lagi registration garna milcha. Tapai sachikai kun kaam khojna chahanu huncha?",
+      REAL_WORKER_CATEGORY_MENU,
+    ].join("\n\n");
+  }
+
+  if (type === "worker_job_guarantee_question") {
+    return [
+      "Mitra ji, job guarantee chai dina mildaina 🙏 Tapai le vaneko kaam practical/verified job category bhitra parena bhane JobMate le support garna sakdaina.",
+      "Real kaam ko lagi register garna chahanu huncha bhane kun category ho channus:",
+      REAL_WORKER_CATEGORY_MENU,
+    ].join("\n\n");
+  }
+
+  if (type === "worker_when_to_send_question") {
+    return [
+      "Aile yahi WhatsApp ma pathauna milcha 🙏",
+      "Format yesto pathaunus:\nNaam:\nKaam type:\nArea/location:\nExperience:\nAvailability:\nPhone:\nDocuments cha/chaina:",
+    ].join("\n\n");
+  }
+
+  if (type === "worker_where_how_to_send_question") {
+    return [
+      "Yahi WhatsApp ma text/photo/file pathaunus 🙏 Text details pani yahi message ma pathauna milcha.",
+      "Format:\nNaam:\nKaam type:\nArea/location:\nExperience:\nAvailability:\nPhone:\nDocuments cha/chaina:",
+    ].join("\n\n");
+  }
+
+  return [
+    "Mitra ji, short ma real job category channus ani registration agadi badhaunchu:",
+    REAL_WORKER_CATEGORY_MENU,
+  ].join("\n\n");
+}
+
+function getNextWorkerUnclearCount({
+  state = {},
+  text = "",
+  extracted = {},
+  startedByIntent = false,
+} = {}) {
+  if (startedByIntent || state?.flow !== "worker") return 0;
+  if (isSkipAnswer(text)) return 0;
+  if (!String(text || "").trim()) return 0;
+  if (hasMeaningfulWorkerExtraction({ extracted, text })) return 0;
+
+  return Number(state?.guard?.workerUnclearCount || 0) + 1;
+}
+
+function hasMeaningfulWorkerExtraction({ extracted = {}, text = "" } = {}) {
+  const meaningfulKeys = [
+    "jobType",
+    "location",
+    "providedPhone",
+    "age",
+    "experience",
+    "expectedSalary",
+    "availability",
+    "documentStatus",
+    "travelPreference",
+    "preferredArea",
+  ];
+
+  if (meaningfulKeys.some((key) => Boolean(extracted[key]))) return true;
+
+  return Boolean(extracted.fullName && /\b(naam|name|mero naam)\b/i.test(String(text || "")));
+}
+
+function isUnrealisticWorkerInput(text = "") {
+  const value = normalizeGuardText(text);
+
+  return (
+    /train\s+ko\s+chakka.*hawa\s+hal/i.test(value) ||
+    /(kukur\s*ko|kukurko)\s+sin.*tel\s+hal/i.test(value) ||
+    /(sungur\s*ko|sungurko)\s+kapal.*luga\s+bana/i.test(value) ||
+    /sarpa\s*ko\s+khutta/i.test(value) ||
+    /sarpako\s+khutta/i.test(value) ||
+    /(kukurko|sungurko|sarpako|kukur|sungur|sarpa|saap|snake|train)\b.*\b(chakka|sin|kapal|khutta)\b.*\b(tel|luga|hawa|malis|banaune|halne)\b/i.test(value)
+  );
+}
+
+function isWorkerGuaranteeQuestion(text = "") {
+  const value = normalizeGuardText(text);
+
+  return (
+    /\b(maile\s+vaneko|yo|tyo)?\s*(kaam|kam|job)\s+(pauxa|pauxata|pauncha|paincha|painxa|milcha|milchha)\b/i.test(value) ||
+    /\b(guarantee|pakka)\b.*\b(job|kaam|kam|paune|pauxa|paincha)\b/i.test(value) ||
+    /\b(job|kaam|kam)\b.*\b(guarantee|pakka)\b/i.test(value)
+  );
+}
+
+function isWorkerWhenToSendQuestion(text = "") {
+  return /\b(kahile|kaile)\s+(pathaunu|pathaune|send)\b/i.test(normalizeGuardText(text));
+}
+
+function isWorkerWhereHowToSendQuestion(text = "") {
+  const value = normalizeGuardText(text);
+  return (
+    /\b(kasari|kaha|kata)\b.*\b(pathaunu|pathaune|send)\b/i.test(value) ||
+    /\b(document|details?)\s+(kaha|kata|kasari)\b/i.test(value)
+  );
+}
+
+function normalizeGuardText(text = "") {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function getMissingWorkerFields(data = {}) {

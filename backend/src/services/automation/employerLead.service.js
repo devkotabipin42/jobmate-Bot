@@ -90,6 +90,28 @@ export async function handleEmployerLead({
     };
   }
 
+  if (
+    isEmployerBusinessNameStep({ step, currentState: conversation?.currentState }) &&
+    isOffScopeDigitalServiceQuestion(rawText || text)
+  ) {
+    return {
+      intent: "employer_lead",
+      messageToSend:
+        "Mitra ji, JobMate website design service hoina 🙏 JobMate le job khojne worker ra staff khojne employer lai connect garne kaam garcha. Tapai lai staff hire garna ho bhane business ko naam pathaunus.",
+      nextStep: step || 1,
+      currentState: conversation?.currentState || "ask_business_name",
+      employerLead: null,
+      conversation,
+      scoreAdd: 0,
+      urgencyLevel: "unknown",
+      isComplete: false,
+      needsHuman: false,
+      priority: "low",
+      handoffReason: "",
+      source: "employer_active_flow_guard:off_scope_service_question",
+    };
+  }
+
   const aaratiBrain = await understandEmployerMessage({
     text: rawText || text,
     state: conversation?.currentState || "idle",
@@ -860,6 +882,26 @@ function isAlreadyGivenText(text = "") {
   return /(agi|aghi|paila|already|bani sake|bni sake|bhanisake|bhaneko|di sake|deko)/i.test(String(text || ""));
 }
 
+function isEmployerBusinessNameStep({ step = 0, currentState = "" } = {}) {
+  return (
+    Number(step) === 1 ||
+    Number(step) === 10 ||
+    ["ask_business_name", "ask_business_name_after_ai"].includes(String(currentState || ""))
+  );
+}
+
+function isOffScopeDigitalServiceQuestion(text = "") {
+  const value = String(text || "").toLowerCase();
+
+  return (
+    /\bwebsite\s+(design|banauxau|banaune|banaidinchau|banaidinu|garxau|garchau|garne)\b/i.test(value) ||
+    /\b(app|mobile\s+app)\s+(banauxau|banaune|banaidinchau|design|garxau|garchau|garne)\b/i.test(value) ||
+    /\blogo\s+design\b/i.test(value) ||
+    /\bdesign\s+garxau\b/i.test(value) ||
+    /\b(marketing\s+service|digital\s+marketing\s+garxau|digital\s+marketing)\b/i.test(value)
+  );
+}
+
 function isUsefulLocation(location = {}) {
   if (!location?.area || !location?.district) return false;
 
@@ -1207,4 +1249,3 @@ function cleanRoleText(text) {
 
   return value;
 }
-

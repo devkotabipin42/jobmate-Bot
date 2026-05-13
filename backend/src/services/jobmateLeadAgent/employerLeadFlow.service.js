@@ -31,6 +31,20 @@ export function handleEmployerLeadFlow({
   startedByIntent = false,
 } = {}) {
   const previousData = state?.flow === "employer" ? state.data || {} : {};
+  const activeGuard = detectEmployerActiveFlowGuard({
+    text,
+    state,
+    startedByIntent,
+  });
+
+  if (activeGuard) {
+    return buildEmployerActiveFlowGuardResult({
+      guard: activeGuard,
+      state,
+      data: previousData,
+    });
+  }
+
   const extracted = extractEmployerDetails({ text, contact });
   const mergedData = removeEmptyValues({
     ...previousData,
@@ -211,6 +225,64 @@ function buildEmployerPrompt({ missing = [], data = {}, startedByIntent = false 
   }
 
   return `Aba ${askText} pathaunu hola.`;
+}
+
+function detectEmployerActiveFlowGuard({
+  text = "",
+  state = {},
+  startedByIntent = false,
+} = {}) {
+  if (startedByIntent || state?.flow !== "employer") return null;
+
+  if (
+    (state?.step === "businessName" || !state?.data?.businessName) &&
+    isOffScopeDigitalServiceQuestion(text)
+  ) {
+    return { type: "off_scope_service_question" };
+  }
+
+  return null;
+}
+
+function buildEmployerActiveFlowGuardResult({
+  guard = {},
+  state = {},
+  data = {},
+} = {}) {
+  const nextState = {
+    ...state,
+    flow: "employer",
+    step: state?.step || "businessName",
+    status: "collecting",
+    data: {
+      ...(data || {}),
+    },
+    guard: {
+      ...(state?.guard || {}),
+      lastEmployerGuard: guard.type,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+
+  return {
+    handled: true,
+    intent: "employer_lead",
+    conversationIntent: "employer_lead",
+    currentState: `jobmate_employer_${nextState.step}`,
+    state: nextState,
+    reply: buildEmployerGuardReply(guard.type),
+    needsHuman: false,
+    priority: "low",
+    reason: `employer_active_flow_guard:${guard.type}`,
+  };
+}
+
+function buildEmployerGuardReply(type = "") {
+  if (type === "off_scope_service_question") {
+    return "Mitra ji, JobMate website design service hoina 🙏 JobMate le job khojne worker ra staff khojne employer lai connect garne kaam garcha. Tapai lai staff hire garna ho bhane business ko naam pathaunus.";
+  }
+
+  return "Tapai staff hire garna ho bhane business ko naam pathaunus.";
 }
 
 function getMissingEmployerFields(data = {}) {
@@ -678,6 +750,18 @@ function isUsefulBusinessName(value = "") {
   if (/^(ko lagi|lagi|ko|jana|staff|worker|waiter|helper|urgent)$/i.test(clean)) return false;
   if (/\b(jana|staff|worker|waiter|helper|chainxa|chahiyo|chaiyo|role|salary)\b/i.test(clean)) return false;
   return clean.length >= 2;
+}
+
+function isOffScopeDigitalServiceQuestion(text = "") {
+  const value = String(text || "").toLowerCase();
+
+  return (
+    /\bwebsite\s+(design|banauxau|banaune|banaidinchau|banaidinu|garxau|garchau|garne)\b/i.test(value) ||
+    /\b(app|mobile\s+app)\s+(banauxau|banaune|banaidinchau|design|garxau|garchau|garne)\b/i.test(value) ||
+    /\blogo\s+design\b/i.test(value) ||
+    /\bdesign\s+garxau\b/i.test(value) ||
+    /\b(marketing\s+service|digital\s+marketing\s+garxau|digital\s+marketing)\b/i.test(value)
+  );
 }
 
 function cleanPhrase(value = "") {
