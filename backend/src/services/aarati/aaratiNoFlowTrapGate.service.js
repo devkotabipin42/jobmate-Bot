@@ -30,6 +30,9 @@ import {
   isAaratiJobSeekerRequestText,
   isAaratiRestartCommandText,
 } from "./aaratiTextNormalizer.service.js";
+import {
+  CANONICAL_WORKER_JOB_TYPE_MENU,
+} from "../jobmate/workerJobTypeMenu.service.js";
 
 // ---------------------------------------------------------------------------
 // State sets
@@ -130,7 +133,7 @@ function getStepReminder(conversation = {}) {
   const key = lastAskedField || state;
 
   if (key === "jobType" || state === "ask_jobType" || state === "ask_job_type") {
-    return `Aile kaam type choose garne step ma cha:\n1. IT / Computer\n2. Driver / Transport\n3. Hotel / Restaurant\n4. Sales / Shop\n5. Security Guard\n6. Helper / Labor\n7. Jun sukai / any`;
+    return `Aile kaam type choose garne step ma cha:\n${CANONICAL_WORKER_JOB_TYPE_MENU}`;
   }
   if (key === "location" || state === "ask_location" || state === "ask_district") {
     return `Aile location step ma cha.\nKripaya tapai kun area/district ma kaam khojdai hunuhunchha, jastai Butwal, Bardaghat, Bhairahawa, Parasi pathaunu hola.`;

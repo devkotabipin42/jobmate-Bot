@@ -40,6 +40,56 @@ export async function runConversationEngine({
     }
   };
 
+  if (typeof config.flowGuard === "function") {
+    try {
+      const guardResult = await config.flowGuard({ ...baseContext, profile });
+      if (guardResult?.messageToSend) {
+        Object.assign(profile, guardResult.profileUpdates || {});
+        profile = sanitizeProfile(profile, "after_flow_guard");
+
+        const guardedState =
+          guardResult.currentState ||
+          conversation?.currentState ||
+          (lastAskedField ? `ask_${lastAskedField}` : "collecting");
+        const guardedLastAskedField =
+          guardResult.lastAskedField !== undefined
+            ? guardResult.lastAskedField
+            : lastAskedField;
+
+        if (conversation && conversation._id) {
+          try {
+            const Model = conversation.constructor;
+            await Model.updateOne(
+              { _id: conversation._id },
+              {
+                $set: {
+                  currentState: guardedState,
+                  "metadata.collectedData": profile,
+                  "metadata.lastAskedField": guardedLastAskedField || null,
+                },
+              },
+              { runValidators: false }
+            );
+          } catch (error) {
+            console.error("⚠️ flowGuard save failed:", error?.message);
+          }
+        }
+
+        return {
+          messageToSend: guardResult.messageToSend,
+          newMetadata: {
+            collectedData: profile,
+            lastAskedField: guardedLastAskedField || null,
+            currentState: guardedState,
+          },
+          isComplete: false,
+        };
+      }
+    } catch (error) {
+      console.error("⚠️ flowGuard failed:", error?.message);
+    }
+  }
+
   // Step 1: If user is replying to a specific question, parse that reply FIRST.
   // (Parse before extractor so numeric replies like "5" get assigned correctly.)
   if (lastAskedField) {

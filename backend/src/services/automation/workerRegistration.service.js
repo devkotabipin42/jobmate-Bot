@@ -16,6 +16,10 @@ import {
   buildNoFlowTrapReply,
   shouldBlockWorkerFlowParsing,
 } from "../aarati/aaratiNoFlowTrapGate.service.js";
+import {
+  CANONICAL_WORKER_JOB_TYPE_MENU,
+  parseCanonicalWorkerJobType,
+} from "../jobmate/workerJobTypeMenu.service.js";
 
 // Runtime check (not module-load-time) so dotenv has time to load
 function isNewEngineEnabled() {
@@ -29,7 +33,8 @@ const JOB_MAP = {
   "4": "construction_labor",
   "5": "farm_agriculture",
   "6": "shop_retail",
-  "7": "other",
+  "7": "sales_marketing",
+  "8": "other",
 };
 
 const DISTRICT_MAP = {
@@ -64,13 +69,7 @@ Hami tapailai suitable kaam khojna help garchhaun.
 Tapai kasto kaam khojdai hunuhunchha?
 Tala bata euta number pathaunu hola:
 
-1. Driver / Transport
-2. Security Guard
-3. Hotel / Restaurant
-4. Construction / Labor
-5. Farm / Agriculture
-6. Shop / Retail
-7. Other`,
+${CANONICAL_WORKER_JOB_TYPE_MENU}`,
 
   askDistrict: (jobLabel = "kaam") => `Bujhe 🙏 ${jobLabel} khojdai hunuhuncha.
 
@@ -576,12 +575,7 @@ Tara ma tapai ko detail JobMate ma save gardinchhu.
 Tyo area tira suitable kaam aayo bhane hamro team le contact garcha.
 
 Tapai kun type ko kaam khojdai hunuhuncha?
-1. Hotel / Restaurant
-2. Factory / Helper
-3. Driver / Transport
-4. Shop / Sales
-5. Security Guard
-6. Jun sukai kaam`;
+${CANONICAL_WORKER_JOB_TYPE_MENU}`;
   }
 
   return `${askedLocation} ko lagi ahile JobMate ko active matching available छैन 🙏
@@ -598,13 +592,7 @@ function buildNoJobFoundNaturalReply(parsedQuery = {}) {
 Tara tension nalinu. Tapai ko detail JobMate ma save gardinchhu, suitable kaam aayo bhane hamro team le contact garnuhuncha.
 
 Tapai kasto kaam garna comfortable hunuhuncha?
-1. Driver / Transport
-2. Security Guard
-3. Hotel / Restaurant
-4. Construction / Labor
-5. Farm / Agriculture
-6. Shop / Retail
-7. Jun sukai kaam`;
+${CANONICAL_WORKER_JOB_TYPE_MENU}`;
 }
 
 function getCleanJobText(parsedQuery = {}) {
@@ -654,6 +642,7 @@ function getJobLabel(jobPreference = "") {
     construction_labor: "Construction/Labor ko kaam",
     farm_agriculture: "Farm/Agriculture ko kaam",
     shop_retail: "Shop/Retail ko kaam",
+    sales_marketing: "Sales/Marketing ko kaam",
     other: "jun sukai kaam",
   };
 
@@ -674,6 +663,21 @@ function getAvailabilityLabel(availability = "") {
 
 function parseJobType(text) {
   if (JOB_MAP[text]) return JOB_MAP[text];
+
+  const canonicalJobType = parseCanonicalWorkerJobType(text);
+  if (canonicalJobType) {
+    const canonicalMap = {
+      "Driver / Transport": "driver_transport",
+      "Security Guard": "security_guard",
+      "Hotel / Restaurant": "hotel_restaurant",
+      "Construction / Labor": "construction_labor",
+      "Farm / Agriculture": "farm_agriculture",
+      "Shop / Retail": "shop_retail",
+      "Sales / Marketing": "sales_marketing",
+      Other: "other",
+    };
+    return canonicalMap[canonicalJobType] || "other";
+  }
 
   if (includesAny(text, ["driver", "ड्राइभर", "गाडी"])) return "driver_transport";
   if (includesAny(text, ["security", "guard", "गार्ड"])) return "security_guard";

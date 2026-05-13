@@ -1,3 +1,7 @@
+import {
+  CANONICAL_WORKER_JOB_TYPE_MENU,
+} from "../services/jobmate/workerJobTypeMenu.service.js";
+
 export const AARATI_RULEBOOK = {
   identity: {
     name: "Aarati",
@@ -81,14 +85,7 @@ Document chha bhane yahi WhatsApp ma photo/file pathauna saknuhunchha.`;
   }
 
   if (state === "ask_jobType" || state === "ask_job_type" || lastAskedField === "jobType") {
-    return `Aba kun type ko kaam khojne ho choose garnu hola:
-1. IT / Computer
-2. Driver / Transport
-3. Hotel / Restaurant
-4. Sales / Shop
-5. Security Guard
-6. Helper / Labor
-7. Jun sukai / any`;
+    return `Aba kun type ko kaam khojne ho choose garnu hola:\n${CANONICAL_WORKER_JOB_TYPE_MENU}`;
   }
 
   if (state === "asked_register") {
@@ -125,4 +122,3 @@ Document chha bhane yahi WhatsApp ma photo/file pathauna saknuhunchha.`;
 
   return null;
 }
-

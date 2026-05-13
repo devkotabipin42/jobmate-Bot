@@ -73,7 +73,7 @@ await test("ask_jobType free text marketing becomes Marketing/Sales or Marketing
   const result = await harness.turn(conversation, "marketing");
   const profile = result.newMetadata.collectedData || {};
 
-  assert(["Marketing/Sales", "Marketing"].includes(profile.jobType), `unexpected jobType ${profile.jobType}`);
+  assert(["Sales / Marketing", "Marketing/Sales", "Marketing"].includes(profile.jobType), `unexpected jobType ${profile.jobType}`);
   assert(result.newMetadata.currentState === "ask_district", "did not advance to district after job type");
 });
 
@@ -182,7 +182,7 @@ await test("full flow marketing saves Marketing/Sales or Marketing, not IT/Tech"
 
   assert(result.isComplete === true, "marketing full flow did not complete");
   assert(savedProfiles.length === 1, "completion handler did not receive marketing profile");
-  assert(["Marketing/Sales", "Marketing"].includes(profile.jobType), `unexpected jobType ${profile.jobType}`);
+  assert(["Sales / Marketing", "Marketing/Sales", "Marketing"].includes(profile.jobType), `unexpected jobType ${profile.jobType}`);
   assert(profile.jobType !== "IT/Tech", "marketing flow saved IT/Tech");
   assert(profile.area === "Bardaghat" || profile.location === "Bardaghat", "Bardaghat not saved");
 });

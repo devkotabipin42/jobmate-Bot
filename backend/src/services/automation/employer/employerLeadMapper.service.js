@@ -339,6 +339,23 @@ export function formatBrainSummary(brain = {}) {
 export function parseSalaryRange(text = "") {
   const value = String(text || "").toLowerCase();
 
+  if (/\b(company anusar|negotiable|market rate|market anusar)\b/i.test(value)) {
+    return {
+      salaryMin: null,
+      salaryMax: null,
+      salaryCurrency: "NPR",
+    };
+  }
+
+  const kRange = value.match(/\b(\d{1,3})\s*k\s*(?:-|–|to|dekhi)\s*(\d{1,3})\s*k\b/i);
+  if (kRange) {
+    return {
+      salaryMin: Math.min(Number(kRange[1]), Number(kRange[2])) * 1000,
+      salaryMax: Math.max(Number(kRange[1]), Number(kRange[2])) * 1000,
+      salaryCurrency: "NPR",
+    };
+  }
+
   const numbers = [...value.matchAll(/\d{4,6}/g)].map((match) => Number(match[0]));
 
   if (numbers.length >= 2) {

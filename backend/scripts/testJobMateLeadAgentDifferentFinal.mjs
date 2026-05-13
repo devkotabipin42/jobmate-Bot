@@ -206,7 +206,12 @@ function validateRows({ rows, finals }) {
   assert(fail, 28, byNumber.get(28)?.intent === "outside_lumbini", "outside Lumbini question not handled");
   assert(fail, 29, byNumber.get(29)?.intent === "pokhara_location", "Pokhara question not handled safely");
   assert(fail, 30, byNumber.get(30)?.intent === "worker_lead", "Butwal driver inquiry did not start worker flow");
-  assert(fail, 30, byNumber.get(30)?.state?.data?.jobType === "Driver", "Butwal driver role not captured");
+  assert(
+    fail,
+    30,
+    ["Driver", "Driver / Transport"].includes(byNumber.get(30)?.state?.data?.jobType),
+    "Butwal driver role not captured"
+  );
   assert(fail, 30, byNumber.get(30)?.state?.data?.location?.area === "Butwal", "Butwal driver location not captured");
   assert(fail, 31, byNumber.get(31)?.intent === "help_menu", "confusion menu not handled");
   assert(fail, 32, byNumber.get(32)?.intent === "help_menu", "help menu not handled");

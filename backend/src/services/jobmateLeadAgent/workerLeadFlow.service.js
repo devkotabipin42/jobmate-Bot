@@ -2,6 +2,10 @@ import { findLocation, findRole } from "../rag/jobmateKnowledge.service.js";
 import { createLeadDraft } from "./leadDraft.service.js";
 import { createTaskDraft } from "./taskDraft.service.js";
 import { formatReply } from "./replyFormatter.service.js";
+import {
+  CANONICAL_WORKER_JOB_TYPE_MENU,
+  parseCanonicalWorkerJobType,
+} from "../jobmate/workerJobTypeMenu.service.js";
 
 const REQUIRED_WORKER_FIELDS = [
   "jobType",
@@ -27,16 +31,7 @@ const WORKER_AREA_ALIASES = [
   ["sunwal", "Sunwal"],
 ];
 
-const REAL_WORKER_CATEGORY_MENU = [
-  "1. Driver / Transport",
-  "2. Hotel / Helper",
-  "3. Security Guard",
-  "4. Shop / Retail",
-  "5. Construction / Labor",
-  "6. Farm / Agriculture",
-  "7. Sales / Marketing",
-  "8. Aru real kaam",
-].join("\n");
+const REAL_WORKER_CATEGORY_MENU = CANONICAL_WORKER_JOB_TYPE_MENU;
 
 export function handleWorkerLeadFlow({
   contact = {},
@@ -493,6 +488,11 @@ function parseWorkerRoleFallback(text = "") {
     return "Marketing";
   }
 
+  const canonicalRole = parseCanonicalWorkerJobType(compact);
+  if (canonicalRole) {
+    return canonicalRole;
+  }
+
   const roles = [
     ["waiter", "Waiter"],
     ["cook", "Cook"],
@@ -746,16 +746,27 @@ function normalizeWorkerStepExtraction({
   previousData = {},
   currentStep = "",
 } = {}) {
+  let normalized = { ...extracted };
+
   if (
     currentStep !== "location" &&
     previousData?.location?.area &&
-    extracted?.location?.area
+    normalized?.location?.area
   ) {
-    const { location, ...rest } = extracted;
-    return rest;
+    const { location, ...rest } = normalized;
+    normalized = rest;
   }
 
-  return extracted;
+  if (
+    currentStep !== "jobType" &&
+    previousData?.jobType &&
+    normalized?.jobType
+  ) {
+    const { jobType, ...rest } = normalized;
+    normalized = rest;
+  }
+
+  return normalized;
 }
 
 function applySkipForCurrentStep({ data = {}, currentStep = "", text = "" } = {}) {

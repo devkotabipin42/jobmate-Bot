@@ -57,7 +57,24 @@ function isDirectJobOrHiringFlow(text = "") {
     /^[1-9]$/.test(value.trim()) ||
     /kaam chahiyo|kam chahiyo|job chahiyo|staff chahiyo|worker chahiyo|apply|register|profile save|cv patha|license patha|document patha/i.test(value) ||
     /butwal|bardaghat|bhardaghat|bhairahawa|parasi|nawalparasi|rupandehi|kapilvastu|palpa|dang|banke/i.test(value) ||
-    /driver|hotel|security|sales|helper|it|computer|frontend|backend|restaurant|shop|retail|factory|cleaner|cook|waiter/i.test(value)
+    /driver|hotel|security|sales|helper|\bit\b|computer|frontend|backend|restaurant|shop|retail|factory|cleaner|cook|waiter/i.test(value)
+  );
+}
+
+function isEmployerSalaryStep(conversation = {}) {
+  const state = String(conversation?.currentState || "");
+  return state === "ask_salary_range" || state === "employer_ask_salary";
+}
+
+function isSalaryLikeInput(text = "") {
+  const value = String(text || "").toLowerCase().trim();
+
+  return (
+    /\b\d{4,6}\s*(?:-|–|to)\s*\d{4,6}\b/i.test(value) ||
+    /\b\d{4,6}\s+\d{4,6}\b/i.test(value) ||
+    /\b\d{1,3}\s*k\s*(?:-|–|to)\s*\d{1,3}\s*k\b/i.test(value) ||
+    /\b\d{4,6}\s*samma\b/i.test(value) ||
+    /\b(company anusar|negotiable|market rate|market anusar)\b/i.test(value)
   );
 }
 
@@ -113,6 +130,10 @@ export function getAaratiHumanBoundaryAnswer({ normalized, conversation } = {}) 
   }
 
   if (isDirectJobOrHiringFlow(value)) {
+    return null;
+  }
+
+  if (isEmployerSalaryStep(conversation) && isSalaryLikeInput(value)) {
     return null;
   }
 

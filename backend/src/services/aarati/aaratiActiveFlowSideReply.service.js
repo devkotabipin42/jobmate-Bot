@@ -7,6 +7,9 @@ import {
   isAaratiPersonalMoneyText,
   normalizeAaratiText,
 } from "./aaratiTextNormalizer.service.js";
+import {
+  CANONICAL_WORKER_JOB_TYPE_MENU,
+} from "../jobmate/workerJobTypeMenu.service.js";
 
 function formatActiveReply({ opener, body, reminder }) {
   return `${opener}
@@ -20,14 +23,7 @@ function getReminderForState({ state = "", lastAskedField = "" } = {}) {
   const key = lastAskedField || state;
 
   if (key === "jobType" || state === "ask_jobType" || state === "ask_job_type") {
-    return `Aile kaam type choose garne step ma cha:
-1. IT / Computer
-2. Driver / Transport
-3. Hotel / Restaurant
-4. Sales / Shop
-5. Security Guard
-6. Helper / Labor
-7. Jun sukai / any`;
+    return `Aile kaam type choose garne step ma cha:\n${CANONICAL_WORKER_JOB_TYPE_MENU}`;
   }
 
   if (key === "location" || state === "ask_location" || state === "ask_district") {

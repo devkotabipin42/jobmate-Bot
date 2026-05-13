@@ -2,6 +2,9 @@
 // Comments are intentionally English-only.
 
 import { sanitizeAaratiOutput } from "../services/ai/nepaliValidator.service.js";
+import {
+  CANONICAL_WORKER_JOB_TYPE_MENU,
+} from "../services/jobmate/workerJobTypeMenu.service.js";
 
 export const AARATI_PERSONA = {
   name: "Aarati",
@@ -60,13 +63,7 @@ Kaam khojne, salary, company ra profile registration sambandhi kura ma sahayog g
 
   askJobType: sanitizeAaratiOutput(`Tapai kasto kaam khojdai hunuhunchha?
 
-1. Driver / Transport
-2. Security Guard
-3. Hotel / Restaurant
-4. Construction / Labor
-5. Farm / Agriculture
-6. Shop / Retail
-7. Aru kunai`),
+${CANONICAL_WORKER_JOB_TYPE_MENU}`),
 
   askDistrict: (profile = {}) => sanitizeAaratiOutput(`Hunchha 🙏 ${profile.jobType || "kaam"} ko lagi herchhu.
 

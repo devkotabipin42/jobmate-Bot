@@ -19,6 +19,12 @@ const {
 const {
   jobmateConfig,
 } = await import("../src/configs/jobmate.config.js");
+const {
+  getAaratiHumanBoundaryAnswer,
+} = await import("../src/services/aarati/aaratiHumanBoundary.service.js");
+const {
+  parseSalaryRange: parseEmployerSalaryRange,
+} = await import("../src/services/automation/employer/employerLeadMapper.service.js");
 
 class FakeConversation {
   static updates = [];
@@ -140,10 +146,101 @@ await test("start -> 1 -> marketing -> bhardaghat -> 1 -> 1 still works", async 
   const profile = result.newMetadata.collectedData || {};
 
   assert(result.isComplete === true, "worker registration flow did not complete");
-  assert(["Marketing/Sales", "Marketing"].includes(profile.jobType), `unexpected jobType ${profile.jobType}`);
+  assert(["Sales / Marketing", "Marketing/Sales", "Marketing"].includes(profile.jobType), `unexpected jobType ${profile.jobType}`);
   assert(profile.district === "Nawalparasi West", "Bardaghat district not preserved");
   assert(profile.availability === "full-time", "availability not saved");
   assert(profile.documents === "yes", "documents not saved");
+});
+
+await test("worker canonical menu after nonsense maps 2 to Security Guard", async () => {
+  const { profile, guardReply } = await workerRegistrationNonsenseThen("2");
+
+  assert(/2\. Security Guard/.test(guardReply), "guard reply menu did not show 2 = Security Guard");
+  assert(profile.jobType === "Security Guard", `expected Security Guard, got ${profile.jobType}`);
+});
+
+await test("worker canonical menu after nonsense maps 5 to Farm / Agriculture", async () => {
+  const { profile, guardReply } = await workerRegistrationNonsenseThen("5");
+
+  assert(/5\. Farm \/ Agriculture/.test(guardReply), "guard reply menu did not show 5 = Farm / Agriculture");
+  assert(profile.jobType === "Farm / Agriculture", `expected Farm / Agriculture, got ${profile.jobType}`);
+});
+
+await test("worker canonical menu after nonsense maps 7 to Sales / Marketing", async () => {
+  const { profile, guardReply } = await workerRegistrationNonsenseThen("7");
+
+  assert(/7\. Sales \/ Marketing/.test(guardReply), "guard reply menu did not show 7 = Sales / Marketing");
+  assert(profile.jobType === "Sales / Marketing", `expected Sales / Marketing, got ${profile.jobType}`);
+});
+
+await test("employer salary 15000-20000 is accepted", async () => {
+  const result = await leadSalaryTurn("15000-20000");
+  const salary = result.state?.data?.salaryRange || {};
+
+  assert(salary.min === 15000, `salary min not saved: ${salary.min}`);
+  assert(salary.max === 20000, `salary max not saved: ${salary.max}`);
+  assert(result.state?.step === "timing", `salary did not advance to timing: ${result.state?.step}`);
+});
+
+await test("employer salary company anusar is accepted", async () => {
+  const result = await leadSalaryTurn("company anusar");
+  const salary = result.state?.data?.salaryRange || {};
+
+  assert(salary.note === "company anusar", `company anusar note not saved: ${salary.note}`);
+  assert(result.state?.step === "timing", `company anusar did not advance to timing: ${result.state?.step}`);
+});
+
+await test("employer salary negotiable is accepted", async () => {
+  const result = await leadSalaryTurn("negotiable");
+  const salary = result.state?.data?.salaryRange || {};
+
+  assert(salary.note === "negotiable", `negotiable note not saved: ${salary.note}`);
+  assert(result.state?.step === "timing", `negotiable did not advance to timing: ${result.state?.step}`);
+});
+
+await test("active employer salary range bypasses human boundary math fallback", async () => {
+  const boundary = getAaratiHumanBoundaryAnswer({
+    normalized: normalized("15000-20000"),
+    conversation: {
+      currentIntent: "employer_lead",
+      currentState: "ask_salary_range",
+      metadata: {},
+    },
+  });
+
+  assert(boundary === null, "salary range was treated as human-boundary out-of-scope");
+});
+
+await test("old employer salary parser accepts range and flexible answers", async () => {
+  const range = parseEmployerSalaryRange("15000-20000");
+  const spaceRange = parseEmployerSalaryRange("15000 20000");
+  const kRange = parseEmployerSalaryRange("15k-20k");
+  const upper = parseEmployerSalaryRange("15000 samma");
+  const company = parseEmployerSalaryRange("company anusar");
+  const negotiable = parseEmployerSalaryRange("negotiable");
+  const market = parseEmployerSalaryRange("market rate");
+
+  assert(range.salaryMin === 15000 && range.salaryMax === 20000, "15000-20000 not parsed");
+  assert(spaceRange.salaryMin === 15000 && spaceRange.salaryMax === 20000, "15000 20000 not parsed");
+  assert(kRange.salaryMin === 15000 && kRange.salaryMax === 20000, "15k-20k not parsed");
+  assert(upper.salaryMin === null && upper.salaryMax === 15000, "15000 samma not parsed");
+  assert(company.salaryCurrency === "NPR", "company anusar not accepted");
+  assert(negotiable.salaryCurrency === "NPR", "negotiable not accepted");
+  assert(market.salaryCurrency === "NPR", "market rate not accepted");
+});
+
+await test("active employer salary step keeps data and accepts salary range", async () => {
+  const result = await leadSalaryTurn("15000-20000");
+  const data = result.state?.data || {};
+
+  assert(result.state?.step === "timing", `salary step did not advance to timing: ${result.state?.step}`);
+  assert(data.businessName === "Naya Rivera", `businessName lost: ${data.businessName}`);
+  assert(data.role === "Cook", `role not cook: ${data.role}`);
+  assert(data.quantity === 2, `quantity not 2: ${data.quantity}`);
+  assert(data.location?.area === "Bardaghat", `location not Bardaghat: ${data.location?.area}`);
+  assert(data.urgency?.weeks === 2, `urgency not 1-2 weeks: ${JSON.stringify(data.urgency)}`);
+  assert(data.salaryRange?.min === 15000 && data.salaryRange?.max === 20000, "salary range not saved");
+  assert(!/JobMate ko kaam bhanda bahira/i.test(result.reply), "salary triggered out-of-scope fallback");
 });
 
 await test("start -> 2 -> website design garxau does not enter role-needed step", async () => {
@@ -256,6 +353,59 @@ function createWorkerRegistrationHarness() {
       return result;
     },
   };
+}
+
+async function workerRegistrationNonsenseThen(choice) {
+  const harness = createWorkerRegistrationHarness();
+  const conversation = buildWorkerRegistrationConversation();
+
+  await harness.turn(conversation, "1");
+  const guard = await harness.turn(
+    conversation,
+    "malai train ko chakka maa hawa halne experience xa sathai kukurko sinma tel halne, sungurko kapalko luga banaune, sarpako khutta malis gardine"
+  );
+  const result = await harness.turn(conversation, choice);
+
+  return {
+    guardReply: guard.messageToSend || "",
+    profile: result.newMetadata.collectedData || {},
+  };
+}
+
+async function leadSalaryTurn(text) {
+  const conversation = makeLeadConversation();
+  conversation.currentIntent = "employer_lead";
+  conversation.currentState = "jobmate_employer_salaryRange";
+  conversation.metadata = {
+    jobmateLeadAgent: {
+      flow: "employer",
+      step: "salaryRange",
+      status: "collecting",
+      data: {
+        businessName: "Naya Rivera",
+        contactPerson: "Ram",
+        providedPhone: "9840000000",
+        role: "Cook",
+        quantity: 2,
+        location: {
+          area: "Bardaghat",
+          district: "Nawalparasi West",
+          province: "Lumbini",
+          country: "Nepal",
+        },
+        urgency: {
+          value: "within_weeks",
+          weeks: 2,
+          label: "1-2 hapta bhitra",
+        },
+      },
+      leadDrafts: [],
+      taskDrafts: [],
+      updatedAt: new Date().toISOString(),
+    },
+  };
+
+  return leadTurn(conversation, text);
 }
 
 function buildWorkerRegistrationConversation() {

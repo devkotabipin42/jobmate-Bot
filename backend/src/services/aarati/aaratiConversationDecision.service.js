@@ -40,6 +40,9 @@ import {
   extractNameFromIntro,        // NEW 19E
   isAaratiHesitationText,      // NEW 19E
 } from "./aaratiTextNormalizer.service.js";
+import {
+  CANONICAL_WORKER_JOB_TYPE_MENU,
+} from "../jobmate/workerJobTypeMenu.service.js";
 
 // ---------------------------------------------------------------------------
 // Location / geography constants
@@ -531,13 +534,7 @@ function getResumePrompt(state, collectedData = {}) {
   if (/ask_job.*type|ask_jobtype|ask_job\b/.test(s)) {
     return (
       "Kasto kaam khojna chahanu huncha? 🙏\n" +
-      "1. Hotel / Restaurant\n" +
-      "2. Driver\n" +
-      "3. Security Guard\n" +
-      "4. Sales / Marketing\n" +
-      "5. Cleaning / Helper\n" +
-      "6. IT / Tech\n" +
-      "7. Jun sukai (any)"
+      CANONICAL_WORKER_JOB_TYPE_MENU
     );
   }
 

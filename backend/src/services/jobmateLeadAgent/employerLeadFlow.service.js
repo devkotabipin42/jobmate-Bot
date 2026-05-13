@@ -209,7 +209,7 @@ function buildEmployerPrompt({ missing = [], data = {}, startedByIntent = false 
   if (data.role) known.push(`role: ${data.role}`);
   if (data.quantity) known.push(`count: ${data.quantity}`);
   if (data.location?.area) known.push(`area: ${data.location.area}`);
-  if (data.salaryRange) known.push(`salary: NPR ${data.salaryRange.min}-${data.salaryRange.max}`);
+  if (data.salaryRange) known.push(`salary: ${formatLeadSalaryRange(data.salaryRange)}`);
   if (data.timing) known.push(`timing: ${data.timing}`);
   if (typeof data.foodProvided === "boolean") known.push(`food: ${data.foodProvided ? "cha" : "chaina"}`);
   if (data.urgency) known.push(`urgency: ${data.urgency.label}`);
@@ -458,7 +458,21 @@ function parseLooseLocation(text = "") {
 
 function parseSalaryRange(text = "") {
   const value = String(text || "").toLowerCase();
-  const kRange = value.match(/\b(\d{1,3})\s*k\s*(?:-|to|dekhi)\s*(\d{1,3})\s*k\b/i);
+  if (/\b(company anusar|negotiable|market rate|market anusar)\b/i.test(value)) {
+    return {
+      min: null,
+      max: null,
+      currency: "NPR",
+      note: value.includes("negotiable")
+        ? "negotiable"
+        : value.includes("market")
+          ? "market rate"
+          : "company anusar",
+      finalizedByBot: false,
+    };
+  }
+
+  const kRange = value.match(/\b(\d{1,3})\s*k\s*(?:-|–|to|dekhi)\s*(\d{1,3})\s*k\b/i);
   if (kRange) {
     return {
       min: Number(kRange[1]) * 1000,
@@ -473,6 +487,26 @@ function parseSalaryRange(text = "") {
     return {
       min: Number(range[1]),
       max: Number(range[2]),
+      currency: "NPR",
+      finalizedByBot: false,
+    };
+  }
+
+  const twoNumbers = [...value.matchAll(/\d{4,6}/g)].map((match) => Number(match[0]));
+  if (twoNumbers.length >= 2) {
+    return {
+      min: Math.min(twoNumbers[0], twoNumbers[1]),
+      max: Math.max(twoNumbers[0], twoNumbers[1]),
+      currency: "NPR",
+      finalizedByBot: false,
+    };
+  }
+
+  const upTo = value.match(/\b(\d{4,6})\s*samma\b/i);
+  if (upTo) {
+    return {
+      min: null,
+      max: Number(upTo[1]),
       currency: "NPR",
       finalizedByBot: false,
     };
@@ -502,6 +536,22 @@ function parseSalaryRange(text = "") {
   }
 
   return null;
+}
+
+function formatLeadSalaryRange(salaryRange = {}) {
+  if (salaryRange.min && salaryRange.max && salaryRange.min !== salaryRange.max) {
+    return `NPR ${salaryRange.min}-${salaryRange.max}`;
+  }
+
+  if (salaryRange.max && !salaryRange.min) {
+    return `NPR ${salaryRange.max} samma`;
+  }
+
+  if (salaryRange.min || salaryRange.max) {
+    return `NPR ${salaryRange.min || salaryRange.max}`;
+  }
+
+  return salaryRange.note || "company anusar";
 }
 
 function parseTiming(text = "") {
@@ -612,7 +662,12 @@ function parseFeeCondition(text = "") {
 }
 
 function parseUrgency(text = "") {
-  const value = String(text || "").toLowerCase();
+  const value = String(text || "").toLowerCase().trim();
+
+  if (value === "1") return { value: "immediate", label: "Immediate" };
+  if (value === "2") return { value: "within_weeks", weeks: 2, label: "1-2 hapta bhitra" };
+  if (value === "3") return { value: "within_month", label: "Yo mahina bhitra" };
+  if (value === "4") return { value: "exploring", label: "Exploring" };
 
   if (/\b(immediate|urgent|aaja|aja|today|bholi|voli|tomorrow|asap|turuntai|ahile)\b/i.test(value)) {
     return { value: "immediate", label: "Immediate" };

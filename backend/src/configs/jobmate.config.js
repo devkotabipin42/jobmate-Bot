@@ -28,20 +28,17 @@ import {
 import {
   getOrSetLLMCache,
 } from "../services/ai/llmCache.service.js";
+import {
+  CANONICAL_WORKER_JOB_TYPE_MENU,
+  parseCanonicalWorkerJobType,
+  WORKER_JOB_TYPE_MAP,
+} from "../services/jobmate/workerJobTypeMenu.service.js";
 
 const ENABLE_AARATI_PERSONA = process.env.ENABLE_AARATI_PERSONA !== "false";
 const ENABLE_AARATI_LLM = process.env.ENABLE_AARATI_LLM !== "false";
 
 // Job type parsing
-const WORKER_REGISTRATION_JOB_TYPES = {
-  "1": "Driver / Transport",
-  "2": "Security Guard",
-  "3": "Hotel / Restaurant",
-  "4": "Construction / Labor",
-  "5": "Farm / Agriculture",
-  "6": "Shop / Retail",
-  "7": "Other",
-};
+const WORKER_REGISTRATION_JOB_TYPES = WORKER_JOB_TYPE_MAP;
 
 const JOB_SEARCH_CATEGORY_TYPES = {
   "1": "IT/Tech",
@@ -145,6 +142,10 @@ function toDisplayTitle(text = "") {
 
 function parseJobType(text, { workerRegistration = false } = {}) {
   const trimmed = String(text || "").trim();
+  if (workerRegistration) {
+    return parseCanonicalWorkerJobType(trimmed);
+  }
+
   const numericMap = workerRegistration
     ? WORKER_REGISTRATION_JOB_TYPES
     : JOB_SEARCH_CATEGORY_TYPES;
@@ -374,6 +375,45 @@ function parseDistrictReply(text) {
 
   const resolved = resolveLumbiniLocation(t);
   return resolved?.district || resolved?.canonical || t;
+}
+
+function jobmateWorkerFlowGuard({
+  text = "",
+  conversation,
+  lastAskedField,
+  currentState,
+} = {}) {
+  if (
+    !isWorkerRegistrationActiveContext({ conversation, lastAskedField, currentState }) ||
+    lastAskedField !== "jobType"
+  ) {
+    return null;
+  }
+
+  if (!isUnrealisticWorkerJobInput(text)) {
+    return null;
+  }
+
+  return {
+    messageToSend: [
+      "Mitra ji, yo kaam haru practical/verified job category bhitra pardaina jasto lagyo 🙏 JobMate ma driver, hotel/helper, security, shop/retail, construction/labor, agriculture, sales/marketing jasta real kaam ko lagi registration garna milcha. Tapai sachikai kun kaam khojna chahanu huncha?",
+      CANONICAL_WORKER_JOB_TYPE_MENU,
+    ].join("\n\n"),
+    currentState: currentState || "ask_jobType",
+    lastAskedField: "jobType",
+  };
+}
+
+function isUnrealisticWorkerJobInput(text = "") {
+  const value = normalizeSimpleText(text);
+
+  return (
+    /train\s+ko\s+chakka.*hawa\s+hal/i.test(value) ||
+    /(kukur\s*ko|kukurko)\s+sin.*tel\s+hal/i.test(value) ||
+    /(sungur\s*ko|sungurko)\s+kapal.*luga\s+bana/i.test(value) ||
+    /sarpa\s*ko\s+khutta|sarpako\s+khutta/i.test(value) ||
+    /(kukurko|sungurko|sarpako|kukur|sungur|sarpa|saap|snake|train)\b.*\b(chakka|sin|kapal|khutta)\b.*\b(tel|luga|hawa|malis|banaune|halne)\b/i.test(value)
+  );
 }
 
 async function jobmateExtractor({ text, profile, conversation, lastAskedField, currentState }) {
@@ -753,13 +793,7 @@ const MESSAGES = ENABLE_AARATI_PERSONA
   : {
       askJobType: () => `Tapai kasto kaam khojdai hunuhunchha?
 
-1. Driver / Transport
-2. Security Guard
-3. Hotel / Restaurant
-4. Construction / Labor
-5. Farm / Agriculture
-6. Shop / Retail
-7. Other`,
+${CANONICAL_WORKER_JOB_TYPE_MENU}`,
 
       askDistrict: (profile) => `Tapai kun district/area ma kaam garna milchha?
 
@@ -860,6 +894,7 @@ export const jobmateConfig = {
       parse: parseDocuments,
     },
   ],
+  flowGuard: jobmateWorkerFlowGuard,
   searchStep: aaratiSearchStep,
   shouldRunSearchStep: shouldRunWorkerRegistrationSearchStep,
   sanitizeProfile: sanitizeWorkerRegistrationProfile,
