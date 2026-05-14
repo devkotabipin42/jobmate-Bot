@@ -583,20 +583,11 @@ Aba company/business ko naam pathaunu hola.`;
     leadUpdate = {
       $set: {
         leadStatus: "qualifying",
-        hiringNeeds: [],
+        hiringNeeds: needsToSave,
       },
       $unset: {
         "metadata.pendingQuantity": "",
       },
-      ...(needsToSave.length
-        ? {
-            $push: {
-              hiringNeeds: {
-                $each: needsToSave,
-              },
-            },
-          }
-        : {}),
       $inc: {
         score: needsToSave.length ? scoreValue : 3,
       },
