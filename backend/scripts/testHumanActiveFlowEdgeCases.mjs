@@ -142,6 +142,12 @@ await test("start -> 1 -> marketing -> bhardaghat -> 1 -> 1 still works", async 
   await harness.turn(conversation, "marketing");
   await harness.turn(conversation, "bhardaghat");
   await harness.turn(conversation, "1");
+  await harness.turn(conversation, "1");
+  await harness.turn(conversation, "Ram");
+  await harness.turn(conversation, "9840000000");
+  await harness.turn(conversation, "22");
+  await harness.turn(conversation, "no experience");
+  await harness.turn(conversation, "15000");
   const result = await harness.turn(conversation, "1");
   const profile = result.newMetadata.collectedData || {};
 

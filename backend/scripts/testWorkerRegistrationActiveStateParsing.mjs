@@ -156,6 +156,8 @@ await test("full flow numeric saves Driver / Transport, Bardaghat, full-time, ye
   await harness.turn(conversation, "1");
   await harness.turn(conversation, "bhardaghat");
   await harness.turn(conversation, "1");
+  await harness.turn(conversation, "1");
+  await finishWorkerProfile(harness, conversation);
   const result = await harness.turn(conversation, "1");
   const profile = result.newMetadata.collectedData || {};
 
@@ -177,6 +179,8 @@ await test("full flow marketing saves Marketing/Sales or Marketing, not IT/Tech"
   await harness.turn(conversation, "marketing");
   await harness.turn(conversation, "bhardaghat");
   await harness.turn(conversation, "1");
+  await harness.turn(conversation, "1");
+  await finishWorkerProfile(harness, conversation);
   const result = await harness.turn(conversation, "1");
   const profile = result.newMetadata.collectedData || {};
 
@@ -196,7 +200,9 @@ await test("full flow teacher accepts xaina as documents no", async () => {
   await harness.turn(conversation, "teacher");
   await harness.turn(conversation, "maile bhardaghat ma");
   await harness.turn(conversation, "maile full time");
-  const result = await harness.turn(conversation, "xaina");
+  await harness.turn(conversation, "xaina");
+  await finishWorkerProfile(harness, conversation);
+  const result = await harness.turn(conversation, "1");
   const profile = result.newMetadata.collectedData || {};
 
   assert(result.isComplete === true, "teacher xaina flow did not complete");
@@ -212,7 +218,8 @@ await test("ask_documents accepts document chaina as no", async () => {
   const result = await documentTurn("document chaina");
   const profile = result.newMetadata.collectedData || {};
 
-  assert(result.isComplete === true, "document chaina did not complete");
+  assert(result.isComplete === false, "document chaina completed before confirmation");
+  assert(result.newMetadata.currentState === "ask_fullName", `expected ask_fullName, got ${result.newMetadata.currentState}`);
   assert(profile.documents === "no", `documents not no: ${profile.documents}`);
   assertBaseWorkerFields(profile);
 });
@@ -221,7 +228,8 @@ await test("ask_documents accepts pachi dinchu as no", async () => {
   const result = await documentTurn("pachi dinchu");
   const profile = result.newMetadata.collectedData || {};
 
-  assert(result.isComplete === true, "pachi dinchu did not complete");
+  assert(result.isComplete === false, "pachi dinchu completed before confirmation");
+  assert(result.newMetadata.currentState === "ask_fullName", `expected ask_fullName, got ${result.newMetadata.currentState}`);
   assert(profile.documents === "no", `documents not no/pending: ${profile.documents}`);
   assertBaseWorkerFields(profile);
 });
@@ -230,7 +238,8 @@ await test("ask_documents accepts kehi xa kehi xaina as partial", async () => {
   const result = await documentTurn("kehi xa kehi xaina");
   const profile = result.newMetadata.collectedData || {};
 
-  assert(result.isComplete === true, "partial document answer did not complete");
+  assert(result.isComplete === false, "partial document answer completed before confirmation");
+  assert(result.newMetadata.currentState === "ask_fullName", `expected ask_fullName, got ${result.newMetadata.currentState}`);
   assert(profile.documents === "partial", `documents not partial: ${profile.documents}`);
   assertBaseWorkerFields(profile);
 });
@@ -239,7 +248,8 @@ await test("ask_documents accepts document xa as yes", async () => {
   const result = await documentTurn("document xa");
   const profile = result.newMetadata.collectedData || {};
 
-  assert(result.isComplete === true, "document xa did not complete");
+  assert(result.isComplete === false, "document xa completed before confirmation");
+  assert(result.newMetadata.currentState === "ask_fullName", `expected ask_fullName, got ${result.newMetadata.currentState}`);
   assert(profile.documents === "yes", `documents not yes: ${profile.documents}`);
   assertBaseWorkerFields(profile);
 });
@@ -342,6 +352,14 @@ async function documentTurn(text) {
   });
 
   return harness.turn(conversation, text);
+}
+
+async function finishWorkerProfile(harness, conversation) {
+  await harness.turn(conversation, "Ram");
+  await harness.turn(conversation, "9840000000");
+  await harness.turn(conversation, "22");
+  await harness.turn(conversation, "no experience");
+  await harness.turn(conversation, "15000");
 }
 
 function assertBaseWorkerFields(profile = {}) {

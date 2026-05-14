@@ -46,15 +46,58 @@ export function mapDocumentsToWorkerEnum(documents = "") {
   return "unknown";
 }
 
+export function mapExperienceToWorkerEnum(experience = "") {
+  const value = typeof experience === "object"
+    ? String(experience.level || experience.label || "")
+    : String(experience || "");
+  const normalized = value.toLowerCase().trim();
+
+  if (/none|no experience|fresher|0|chaina|chhaina|xaina/i.test(normalized)) return "none";
+  if (/less_than_1_year|less than 1|month|mahina/i.test(normalized)) return "less_than_1_year";
+  if (/1_to_2_years|1\s*(?:-|to)\s*2|1 year|2 year/i.test(normalized)) return "1_to_2_years";
+  if (/2_to_5_years|3 year|4 year|5 year/i.test(normalized)) return "2_to_5_years";
+  if (/5_plus_years|6 year|7 year|8 year|9 year|10 year/i.test(normalized)) return "5_plus_years";
+
+  if (typeof experience === "object") {
+    const years = Number(experience.years || 0);
+    const months = Number(experience.months || 0);
+    if (years <= 0 && months <= 0 && /none/i.test(normalized)) return "none";
+    if (years === 0 && months > 0) return "less_than_1_year";
+    if (years > 0 && years <= 2) return "1_to_2_years";
+    if (years > 2 && years <= 5) return "2_to_5_years";
+    if (years > 5) return "5_plus_years";
+  }
+
+  return "unknown";
+}
+
+function normalizeExpectedSalary(expectedSalary = {}) {
+  if (!expectedSalary || typeof expectedSalary !== "object") {
+    return {
+      min: null,
+      max: null,
+      currency: "NPR",
+    };
+  }
+
+  return {
+    min: Number(expectedSalary.min || 0) || null,
+    max: Number(expectedSalary.max || 0) || null,
+    currency: expectedSalary.currency || "NPR",
+  };
+}
+
 export function buildWorkerProfileUpdateFromAaratiProfile({
   contact,
   profile = {},
 } = {}) {
-  const phone = contact?.phone || contact?.phoneNumber || contact?.from || "";
+  const phone = profile.providedPhone || profile.phone || contact?.phone || contact?.phoneNumber || contact?.from || "";
 
   const jobPreference = mapJobTypeToPreference(profile.jobType);
   const availability = mapAvailabilityToWorkerEnum(profile.availability);
   const documentStatus = mapDocumentsToWorkerEnum(profile.documents || profile.documentStatus);
+  const experienceLevel = mapExperienceToWorkerEnum(profile.experience);
+  const expectedSalary = normalizeExpectedSalary(profile.expectedSalary);
 
   const fullName =
     profile.fullName ||
@@ -77,6 +120,9 @@ export function buildWorkerProfileUpdateFromAaratiProfile({
         "location.country": "Nepal",
         availability,
         documentStatus,
+        age: Number(profile.age || 0) || null,
+        experienceLevel,
+        expectedSalary,
         profileStatus: "complete",
         source: "whatsapp",
         lastQualifiedAt: new Date(),
@@ -84,6 +130,8 @@ export function buildWorkerProfileUpdateFromAaratiProfile({
           aaratiRawProfile: profile,
           rawAvailability: profile.availability || "",
           rawDocuments: profile.documents || "",
+          rawExperience: profile.experience || "",
+          rawExpectedSalary: profile.expectedSalary || "",
           jobSearchResults: profile.jobSearchResults || [],
           selectedJob: profile.selectedJob || null,
           selectedJobId: profile.selectedJobId || "",

@@ -57,6 +57,12 @@ const WORKER_REGISTRATION_STATES = new Set([
   "ask_availability",
   "ask_document_status",
   "ask_documents",
+  "ask_fullName",
+  "ask_providedPhone",
+  "ask_age",
+  "ask_experience",
+  "ask_expectedSalary",
+  "ask_confirmation",
   "asked_register",
 ]);
 
@@ -65,6 +71,12 @@ const WORKER_REGISTRATION_FIELDS = new Set([
   "district",
   "availability",
   "documents",
+  "fullName",
+  "providedPhone",
+  "age",
+  "experience",
+  "expectedSalary",
+  "confirmation",
 ]);
 
 const JOB_SEARCH_TRANSIENT_PROFILE_KEYS = [
@@ -769,13 +781,45 @@ function parseWorkerNameDetail(text = "") {
   return toDisplayTitle(match[1]);
 }
 
+function parseWorkerFullNameReply(text = "") {
+  const detailed = parseWorkerNameDetail(text);
+  if (detailed) return detailed;
+
+  const value = String(text || "").trim();
+  const clean = normalizeSimpleText(value);
+
+  if (
+    /^[a-zA-Z][a-zA-Z\s.'-]{1,45}$/.test(value) &&
+    !/\b(?:phone|mobile|num|number|age|umer|experience|salary|document|kaam|job|full\s*time|part\s*time|shift)\b/i.test(clean)
+  ) {
+    return toDisplayTitle(value);
+  }
+
+  return null;
+}
+
 function parseWorkerPhoneDetail(text = "") {
   const match = String(text || "").match(/(?:\b(?:phone(?:\s*num(?:ber)?)?|mobile|number|num)\s*:?\s*)?(?:\+?977[-\s]*)?(9[678]\d{8})\b/i);
   return match?.[1] || "";
 }
 
+function parseWorkerPhoneReply(text = "") {
+  return parseWorkerPhoneDetail(text) || null;
+}
+
 function parseWorkerAgeDetail(text = "") {
   const match = String(text || "").match(/\b(?:age|umer)\s*(?:is|ho|:)?\s*(\d{1,2})\b/i);
+  if (!match) return null;
+
+  const age = Number(match[1]);
+  return age >= 14 && age <= 80 ? age : null;
+}
+
+function parseWorkerAgeReply(text = "") {
+  const detailed = parseWorkerAgeDetail(text);
+  if (detailed) return detailed;
+
+  const match = String(text || "").trim().match(/^(\d{1,2})$/);
   if (!match) return null;
 
   const age = Number(match[1]);
@@ -808,6 +852,22 @@ function parseWorkerExperienceDetail(text = "") {
   return null;
 }
 
+function parseWorkerExperienceReply(text = "") {
+  const detailed = parseWorkerExperienceDetail(text);
+  if (detailed) return detailed;
+
+  const value = normalizeSimpleText(text);
+  if (/^(?:no|none|0|chaina|chhaina|xaina|experience chaina|no experience|fresher)$/i.test(value)) {
+    return { level: "none", label: "No experience" };
+  }
+
+  if (/^(?:yes|cha|chha|xa)$/i.test(value)) {
+    return { level: "unknown", label: "Experience available" };
+  }
+
+  return null;
+}
+
 function parseWorkerExpectedSalaryDetail(text = "") {
   const value = String(text || "").toLowerCase().replace(/(?:\+?977[-\s]*)?9[678]\d{8}\b/g, " ");
   const match = value.match(/\b(?:expected\s+salary|salary|talaab|talab|npr|rs)\s*:?\s*(\d{4,6})\b/i);
@@ -821,6 +881,51 @@ function parseWorkerExpectedSalaryDetail(text = "") {
   };
 }
 
+function parseWorkerExpectedSalaryReply(text = "") {
+  const value = String(text || "").toLowerCase().replace(/(?:\+?977[-\s]*)?9[678]\d{8}\b/g, " ");
+  const detailed = parseWorkerExpectedSalaryDetail(value);
+  if (detailed) return detailed;
+
+  const range = value.match(/\b(\d{4,6})\s*(?:-|to|dekhi)\s*(\d{4,6})\b/i);
+  if (range) {
+    return {
+      min: Number(range[1]),
+      max: Number(range[2]),
+      currency: "NPR",
+      finalizedByBot: false,
+    };
+  }
+
+  const single = value.trim().match(/^(\d{4,6})$/);
+  if (single) {
+    return {
+      min: Number(single[1]),
+      max: Number(single[1]),
+      currency: "NPR",
+      finalizedByBot: false,
+    };
+  }
+
+  if (/\b(?:negotiable|company anusar|market rate|jasto bhaye pani|junsukai|jun sukai)\b/i.test(value)) {
+    return {
+      note: toDisplayTitle(value),
+      currency: "NPR",
+      finalizedByBot: false,
+    };
+  }
+
+  return null;
+}
+
+function parseWorkerConfirmationReply(text = "") {
+  const value = normalizeSimpleText(text);
+  if (/^(?:1|yes|ho|ok|okay|confirm|save|thik|thik cha|save garnus|garnus)$/i.test(value)) {
+    return "confirmed";
+  }
+
+  return null;
+}
+
 function parseWorkerAvailabilityDetail(text = "") {
   const value = String(text || "").toLowerCase();
 
@@ -832,6 +937,43 @@ function parseWorkerAvailabilityDetail(text = "") {
   if (/\bpart\s*-?\s*time\b/i.test(value)) return "part-time";
 
   return null;
+}
+
+function formatWorkerExperienceValue(experience) {
+  if (!experience) return "-";
+  if (typeof experience === "string") return experience;
+  return experience.label || experience.level || "-";
+}
+
+function formatWorkerExpectedSalaryValue(expectedSalary) {
+  if (!expectedSalary) return "-";
+  if (typeof expectedSalary === "string") return expectedSalary;
+  if (expectedSalary.note) return expectedSalary.note;
+
+  const min = Number(expectedSalary.min || 0);
+  const max = Number(expectedSalary.max || 0);
+  if (min && max && min !== max) return `NPR ${min}-${max}`;
+  if (min || max) return `NPR ${min || max}`;
+
+  return "-";
+}
+
+function buildWorkerConfirmationMessage(profile = {}) {
+  return `Yo details thik cha?
+
+- Kaam: ${profile.jobType || "-"}
+- Area: ${profile.area || profile.location || "-"}
+- District: ${profile.district || "-"}
+- Availability: ${profile.availability || "-"}
+- Documents: ${profile.documents || "-"}
+- Naam: ${profile.fullName || "-"}
+- Phone: ${profile.providedPhone || profile.phone || "-"}
+- Age: ${profile.age || "-"}
+- Experience: ${formatWorkerExperienceValue(profile.experience)}
+- Expected salary: ${formatWorkerExpectedSalaryValue(profile.expectedSalary)}
+
+1. Ho, save garnus
+2. Edit garnu cha`;
 }
 
 async function generateAaratiAIReply({
@@ -1099,6 +1241,16 @@ Aile document status choose garnu hola:
 3. Kehi chha, kehi chhaina`;
       },
 
+      askName: () => "Tapai ko naam pathaunus.",
+
+      askPhone: () => "Tapai ko phone/WhatsApp number pathaunus.",
+
+      askAge: () => "Tapai ko age kati ho?",
+
+      askExperience: () => "Tapai ko experience kati cha? Experience chaina bhane 'no experience' lekhnus.",
+
+      askExpectedSalary: () => "Expected salary kati ho?",
+
       completion: (profile) => {
         const privacyNote =
           profile.documents === "privacy_concern"
@@ -1146,6 +1298,51 @@ export const jobmateConfig = {
           : MESSAGES.askDocuments,
       parse: parseDocuments,
     },
+    {
+      key: "fullName",
+      ask: () =>
+        typeof MESSAGES.askName === "function"
+          ? MESSAGES.askName()
+          : "Tapai ko naam pathaunus.",
+      parse: parseWorkerFullNameReply,
+    },
+    {
+      key: "providedPhone",
+      ask: () =>
+        typeof MESSAGES.askPhone === "function"
+          ? MESSAGES.askPhone()
+          : "Tapai ko phone/WhatsApp number pathaunus.",
+      parse: parseWorkerPhoneReply,
+    },
+    {
+      key: "age",
+      ask: () =>
+        typeof MESSAGES.askAge === "function"
+          ? MESSAGES.askAge()
+          : "Tapai ko age kati ho?",
+      parse: parseWorkerAgeReply,
+    },
+    {
+      key: "experience",
+      ask: () =>
+        typeof MESSAGES.askExperience === "function"
+          ? MESSAGES.askExperience()
+          : "Tapai ko experience kati cha? Experience chaina bhane 'no experience' lekhnus.",
+      parse: parseWorkerExperienceReply,
+    },
+    {
+      key: "expectedSalary",
+      ask: () =>
+        typeof MESSAGES.askExpectedSalary === "function"
+          ? MESSAGES.askExpectedSalary()
+          : "Expected salary kati ho?",
+      parse: parseWorkerExpectedSalaryReply,
+    },
+    {
+      key: "confirmation",
+      ask: (profile) => buildWorkerConfirmationMessage(profile),
+      parse: parseWorkerConfirmationReply,
+    },
   ],
   flowGuard: jobmateWorkerFlowGuard,
   searchStep: aaratiSearchStep,
@@ -1160,6 +1357,11 @@ export const jobmateConfig = {
   },
   completionMessage: (profile) => MESSAGES.completion(profile),
   onComplete: async ({ contact, profile }) => {
+    if (profile?.confirmation !== "confirmed") {
+      console.warn("onComplete skipped: worker profile not confirmed");
+      return;
+    }
+
     if (!contact?._id) {
       console.warn("onComplete skipped: missing contact id");
       return;
