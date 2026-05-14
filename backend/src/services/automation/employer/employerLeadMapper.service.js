@@ -37,12 +37,18 @@ function includesAny(text, keywords = []) {
 }
 
 function extractFirstNumber(text) {
+  if (hasUrgencyTimePhrase(text) && !hasExplicitStaffQuantity(text)) return null;
+
   const match = String(text || "").match(/\d+/);
   return match ? Number(match[0]) : null;
 }
 
 export function detectExperienceRequirement(text = "") {
   const value = String(text || "").toLowerCase();
+
+  if (isNoExperienceRequiredText(value)) {
+    return "fresher_ok";
+  }
 
   if (/(experience|experienced|sipalu|anubhav|anubhabi|kaam gareko|काम गरेको)/i.test(value)) {
     return "experienced";
@@ -123,7 +129,9 @@ export function normalizeRole(role) {
 
 export function parseVacancy(text = "") {
   const roleResult = findRole(text);
-  const quantity = extractQuantity(text);
+  const quantity = hasUrgencyTimePhrase(text) && !hasExplicitStaffQuantity(text)
+    ? 1
+    : extractQuantity(text);
 
   return {
     role: roleResult.key,
@@ -283,7 +291,15 @@ export function isVacancyOrLocationGivenInsteadOfCompany(brain = {}) {
 export function parseUrgency(text = "") {
   if (URGENCY_MAP[text]) return URGENCY_MAP[text];
 
-  if (includesAny(text, ["urgent", "immediate", "आजै", "तुरुन्त", "yo hapta", "this_week"])) {
+  if (hasOneTwoDayUrgency(text) || /\b2\s*(?:din|day|days)\s*(?:ma|bhitra|within)\b/i.test(String(text || "").toLowerCase())) {
+    return {
+      urgency: "within_2_days",
+      urgencyLevel: "urgent",
+      scoreAdd: 25,
+    };
+  }
+
+  if (includesAny(text, ["urgent", "immediate", "recently", "chhito", "chitto", "chito", "आजै", "तुरुन्त", "yo hapta", "this_week"])) {
     return URGENCY_MAP["1"];
   }
 
@@ -337,7 +353,7 @@ export function formatBrainSummary(brain = {}) {
 
 
 export function parseSalaryRange(text = "") {
-  const value = String(text || "").toLowerCase();
+  const value = stripPhoneLikeNumbers(String(text || "").toLowerCase());
 
   if (/\b(company anusar|negotiable|market rate|market anusar)\b/i.test(value)) {
     return {
@@ -389,6 +405,47 @@ export function parseSalaryRange(text = "") {
     salaryMax: null,
     salaryCurrency: "NPR",
   };
+}
+
+function hasExplicitStaffQuantity(text = "") {
+  const value = String(text || "").toLowerCase();
+  return (
+    /\b\d{1,3}\s*(?:jana|staff|worker|employee|manxe|manche|candidate)\b/i.test(value) ||
+    /\b(?:ek|ak|aak|dui|due|duye|one|two)\s+(?:jana|staff|worker|employee|manxe|manche|candidate)\b/i.test(value)
+  );
+}
+
+function hasUrgencyTimePhrase(text = "") {
+  const value = String(text || "").toLowerCase();
+  return (
+    hasOneTwoDayUrgency(value) ||
+    /\b\d{1,2}\s*(?:din|day|days)\s*(?:ma|bhitra|within)\b/i.test(value) ||
+    /\b(?:urgent|immediate|recently|chhito|chitto|chito|yo hapta|this week)\b/i.test(value)
+  );
+}
+
+function hasOneTwoDayUrgency(text = "") {
+  const value = String(text || "").toLowerCase();
+  return (
+    /\b(?:ek|ak|aak|one|1)\s*(?:-|to)?\s*(?:dui|due|duye|two|2)\s*(?:din|day|days)\s*(?:ma|bhitra|within)?\b/i.test(value) ||
+    /\b1\s*-\s*2\s*(?:din|day|days)\s*(?:ma|bhitra|within)?\b/i.test(value)
+  );
+}
+
+function isNoExperienceRequiredText(text = "") {
+  const value = String(text || "").toLowerCase();
+  return (
+    /\bno\s+(?:need\s+)?experience\b/i.test(value) ||
+    /\bexperience\s+(?:chaina|chhaina|xaina|chahidaina|chahindaina|chaidaina|not required|no)\b/i.test(value) ||
+    /\b(?:fresher|fresh)\s+(?:ok|huncha|hunchha|milcha|milchha)\b/i.test(value)
+  );
+}
+
+function stripPhoneLikeNumbers(text = "") {
+  return String(text || "")
+    .replace(/(?:\+?977[-\s]*)?9[678]\d{8}\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function parseWorkType(text = "") {

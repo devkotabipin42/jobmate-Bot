@@ -63,6 +63,18 @@ export function classifyLeadAgentIntent({ text = "", state = {} } = {}) {
     };
   }
 
+  if (value === "1") {
+    return { intent: "worker_start", confidence: 0.9, reason: "main_menu_worker_selection" };
+  }
+
+  if (value === "2") {
+    return { intent: "employer_start", confidence: 0.9, reason: "main_menu_employer_selection" };
+  }
+
+  if (value === "3") {
+    return { intent: "sahakari_start", confidence: 0.9, reason: "main_menu_sahakari_selection" };
+  }
+
   if (isSahakariStart(value)) {
     return {
       intent: "sahakari_start",

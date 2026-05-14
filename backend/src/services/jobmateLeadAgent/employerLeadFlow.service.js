@@ -45,7 +45,7 @@ export function handleEmployerLeadFlow({
     });
   }
 
-  const extracted = extractEmployerDetails({ text, contact });
+  const extracted = extractEmployerDetails({ text, contact, currentStep: state?.step });
   const mergedData = removeEmptyValues({
     ...previousData,
     ...extracted,
@@ -163,7 +163,7 @@ export function buildEmployerResumePrompt({ state = {} } = {}) {
   return buildEmployerPrompt({ missing, data, startedByIntent: false });
 }
 
-export function extractEmployerDetails({ text = "" } = {}) {
+export function extractEmployerDetails({ text = "", currentStep = "" } = {}) {
   const rawRole = findRole(text);
   const role = shouldIgnoreBusinessOnlyRole(text) ? { found: false } : rawRole;
   const fallbackRole = parseEmployerRoleFallback(text);
@@ -189,7 +189,7 @@ export function extractEmployerDetails({ text = "" } = {}) {
     timing: parseTiming(text),
     foodProvided: parseFoodProvided(text),
     accommodationProvided: parseAccommodationProvided(text),
-    urgency: parseUrgency(text),
+    urgency: parseUrgency(text, { currentStep }),
     experienceRequired: parseExperienceRequired(text),
     genderPreference: parseGenderPreference(text),
     feeCondition: parseFeeCondition(text),
@@ -375,13 +375,13 @@ function parseBusinessSector(text = "") {
 }
 
 function parseContactPerson(text = "") {
-  const match = String(text || "").match(/\b(?:contact\s*(?:person|name)?|owner|proprietor|sahu)\s*(?:is|ho|:)?\s+([a-z][a-z\s.'-]{1,35})/i);
+  const match = String(text || "").match(/\b(?:contact\s*(?:person|name)?|owner|proprietor|sahu|name|naam)\s*(?:is|ho|:)?\s+([a-z][a-z\s.'-]{1,35})/i);
   if (!match) return "";
   return titleCase(cleanPhrase(match[1]));
 }
 
 function parsePhoneNumber(text = "") {
-  const match = String(text || "").match(/\b(9[678]\d{8})\b/);
+  const match = String(text || "").match(/(?:\+?977[-\s]*)?(9[678]\d{8})\b/);
   return match?.[1] || "";
 }
 
@@ -401,6 +401,10 @@ function parseQuantity(text = "", roleFound = false) {
   if (numberLabel) return Number(numberLabel[1]);
 
   if (isEmployerFeeUnderstandingMessage(value)) {
+    return null;
+  }
+
+  if (hasUrgencyTimePhrase(value)) {
     return null;
   }
 
@@ -457,7 +461,9 @@ function parseLooseLocation(text = "") {
 }
 
 function parseSalaryRange(text = "") {
-  const value = String(text || "").toLowerCase();
+  const value = stripPhoneLikeNumbers(String(text || "").toLowerCase());
+  if (!value.trim()) return null;
+
   if (/\b(company anusar|negotiable|market rate|market anusar)\b/i.test(value)) {
     return {
       min: null,
@@ -605,6 +611,11 @@ function parseAccommodationProvided(text = "") {
 
 function parseExperienceRequired(text = "") {
   const value = String(text || "").toLowerCase();
+
+  if (isNoExperienceRequiredText(value)) {
+    return { level: "not_required", label: "Not required / Fresher OK" };
+  }
+
   const yearMatch = value.match(/\bexperience\s*(?:is|ho|:)?\s*(\d{1,2})\s*(year|years|barsa|barsha)\b/i) ||
     value.match(/\b(\d{1,2})\s*(year|years|barsa|barsha)\s*experience\b/i) ||
     value.match(/\b(\d{1,2})\s*(year|years|barsa|barsha)\b.*\bexperience\b/i);
@@ -612,10 +623,6 @@ function parseExperienceRequired(text = "") {
   if (yearMatch) {
     const years = Number(yearMatch[1]);
     return { years, label: `${years} year${years === 1 ? "" : "s"}` };
-  }
-
-  if (/\bexperience\s+(chaina|chhaina|not required|no)\b/i.test(value)) {
-    return { level: "none", label: "No experience required" };
   }
 
   if (/\bexperience\b.*\b(bhaye|bhayeko|ramro|preferred)\b/i.test(value)) {
@@ -661,19 +668,25 @@ function parseFeeCondition(text = "") {
   return null;
 }
 
-function parseUrgency(text = "") {
+function parseUrgency(text = "", { currentStep = "" } = {}) {
   const value = String(text || "").toLowerCase().trim();
 
-  if (value === "1") return { value: "immediate", label: "Immediate" };
-  if (value === "2") return { value: "within_weeks", weeks: 2, label: "1-2 hapta bhitra" };
-  if (value === "3") return { value: "within_month", label: "Yo mahina bhitra" };
-  if (value === "4") return { value: "exploring", label: "Exploring" };
+  if (currentStep === "urgency") {
+    if (value === "1") return { value: "immediate", label: "Immediate" };
+    if (value === "2") return { value: "within_weeks", weeks: 2, label: "1-2 hapta bhitra" };
+    if (value === "3") return { value: "within_month", label: "Yo mahina bhitra" };
+    if (value === "4") return { value: "exploring", label: "Exploring" };
+  }
 
-  if (/\b(immediate|urgent|aaja|aja|today|bholi|voli|tomorrow|asap|turuntai|ahile)\b/i.test(value)) {
+  if (hasOneTwoDayUrgency(value)) {
+    return { value: "within_days", days: 2, label: "1-2 din bhitra" };
+  }
+
+  if (/\b(immediate|urgent|aaja|aja|today|bholi|voli|tomorrow|asap|turuntai|ahile|recently|chhito|chitto|chito)\b/i.test(value)) {
     return { value: "immediate", label: "Immediate" };
   }
 
-  const dayMatch = value.match(/\b(\d{1,2})\s*(din|day|days)\s*(bhitra|within)\b/i);
+  const dayMatch = value.match(/\b(\d{1,2})\s*(din|day|days)\s*(?:ma|bhitra|within)\b/i);
   if (dayMatch) {
     return {
       value: "within_days",
@@ -696,6 +709,39 @@ function parseUrgency(text = "") {
   }
 
   return null;
+}
+
+function hasUrgencyTimePhrase(text = "") {
+  const value = String(text || "").toLowerCase();
+  return (
+    hasOneTwoDayUrgency(value) ||
+    /\b\d{1,2}\s*(?:din|day|days)\s*(?:ma|bhitra|within)\b/i.test(value) ||
+    /\b(?:urgent|immediate|recently|chhito|chitto|chito|yo hapta|this week)\b/i.test(value)
+  );
+}
+
+function hasOneTwoDayUrgency(text = "") {
+  const value = String(text || "").toLowerCase();
+  return (
+    /\b(?:ek|ak|aak|one|1)\s*(?:-|to)?\s*(?:dui|due|duye|two|2)\s*(?:din|day|days)\s*(?:ma|bhitra|within)?\b/i.test(value) ||
+    /\b1\s*-\s*2\s*(?:din|day|days)\s*(?:ma|bhitra|within)?\b/i.test(value)
+  );
+}
+
+function isNoExperienceRequiredText(text = "") {
+  const value = String(text || "").toLowerCase();
+  return (
+    /\bno\s+(?:need\s+)?experience\b/i.test(value) ||
+    /\bexperience\s+(?:chaina|chhaina|xaina|chahidaina|chahindaina|chaidaina|not required|no)\b/i.test(value) ||
+    /\b(?:fresher|fresh)\s+(?:ok|huncha|hunchha|milcha|milchha)\b/i.test(value)
+  );
+}
+
+function stripPhoneLikeNumbers(text = "") {
+  return String(text || "")
+    .replace(/(?:\+?977[-\s]*)?9[678]\d{8}\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function isEmployerFeeUnderstandingMessage(text = "") {
