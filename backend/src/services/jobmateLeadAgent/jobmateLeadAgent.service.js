@@ -71,6 +71,13 @@ export async function handleJobMateLeadAgentMessage({
     });
   }
 
+  if (isAutomationEmployerFlowActive(conversation, currentState)) {
+    return {
+      handled: false,
+      reason: "active_automation_employer_flow_defer",
+    };
+  }
+
   const activeFlow = isLeadAgentFlowActive(currentState)
     ? currentState.flow
     : null;
@@ -631,6 +638,35 @@ function preserveCurrentState({ flow, conversation = {} } = {}) {
   if (flow === "sahakari") return "jobmate_sahakari_collecting";
 
   return "idle";
+}
+
+const AUTOMATION_EMPLOYER_ACTIVE_STATES = new Set([
+  "ask_business_name",
+  "ask_business_name_after_ai",
+  "ask_vacancy",
+  "ask_vacancy_role",
+  "ask_location",
+  "ask_urgency",
+  "ask_salary_range",
+  "ask_work_type",
+]);
+
+function isAutomationEmployerFlowActive(conversation = {}, leadAgentState = {}) {
+  if (isLeadAgentFlowActive(leadAgentState)) return false;
+
+  const currentIntent = String(conversation?.currentIntent || "");
+  const currentState = String(conversation?.currentState || "");
+  const activeFlow = String(conversation?.metadata?.activeFlow || "");
+  const qualificationStep = Number(conversation?.metadata?.qualificationStep || 0);
+
+  if (!["employer_lead", "employer"].includes(currentIntent) && activeFlow !== "employer_lead") {
+    return false;
+  }
+
+  return (
+    AUTOMATION_EMPLOYER_ACTIVE_STATES.has(currentState) ||
+    (qualificationStep > 0 && qualificationStep < 7)
+  );
 }
 
 function isAreaRoleOpportunityQuestion(text = "") {

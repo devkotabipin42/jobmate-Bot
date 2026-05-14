@@ -338,6 +338,65 @@ export async function receiveWhatsAppWebhook(req, res) {
       });
     }
 
+    if (
+      env.BOT_MODE === "jobmate_hiring" &&
+      isActiveAutomationEmployerLeadConversation(conversation)
+    ) {
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: {
+          intent: "employer_lead",
+          needsHuman: false,
+          priority: "low",
+          reason: "active_employer_flow_state_priority",
+        },
+      });
+
+      const flowResult = await handleEmployerLead({
+        contact,
+        conversation,
+        normalizedMessage: normalized,
+        aiExtraction: null,
+      });
+
+      const activeConversation = flowResult?.conversation || conversation;
+      const replyText = flowResult?.reply || flowResult?.messageToSend || "";
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: replyText,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation: activeConversation,
+        text: replyText,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      await updateConversationIntent({
+        conversation: activeConversation,
+        intent: "employer_lead",
+        state: flowResult?.currentState || activeConversation.currentState || "idle",
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "JobMate active employer flow handled message",
+        reason: "active_employer_flow_state_priority",
+        intent: "employer_lead",
+        replied: true,
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
+
     if (env.BOT_MODE === "jobmate_hiring") {
       const leadAgentResult = await handleJobMateLeadAgentMessage({
         contact,
@@ -2405,6 +2464,35 @@ function applyConversationIntentOverride({ intentResult, conversation, normalize
   }
 
   return intentResult;
+}
+
+const AUTOMATION_EMPLOYER_ACTIVE_STATES = new Set([
+  "ask_business_name",
+  "ask_business_name_after_ai",
+  "ask_vacancy",
+  "ask_vacancy_role",
+  "ask_location",
+  "ask_urgency",
+  "ask_salary_range",
+  "ask_work_type",
+]);
+
+function isActiveAutomationEmployerLeadConversation(conversation = {}) {
+  const currentIntent = String(conversation?.currentIntent || "");
+  const currentState = String(conversation?.currentState || "");
+  const activeFlow = String(conversation?.metadata?.activeFlow || "");
+  const qualificationStep = Number(conversation?.metadata?.qualificationStep || 0);
+  const leadAgentFlow = conversation?.metadata?.jobmateLeadAgent?.flow;
+
+  if (leadAgentFlow) return false;
+  if (!["employer_lead", "employer"].includes(currentIntent) && activeFlow !== "employer_lead") {
+    return false;
+  }
+
+  return (
+    AUTOMATION_EMPLOYER_ACTIVE_STATES.has(currentState) ||
+    (qualificationStep > 0 && qualificationStep < 7)
+  );
 }
 
 
