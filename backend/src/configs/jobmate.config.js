@@ -183,6 +183,8 @@ function parseJobType(text, { workerRegistration = false } = {}) {
 }
 
 function parseJobTypeReply(text, profile = {}, context = {}) {
+  if (isWorkerSmallTalkText(text)) return null;
+
   const workerRegistration = isWorkerRegistrationActiveContext(context);
   const parsed = parseJobType(text, { workerRegistration });
   if (parsed) return parsed;
@@ -447,6 +449,29 @@ async function jobmateWorkerFlowGuard({
 
   if (!activeWorkerContext) {
     return null;
+  }
+
+  if (isWorkerJobNotIntendedText(text)) {
+    return {
+      messageToSend: "Thik cha Mitra ji. Tapai staff khojna chahanu huncha ki main menu ma jana chahanu huncha?\n1. Staff khojna\n2. Main menu",
+      profileUpdates: {
+        workerFlowExitOffered: true,
+      },
+      currentState: "worker_exit_choice",
+      lastAskedField: null,
+      activeFlow: null,
+    };
+  }
+
+  if ((lastAskedField === "jobType" || currentState === "ask_jobType" || currentState === "ask_job_type") && isWorkerSmallTalkText(text)) {
+    return {
+      messageToSend: [
+        "Mitra ji, ma JobMate team bata ho 🙏 Aba registration agadi badhauna tapai kasto kaam khojna chahanu huncha?",
+        CANONICAL_WORKER_JOB_TYPE_MENU,
+      ].join("\n\n"),
+      currentState: currentState || "ask_jobType",
+      lastAskedField: "jobType",
+    };
   }
 
   if (isSupportedDocumentMedia(normalizedMessage)) {
@@ -910,28 +935,43 @@ function parseWorkerAgeReply(text = "") {
 
 function parseWorkerExperienceDetail(text = "") {
   const value = String(text || "").toLowerCase();
+  const normalized = normalizeSimpleText(value)
+    .replace(/\bexperirnce\b/g, "experience")
+    .replace(/\bdui\b/g, "2")
+    .replace(/\btin\b/g, "3")
+    .replace(/\bek\b/g, "1");
 
-  if (/\bexperience\s*:?\s*(?:no|none|0|chaina|chhaina|xaina)\b/i.test(value) ||
-    /\b(?:no|zero|0)\s+(?:experience|exp)\b/i.test(value) ||
-    /\bfresher\b/i.test(value)) {
+  if (/\bexperience\s*:?\s*(?:no|none|0|chaina|chhaina|xaina)\b/i.test(normalized) ||
+    /\b(?:no|zero|0)\s+(?:experience|experirnce|exp)\b/i.test(value) ||
+    /\bfresher\b/i.test(normalized)) {
     return { level: "none", label: "No experience" };
   }
 
-  const yearMatch = value.match(/\bexperience\s*:?\s*(\d{1,2})\s*(?:year|years|barsa|barsha|yrs?)\b/i) ||
-    value.match(/\b(\d{1,2})\s*(?:year|years|barsa|barsha|yrs?)\s*(?:experience|exp)\b/i);
+  const yearMatch = normalized.match(/\bexperience\s*:?\s*(\d{1,2})\s*(?:year|years|yr|yrs|barsa|barsha)\b/i) ||
+    normalized.match(/\b(\d{1,2})\s*(?:year|years|yr|yrs|barsa|barsha)\s*(?:ko\s+)?(?:experience|exp|cha|xa|chha|raicha)?\b/i);
   if (yearMatch) {
     const years = Number(yearMatch[1]);
     return { years, label: `${years} year${years === 1 ? "" : "s"}` };
   }
 
-  const monthMatch = value.match(/\bexperience\s*:?\s*(\d{1,2})\s*(?:month|months|mahina)\b/i) ||
-    value.match(/\b(\d{1,2})\s*(?:month|months|mahina)\s*(?:experience|exp)\b/i);
+  const monthMatch = normalized.match(/\bexperience\s*:?\s*(\d{1,2})\s*(?:month|months|mahina)\b/i) ||
+    normalized.match(/\b(\d{1,2})\s*(?:month|months|mahina)\s*(?:ko\s+)?(?:experience|exp|cha|xa|chha|raicha)?\b/i);
   if (monthMatch) {
     const months = Number(monthMatch[1]);
     return { months, label: `${months} month${months === 1 ? "" : "s"}` };
   }
 
   return null;
+}
+
+function isWorkerSmallTalkText(text = "") {
+  const value = normalizeSimpleText(text);
+
+  return /^(?:khana\s+kha(?:nu|nnu|nu)?\s+bhayo|khana\s+kanu\s+bhayoi|k\s+(?:cha|xa)\s+khabar|k\s+xa\s+kbr|bhok\s+lagyo|hello|hi|namaste|thik\s+cha\??)$/i.test(value);
+}
+
+function isWorkerJobNotIntendedText(text = "") {
+  return /\b(job|kaam|kam)\s+haina\b|\bhaina\s+(job|kaam|kam)\b/i.test(normalizeSimpleText(text));
 }
 
 function parseWorkerExperienceReply(text = "") {

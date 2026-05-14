@@ -308,6 +308,14 @@ function detectWorkerActiveFlowGuard({
 } = {}) {
   if (startedByIntent || state?.flow !== "worker") return null;
 
+  if (isWorkerJobNotIntendedText(text)) {
+    return { type: "worker_job_not_intended" };
+  }
+
+  if (state?.step === "jobType" && isWorkerSmallTalkText(text)) {
+    return { type: "worker_small_talk_jobtype" };
+  }
+
   if (isUnrealisticWorkerInput(text)) {
     return { type: "unrealistic_job_input" };
   }
@@ -332,6 +340,27 @@ function buildWorkerActiveFlowGuardResult({
   state = {},
   data = {},
 } = {}) {
+  if (guard.type === "worker_job_not_intended") {
+    return {
+      handled: true,
+      intent: "worker_flow_exit",
+      conversationIntent: "unknown",
+      currentState: "idle",
+      state: {
+        ...state,
+        flow: null,
+        step: null,
+        status: "idle",
+        data: {},
+        updatedAt: new Date().toISOString(),
+      },
+      reply: formatReply(buildWorkerGuardReply(guard.type)),
+      needsHuman: false,
+      priority: "low",
+      reason: `worker_active_flow_guard:${guard.type}`,
+    };
+  }
+
   const nextState = {
     ...state,
     flow: "worker",
@@ -391,6 +420,17 @@ function buildWorkerGuardReply(type = "") {
       "Yahi WhatsApp ma text/photo/file pathaunus 🙏 Text details pani yahi message ma pathauna milcha.",
       "Format:\nNaam:\nKaam type:\nArea/location:\nExperience:\nAvailability:\nPhone:\nDocuments cha/chaina:",
     ].join("\n\n");
+  }
+
+  if (type === "worker_small_talk_jobtype") {
+    return [
+      "Mitra ji, ma JobMate team bata ho 🙏 Aba registration agadi badhauna tapai kasto kaam khojna chahanu huncha?",
+      REAL_WORKER_CATEGORY_MENU,
+    ].join("\n\n");
+  }
+
+  if (type === "worker_job_not_intended") {
+    return "Thik cha Mitra ji. Tapai staff khojna chahanu huncha ki main menu ma jana chahanu huncha?\n1. Staff khojna\n2. Main menu";
   }
 
   return [
@@ -743,7 +783,7 @@ function parseWorkerAgeStepAnswer(text = "") {
 function parseWorkerExperienceStepAnswer(text = "") {
   const value = normalizeGuardText(text);
 
-  if (/^(no|none|0|chaina|chhaina|xaina|no experience|experience chaina|fresher)$/i.test(value)) {
+  if (/^(no|none|0|chaina|chhaina|xaina|no experience|no experirnce|experience chaina|experirnce chaina|fresher)$/i.test(value)) {
     return { level: "none", label: "no experience" };
   }
 
@@ -869,18 +909,23 @@ function formatWorkerExpectedSalary(expectedSalary = null) {
 
 function parseExperience(text = "") {
   const value = String(text || "").toLowerCase();
+  const normalized = normalizeGuardText(value)
+    .replace(/\bexperirnce\b/g, "experience")
+    .replace(/\bdui\b/g, "2")
+    .replace(/\btin\b/g, "3")
+    .replace(/\bek\b/g, "1");
 
-  if (/\b(no|zero|0)\s+(experience|exp)|experience\s+chaina|naya chu|new chu/i.test(value)) {
+  if (/\b(no|zero|0)\s+(experience|experirnce|exp)|experience\s+chaina|naya chu|new chu|\bfresher\b/i.test(normalized)) {
     return { level: "none", label: "No experience" };
   }
 
-  const yearMatch = value.match(/\b(\d{1,2})\s*(year|years|barsa|barsha|yrs?)\b/i);
+  const yearMatch = normalized.match(/\b(\d{1,2})\s*(year|years|yr|yrs|barsa|barsha)\s*(?:ko\s+)?(?:experience|exp|cha|xa|chha|raicha)?\b/i);
   if (yearMatch) {
     const years = Number(yearMatch[1]);
     return { years, label: `${years} year${years === 1 ? "" : "s"}` };
   }
 
-  const monthMatch = value.match(/\b(\d{1,2})\s*(month|months|mahina)\b/i);
+  const monthMatch = normalized.match(/\b(\d{1,2})\s*(month|months|mahina)\s*(?:ko\s+)?(?:experience|exp|cha|xa|chha|raicha)?\b/i);
   if (monthMatch) {
     const months = Number(monthMatch[1]);
     const sector = /\bhotel\b/i.test(value) ? "hotel" : "";
@@ -896,6 +941,16 @@ function parseExperience(text = "") {
   }
 
   return null;
+}
+
+function isWorkerSmallTalkText(text = "") {
+  const value = normalizeGuardText(text);
+
+  return /^(?:khana\s+kha(?:nu|nnu|nu)?\s+bhayo|khana\s+kanu\s+bhayoi|k\s+(?:cha|xa)\s+khabar|k\s+xa\s+kbr|bhok\s+lagyo|hello|hi|namaste|thik\s+cha\??)$/i.test(value);
+}
+
+function isWorkerJobNotIntendedText(text = "") {
+  return /\b(job|kaam|kam)\s+haina\b|\bhaina\s+(job|kaam|kam)\b/i.test(normalizeGuardText(text));
 }
 
 function parseAvailability(text = "") {

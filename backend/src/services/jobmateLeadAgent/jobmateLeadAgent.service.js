@@ -43,7 +43,7 @@ export async function handleJobMateLeadAgentMessage({
 } = {}) {
   const text = getMessageText(normalizedMessage);
   const currentState = getLeadAgentState(conversation);
-  const intentDecision = classifyLeadAgentIntent({ text, state: currentState });
+  let intentDecision = classifyLeadAgentIntent({ text, state: currentState });
 
   if (intentDecision.intent === "reset") {
     const resetState = createEmptyLeadAgentState();
@@ -59,6 +59,18 @@ export async function handleJobMateLeadAgentMessage({
     });
   }
 
+  if (
+    intentDecision.intent === "greeting" &&
+    currentState?.flow === "worker" &&
+    currentState?.step === "jobType"
+  ) {
+    intentDecision = {
+      intent: "worker_continue",
+      confidence: 0.8,
+      reason: "active_worker_jobtype_greeting_guard",
+    };
+  }
+
   if (intentDecision.intent === "greeting") {
     return buildHandledResult({
       intent: "greeting",
@@ -66,7 +78,7 @@ export async function handleJobMateLeadAgentMessage({
       currentState: conversation.currentState || "idle",
       state: currentState,
       reply:
-        "Namaste 🙏 JobMate ma swagat cha. Tapai job khojdai hunuhuncha, staff chahiyeko ho, ki sahakari pilot barema kura garna chahanu huncha?",
+        "Namaste 🙏 JobMate ma swagat cha. Tapai job khojdai hunuhuncha ki staff chahiyeko ho?",
       reason: "jobmate_lead_agent_greeting",
     });
   }
@@ -305,6 +317,20 @@ export async function handleJobMateLeadAgentMessage({
         startedByIntent: true,
       })
     );
+  }
+
+  if (intentDecision.intent === "disabled_menu_option") {
+    return buildHandledResult({
+      intent: "disabled_menu_option",
+      conversationIntent: "unknown",
+      currentState: "idle",
+      state: currentState,
+      reply:
+        "Mitra ji, ahile JobMate ma 1. Job khojna ra 2. Staff khojna matra available cha. Kripaya 1 ya 2 channus.",
+      reason: "jobmate_lead_agent_disabled_menu_option",
+      needsHuman: false,
+      priority: "low",
+    });
   }
 
   if (intentDecision.intent === "sahakari_start") {
@@ -777,7 +803,7 @@ function buildPostDraftConfirmationReply(flow = "") {
   }
 
   if (flow === "sahakari") {
-    return "Sahakari pilot draft note bhayo. JobMate human team le verify garera follow-up garcha. Final partnership terms human confirmation pachi matra clear huncha.";
+    return "Sahakari partnership draft note bhayo. JobMate human team le verify garera follow-up garcha. Final partnership terms human confirmation pachi matra clear huncha.";
   }
 
   return "Draft note bhayo. JobMate human team le verify garera follow-up garcha.";
