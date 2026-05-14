@@ -2,11 +2,14 @@ export const JOBMATE_MAIN_MENU_CONTEXT = "jobmate_main_menu";
 
 export function buildJobMateMainMenuReply() {
   return [
-    "Namaste. JobMate ma tapai job khojna, staff khojna, ya sahakari partnership inquiry pathauna saknuhunchha.",
+    "Namaste. JobMate ma tapai job khojna ya staff khojna saknuhunchha.",
     "1. Job khojna",
     "2. Staff khojna",
-    "3. Sahakari partnership",
   ].join("\n");
+}
+
+export function buildUnavailableMainMenuSelectionReply() {
+  return "Mitra ji, ahile JobMate ma 1. Job khojna ra 2. Staff khojna matra available cha. Kripaya 1 ya 2 channus.";
 }
 
 export function normalizeStartRestartMenuText(text = "") {
@@ -85,9 +88,9 @@ export function resolveMainMenuSelection(text = "") {
   if (selection === "3") {
     return {
       selection,
-      intent: "sahakari_partnership",
-      flow: "sahakari",
-      reason: "main_menu_sahakari_selection",
+      intent: "unknown",
+      flow: "unavailable",
+      reason: "main_menu_unavailable_selection",
     };
   }
 

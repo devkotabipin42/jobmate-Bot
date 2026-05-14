@@ -54,7 +54,7 @@ export async function handleJobMateLeadAgentMessage({
       currentState: "idle",
       state: resetState,
       reply:
-        "Namaste. JobMate ma tapai job khojna, staff khojna, ya sahakari partnership inquiry pathauna saknuhunchha.\n\n1. Job khojna\n2. Staff khojna\n3. Sahakari partnership",
+        "Namaste. JobMate ma tapai job khojna ya staff khojna saknuhunchha.\n\n1. Job khojna\n2. Staff khojna",
       reason: "jobmate_lead_agent_reset",
     });
   }

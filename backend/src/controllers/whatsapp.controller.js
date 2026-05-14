@@ -14,6 +14,7 @@ import {
 } from "../services/automation/conversationState.service.js";
 import {
   buildJobMateMainMenuReply,
+  buildUnavailableMainMenuSelectionReply,
   isStartRestartMenuCommand,
   resolveMainMenuSelection,
   shouldHandleMainMenuSelection,
@@ -270,6 +271,13 @@ export async function receiveWhatsAppWebhook(req, res) {
           normalizedMessage: normalized,
           aiExtraction: null,
         });
+      } else if (menuSelection.flow === "unavailable") {
+        flowResult = {
+          intent: "unknown",
+          currentState: "idle",
+          messageToSend: buildUnavailableMainMenuSelectionReply(),
+          conversation: resetConversation,
+        };
       } else {
         flowResult = await handleJobMateLeadAgentMessage({
           contact,

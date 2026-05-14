@@ -7,6 +7,7 @@ const {
 } = await import("../src/services/automation/conversationState.service.js");
 const {
   buildJobMateMainMenuReply,
+  buildUnavailableMainMenuSelectionReply,
   isStartRestartMenuCommand,
   resolveMainMenuSelection,
   shouldHandleMainMenuSelection,
@@ -14,9 +15,6 @@ const {
 const {
   handleWorkerRegistration,
 } = await import("../src/services/automation/workerRegistration.service.js");
-const {
-  handleJobMateLeadAgentMessage,
-} = await import("../src/services/jobmateLeadAgent/jobmateLeadAgent.service.js");
 
 class FakeConversation {
   static updates = [];
@@ -83,23 +81,19 @@ await test("start -> 2 must not continue old worker flow", async () => {
   assertCleared(conversation);
 });
 
-await test("start -> 3 must not continue old worker/employer flow", async () => {
+await test("start -> 3 must not continue old worker/employer flow or save disabled intent", async () => {
   const conversation = await runHardReset("start", {
     currentIntent: "employer_lead",
     currentState: "ask_vacancy_role",
   });
   const selection = resolveMainMenuSelection("3");
-  const result = await handleJobMateLeadAgentMessage({
-    contact,
-    conversation,
-    normalizedMessage: message("sahakari partnership garna cha"),
-  });
+  const reply = buildUnavailableMainMenuSelectionReply();
 
   assert(shouldHandleMainMenuSelection({ text: "3", conversation }), "menu 3 not handled after reset");
-  assert(selection.intent === "sahakari_partnership", "menu 3 did not select sahakari");
-  assert(result.intent === "sahakari_partnership", "sahakari flow did not start");
-  assert(result.state?.flow === "sahakari", "sahakari state not active");
-  assert(!/driver|nawalparasi west|part-time|saved profile/i.test(result.reply || ""), "sahakari reply leaked old flow data");
+  assert(selection.intent === "unknown", "menu 3 used invalid enabled intent");
+  assert(selection.flow === "unavailable", "menu 3 did not resolve to unavailable flow");
+  assert(/1\. Job khojna ra 2\. Staff khojna matra available/i.test(reply), "menu 3 unavailable reply missing");
+  assert(!/sahakari_partnership|Sahakari partnership/i.test(reply), "menu 3 reply mentioned disabled Sahakari route");
 });
 
 await test("old collectedData exists, start then 1 clears old data", async () => {
@@ -212,7 +206,8 @@ async function runHardReset(command, overrides = {}) {
   assert(conversation.metadata.lastQuestion === reply, "main menu was not stored as lastQuestion");
   assert(/1\. Job khojna/.test(reply), "main menu missing worker option");
   assert(/2\. Staff khojna/.test(reply), "main menu missing employer option");
-  assert(/3\. Sahakari partnership/.test(reply), "main menu missing sahakari option");
+  assert(!/3\./.test(reply), "main menu still shows disabled option 3");
+  assert(!/Sahakari partnership/i.test(reply), "main menu still mentions Sahakari partnership");
 
   return conversation;
 }
