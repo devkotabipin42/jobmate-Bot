@@ -692,13 +692,15 @@ Aba company/business ko naam pathaunu hola.`;
       },
     };
 
+    const urgencyInfo = {
+      urgency: leadBeforeComplete?.hiringNeeds?.[0]?.urgency || "unknown",
+      urgencyLevel: leadBeforeComplete?.urgencyLevel || "unknown",
+    };
+
     const summary = buildEmployerLeadSummary({
       hiringNeeds: updatedNeeds.length ? updatedNeeds : leadBeforeComplete?.hiringNeeds || [],
       location: leadBeforeComplete?.location || {},
-      urgency: {
-        urgency: leadBeforeComplete?.hiringNeeds?.[0]?.urgency || "unknown",
-        urgencyLevel: leadBeforeComplete?.urgencyLevel || "unknown",
-      },
+      urgency: urgencyInfo,
     });
 
     messageToSend = MESSAGES.completed(displayName, summary);
@@ -708,7 +710,7 @@ Aba company/business ko naam pathaunu hola.`;
         type: "employer_lead_created",
         title: `Employer lead qualified: ${leadBeforeComplete?.businessName || "Business"}`,
         message: `${leadBeforeComplete?.businessName || "Business"} needs staff in ${leadBeforeComplete?.location?.area || leadBeforeComplete?.location?.district || "Lumbini"}.`,
-        priority: urgency.urgencyLevel === "urgent" ? "urgent" : "high",
+        priority: urgencyInfo.urgencyLevel === "urgent" ? "urgent" : "high",
         entityType: "EmployerLead",
         entityId: leadBeforeComplete?._id,
         phone: leadBeforeComplete?.phone || "",
@@ -716,8 +718,8 @@ Aba company/business ko naam pathaunu hola.`;
           businessName: leadBeforeComplete?.businessName || "",
           location: leadBeforeComplete?.location || {},
           hiringNeeds: leadBeforeComplete?.hiringNeeds || [],
-          urgency: urgency.urgency,
-          urgencyLevel: urgency.urgencyLevel,
+          urgency: urgencyInfo.urgency,
+          urgencyLevel: urgencyInfo.urgencyLevel,
         },
       });
 
