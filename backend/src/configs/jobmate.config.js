@@ -192,6 +192,7 @@ function parseAvailability(text) {
 
 function parseDocuments(text, profile = {}) {
   const t = String(text || "").trim().toLowerCase();
+  const normalized = normalizeSimpleText(t);
 
   if (
     /trust|leak|leaked|responsible|responsibility|safe|privacy|secure|security|misuse|dar|risk|bharosa|ignore|dekhidaina/i.test(t) ||
@@ -205,9 +206,43 @@ function parseDocuments(text, profile = {}) {
     return "no";
   }
 
-  if (t === "1" || /^(yes|cha|chha|छ|ho)$/i.test(t)) return "yes";
-  if (t === "2" || /^(no|chaina|chhaina|छैन|hoina)$/i.test(t)) return "no";
-  if (t === "3" || /partial|kehi|ali/i.test(t)) return "partial";
+  const hasPositiveDocument =
+    /\b(?:xa|cha|chha|छ)\b/i.test(normalized) ||
+    /\bphoto\s+pathauna\s+sak(?:chu|chhu|xu|xhu)\b/i.test(normalized);
+  const hasNegativeDocument =
+    /\b(?:xaina|chaina|chhaina|छैन)\b/i.test(normalized) ||
+    /\bpachi\s+(?:dinchu|dinchhu|dina|pathaula|pathaunchu|pathaun?chu)\b/i.test(normalized) ||
+    /\bahile\s+(?:xaina|chaina|chhaina)\b/i.test(normalized);
+
+  if (
+    t === "3" ||
+    /\bpartial\b/i.test(normalized) ||
+    /\bkehi\s+(?:xa|cha|chha)\s+kehi\s+(?:xaina|chaina|chhaina)\b/i.test(normalized) ||
+    /\bali\s+ali\s+(?:xa|cha|chha)\b/i.test(normalized) ||
+    (hasPositiveDocument && hasNegativeDocument)
+  ) {
+    return "partial";
+  }
+
+  if (
+    t === "1" ||
+    /^(yes|xa|cha|chha|छ|ho)$/i.test(normalized) ||
+    /\b(?:document|documents?|citizenship|nagarikta|cv|license)\s+(?:xa|cha|chha|छ)\b/i.test(normalized) ||
+    /\bphoto\s+pathauna\s+sak(?:chu|chhu|xu|xhu)\b/i.test(normalized)
+  ) {
+    return "yes";
+  }
+
+  if (
+    t === "2" ||
+    /^(no|xaina|chaina|chhaina|छैन|hoina)$/i.test(normalized) ||
+    /\b(?:document|documents?|citizenship|nagarikta|cv|license)\s+(?:xaina|chaina|chhaina|छैन)\b/i.test(normalized) ||
+    /\bahile\s+(?:xaina|chaina|chhaina)\b/i.test(normalized) ||
+    /\bpachi\s+(?:dinchu|dinchhu|dina|pathaula|pathaunchu|pathaun?chu)\b/i.test(normalized)
+  ) {
+    return "no";
+  }
+
   return null;
 }
 
@@ -445,6 +480,10 @@ async function jobmateExtractor({ text, profile, conversation, lastAskedField, c
     if (localLocation) {
       Object.assign(updates, locationUpdatesFromResolved(localLocation));
     }
+    return updates;
+  }
+
+  if (activeWorkerRegistration && lastAskedField === "documents") {
     return updates;
   }
 

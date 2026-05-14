@@ -187,6 +187,63 @@ await test("full flow marketing saves Marketing/Sales or Marketing, not IT/Tech"
   assert(profile.area === "Bardaghat" || profile.location === "Bardaghat", "Bardaghat not saved");
 });
 
+await test("full flow teacher accepts xaina as documents no", async () => {
+  const savedProfiles = [];
+  const harness = createHarness({ savedProfiles });
+  const conversation = buildIdleConversation();
+
+  await harness.turn(conversation, "1");
+  await harness.turn(conversation, "teacher");
+  await harness.turn(conversation, "maile bhardaghat ma");
+  await harness.turn(conversation, "maile full time");
+  const result = await harness.turn(conversation, "xaina");
+  const profile = result.newMetadata.collectedData || {};
+
+  assert(result.isComplete === true, "teacher xaina flow did not complete");
+  assert(savedProfiles.length === 1, "completion handler did not receive teacher profile");
+  assert(profile.jobType === "Teacher", `expected Teacher, got ${profile.jobType}`);
+  assert(profile.district === "Nawalparasi West", `expected Nawalparasi West, got ${profile.district}`);
+  assert(profile.area === "Bardaghat" || profile.location === "Bardaghat", "Bardaghat not saved");
+  assert(profile.availability === "full-time", `availability changed: ${profile.availability}`);
+  assert(profile.documents === "no", `documents not no: ${profile.documents}`);
+});
+
+await test("ask_documents accepts document chaina as no", async () => {
+  const result = await documentTurn("document chaina");
+  const profile = result.newMetadata.collectedData || {};
+
+  assert(result.isComplete === true, "document chaina did not complete");
+  assert(profile.documents === "no", `documents not no: ${profile.documents}`);
+  assertBaseWorkerFields(profile);
+});
+
+await test("ask_documents accepts pachi dinchu as no", async () => {
+  const result = await documentTurn("pachi dinchu");
+  const profile = result.newMetadata.collectedData || {};
+
+  assert(result.isComplete === true, "pachi dinchu did not complete");
+  assert(profile.documents === "no", `documents not no/pending: ${profile.documents}`);
+  assertBaseWorkerFields(profile);
+});
+
+await test("ask_documents accepts kehi xa kehi xaina as partial", async () => {
+  const result = await documentTurn("kehi xa kehi xaina");
+  const profile = result.newMetadata.collectedData || {};
+
+  assert(result.isComplete === true, "partial document answer did not complete");
+  assert(profile.documents === "partial", `documents not partial: ${profile.documents}`);
+  assertBaseWorkerFields(profile);
+});
+
+await test("ask_documents accepts document xa as yes", async () => {
+  const result = await documentTurn("document xa");
+  const profile = result.newMetadata.collectedData || {};
+
+  assert(result.isComplete === true, "document xa did not complete");
+  assert(profile.documents === "yes", `documents not yes: ${profile.documents}`);
+  assertBaseWorkerFields(profile);
+});
+
 console.table(tests);
 
 const failed = tests.filter((row) => row.status !== "PASS");
@@ -268,6 +325,30 @@ function buildWorkerConversation({
       source: "whatsapp",
     },
   });
+}
+
+async function documentTurn(text) {
+  const harness = createHarness();
+  const conversation = buildWorkerConversation({
+    currentState: "ask_documents",
+    lastAskedField: "documents",
+    collectedData: {
+      jobType: "Teacher",
+      district: "Nawalparasi West",
+      location: "Bardaghat",
+      area: "Bardaghat",
+      availability: "full-time",
+    },
+  });
+
+  return harness.turn(conversation, text);
+}
+
+function assertBaseWorkerFields(profile = {}) {
+  assert(profile.jobType === "Teacher", `jobType overwritten: ${profile.jobType}`);
+  assert(profile.district === "Nawalparasi West", `district overwritten: ${profile.district}`);
+  assert(profile.area === "Bardaghat" || profile.location === "Bardaghat", "location/area overwritten");
+  assert(profile.availability === "full-time", `availability overwritten: ${profile.availability}`);
 }
 
 function applyResult(conversation, result) {
