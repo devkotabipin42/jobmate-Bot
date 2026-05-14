@@ -10,14 +10,14 @@ import {
 const REQUIRED_WORKER_FIELDS = [
   "jobType",
   "location",
+  "availability",
+  "documentStatus",
   "fullName",
   "providedPhone",
   "age",
   "experience",
   "expectedSalary",
-  "availability",
-  "documentStatus",
-  "mobilityPreference",
+  "confirmation",
 ];
 
 const WORKER_AREA_ALIASES = [
@@ -55,18 +55,20 @@ export function handleWorkerLeadFlow({
     });
   }
 
-  const activeAvailabilityStep = handleWorkerAvailabilityStep({
+  const activeStepResult = handleWorkerActiveSingleFieldStep({
     contact,
     state,
     text,
     previousData,
   });
 
-  if (activeAvailabilityStep) {
-    return activeAvailabilityStep;
+  if (activeStepResult) {
+    return activeStepResult;
   }
 
-  const rawExtracted = extractWorkerDetails({ text, contact, currentStep: state?.step });
+  const rawExtracted = startedByIntent && String(text || "").trim() === "1"
+    ? {}
+    : extractWorkerDetails({ text, contact, currentStep: state?.step });
   const extracted = normalizeWorkerStepExtraction({
     extracted: rawExtracted,
     previousData,
@@ -104,10 +106,11 @@ export function handleWorkerLeadFlow({
   const missing = getMissingWorkerFields(data);
 
   if (missing.length > 0) {
+    const nextField = missing[0];
     const nextState = {
       ...state,
       flow: "worker",
-      step: missing[0],
+      step: nextField,
       status: "collecting",
       data,
       guard: {
@@ -121,15 +124,19 @@ export function handleWorkerLeadFlow({
       handled: true,
       intent: "worker_lead",
       conversationIntent: "worker_registration",
-      currentState: `jobmate_worker_${missing[0]}`,
+      currentState: `jobmate_worker_${nextField}`,
       state: nextState,
-      reply: formatReply(buildWorkerPrompt({ missing, data, startedByIntent })),
+      reply: formatReply(getNextWorkerRegistrationQuestion(data, nextField)),
       needsHuman: false,
       priority: "low",
       reason: startedByIntent ? "worker_flow_started" : "worker_flow_collecting",
     };
   }
 
+  return buildWorkerLeadDraftResult({ contact, state, data });
+}
+
+function buildWorkerLeadDraftResult({ contact = {}, state = {}, data = {} } = {}) {
   const leadDraft = createLeadDraft({
     type: "worker_lead",
     contact,
@@ -200,7 +207,7 @@ export function buildWorkerResumePrompt({ state = {} } = {}) {
     return "Aghi ko worker detail complete jasto cha. Human approval pachi process agadi badhchha.";
   }
 
-  return buildWorkerPrompt({ missing, data, startedByIntent: false });
+  return getNextWorkerRegistrationQuestion(data, missing[0]);
 }
 
 export function extractWorkerDetails({ text = "", contact = {}, currentStep = "" } = {}) {
@@ -235,27 +242,62 @@ export function extractWorkerDetails({ text = "", contact = {}, currentStep = ""
   });
 }
 
-function buildWorkerPrompt({ missing = [], data = {}, startedByIntent = false } = {}) {
-  const known = [];
-  if (data.jobType) known.push(`kaam: ${data.jobType}`);
-  if (data.location?.area) known.push(`area: ${data.location.area}`);
-  if (data.experience) known.push(`experience: ${data.experience.label}`);
-  if (data.availability) known.push(`availability: ${data.availability.label}`);
-  if (data.documentStatus) known.push(`documents: ${workerDocumentLabel(data.documentStatus)}`);
-  if (data.preferredArea) known.push(`preferred area: ${data.preferredArea}`);
-  if (data.travelPreference) known.push(`travel: ${workerTravelLabel(data.travelPreference)}`);
+function getNextWorkerRegistrationQuestion(data = {}, nextField = "") {
+  const field = nextField || getMissingWorkerFields(data)[0];
 
-  const askText = missing.map(workerFieldLabel).join(", ");
+  if (field === "jobType") {
+    return `Tapai kasto kaam khojnu bhayeko ho?
 
-  if (known.length) {
-    return `Yo detail note gare: ${known.join("; ")}.\n\nAba ${askText} pathaunu hola.`;
+${REAL_WORKER_CATEGORY_MENU}`;
   }
 
-  if (startedByIntent) {
-    return "Tapai kasto kaam khojnu bhayeko ho? Job type, area/location, experience ra availability pathaunus.";
+  if (field === "location") {
+    return `Hunchha 🙏 ${data.jobType || "kaam"} ko lagi herchhu.
+
+Tapai kun district/area ma kaam garna milchha?
+
+1. Nawalparasi West
+2. Rupandehi
+3. Kapilvastu
+4. Palpa
+5. Dang
+6. Banke
+7. Aru area`;
   }
 
-  return `Aba ${askText} pathaunu hola.`;
+  if (field === "availability") {
+    return buildWorkerAvailabilityPrompt();
+  }
+
+  if (field === "documentStatus") {
+    return buildWorkerDocumentStatusPrompt();
+  }
+
+  if (field === "fullName") {
+    return "Tapai ko naam pathaunus.";
+  }
+
+  if (field === "providedPhone") {
+    return "Tapai ko phone/WhatsApp number pathaunus.";
+  }
+
+  if (field === "age") {
+    return "Tapai ko age kati ho?";
+  }
+
+  if (field === "experience") {
+    return "Tapai ko experience kati cha? Experience chaina bhane 'no experience' lekhnus.";
+  }
+
+  if (field === "expectedSalary") {
+    return "Expected salary kati ho?";
+  }
+
+  if (field === "confirmation") {
+    return buildWorkerConfirmationPrompt(data);
+  }
+
+  return "Tapai ko worker registration detail pathaunus.";
 }
 
 function detectWorkerActiveFlowGuard({
@@ -525,7 +567,11 @@ function parseWorkerRoleFallback(text = "") {
 }
 
 function resolveWorkerJobType({ role = {}, fallbackRole = "" } = {}) {
-  if (fallbackRole === "Marketing" || fallbackRole.includes(" / ")) {
+  if (fallbackRole === "Marketing") {
+    return "Sales / Marketing";
+  }
+
+  if (fallbackRole.includes(" / ")) {
     return fallbackRole;
   }
 
@@ -547,28 +593,35 @@ function parseLooseLocation(text = "") {
   };
 }
 
-function handleWorkerAvailabilityStep({
+function handleWorkerActiveSingleFieldStep({
   contact = {},
   state = {},
   text = "",
   previousData = {},
 } = {}) {
-  if (state?.flow !== "worker" || state?.step !== "availability") {
+  if (state?.flow !== "worker") {
     return null;
   }
 
-  const availability = parseWorkerAvailabilityStepAnswer(text);
+  const currentStep = state?.step || "";
+  const parsed = parseWorkerActiveStepAnswer({ step: currentStep, text });
+
+  if (parsed === undefined) {
+    return null;
+  }
+
+  const fieldUpdates = parsed === null ? {} : { [currentStep]: parsed };
   const data = normalizeWorkerLeadData(removeEmptyValues({
     ...previousData,
-    availability,
+    ...fieldUpdates,
     phone: contact?.phone || previousData.phone || "",
   }));
 
-  if (!availability) {
+  if (parsed === null) {
     const nextState = {
       ...state,
       flow: "worker",
-      step: "availability",
+      step: currentStep,
       status: "collecting",
       data,
       updatedAt: new Date().toISOString(),
@@ -578,19 +631,26 @@ function handleWorkerAvailabilityStep({
       handled: true,
       intent: "worker_lead",
       conversationIntent: "worker_registration",
-      currentState: "jobmate_worker_availability",
+      currentState: `jobmate_worker_${currentStep}`,
       state: nextState,
-      reply: formatReply(buildWorkerAvailabilityPrompt()),
+      reply: formatReply(getNextWorkerRegistrationQuestion(data, currentStep)),
       needsHuman: false,
       priority: "low",
-      reason: "worker_active_availability_retry",
+      reason: `worker_active_${currentStep}_retry`,
     };
+  }
+
+  const missing = getMissingWorkerFields(data);
+  const nextField = missing[0] || null;
+
+  if (!nextField) {
+    return buildWorkerLeadDraftResult({ contact, state, data });
   }
 
   const nextState = {
     ...state,
     flow: "worker",
-    step: "documentStatus",
+    step: nextField,
     status: "collecting",
     data,
     updatedAt: new Date().toISOString(),
@@ -600,13 +660,128 @@ function handleWorkerAvailabilityStep({
     handled: true,
     intent: "worker_lead",
     conversationIntent: "worker_registration",
-    currentState: "jobmate_worker_documentStatus",
+    currentState: `jobmate_worker_${nextField}`,
     state: nextState,
-    reply: formatReply(buildWorkerDocumentStatusPrompt()),
+    reply: formatReply(getNextWorkerRegistrationQuestion(data, nextField)),
     needsHuman: false,
     priority: "low",
-    reason: "worker_active_availability_captured",
+    reason: `worker_active_${currentStep}_captured`,
   };
+}
+
+function parseWorkerActiveStepAnswer({ step = "", text = "" } = {}) {
+  if (step === "availability") return parseWorkerAvailabilityStepAnswer(text);
+  if (step === "documentStatus") return parseWorkerDocumentStatusStepAnswer(text);
+  if (step === "fullName") return parseWorkerNameStepAnswer(text);
+  if (step === "providedPhone") return parsePhoneNumber(text) || null;
+  if (step === "age") return parseWorkerAgeStepAnswer(text);
+  if (step === "experience") return parseExperience(text) || parseWorkerExperienceStepAnswer(text);
+  if (step === "expectedSalary") return parseSalaryRange(text) || parseWorkerSalaryStepAnswer(text);
+  if (step === "confirmation") return parseWorkerConfirmationStepAnswer(text);
+
+  return undefined;
+}
+
+function parseWorkerDocumentStatusStepAnswer(text = "") {
+  const value = normalizeGuardText(text);
+
+  if (
+    value === "1" ||
+    /^(yes|xa|cha|chha|ho)$/i.test(value) ||
+    /\b(documents?|document|license|citizenship|nagarikta|cv|photo)\b.*\b(xa|cha|chha|ready|pathauna)\b/i.test(value)
+  ) {
+    return "available";
+  }
+
+  if (
+    value === "2" ||
+    /^(no|xaina|chaina|chhaina|hoina)$/i.test(value) ||
+    /\b(documents?|document|license|citizenship|nagarikta|cv)\b.*\b(xaina|chaina|chhaina)\b/i.test(value) ||
+    /\bpachi\s+(dinchu|dinchhu|pathaula|pathaunchu)\b/i.test(value)
+  ) {
+    return "not_available";
+  }
+
+  if (
+    value === "3" ||
+    /\b(partial|kehi\s+(xa|cha|chha)\s+kehi\s+(xaina|chaina|chhaina)|ali\s+ali)\b/i.test(value)
+  ) {
+    return "partial";
+  }
+
+  return null;
+}
+
+function parseWorkerNameStepAnswer(text = "") {
+  const explicit = parsePersonName(text);
+  if (explicit) return explicit;
+
+  const value = String(text || "").trim();
+  const normalized = normalizeGuardText(value);
+
+  if (
+    /^[a-z][a-z\s.'-]{1,45}$/i.test(value) &&
+    !/\b(phone|mobile|number|age|umer|experience|salary|document|kaam|job|location|area)\b/i.test(normalized)
+  ) {
+    return titleCase(value);
+  }
+
+  return null;
+}
+
+function parseWorkerAgeStepAnswer(text = "") {
+  const parsed = parseAge(text);
+  if (parsed) return parsed;
+
+  const match = String(text || "").trim().match(/^(\d{1,2})$/);
+  if (!match) return null;
+
+  const age = Number(match[1]);
+  return age >= 14 && age <= 80 ? age : null;
+}
+
+function parseWorkerExperienceStepAnswer(text = "") {
+  const value = normalizeGuardText(text);
+
+  if (/^(no|none|0|chaina|chhaina|xaina|no experience|experience chaina|fresher)$/i.test(value)) {
+    return { level: "none", label: "no experience" };
+  }
+
+  return null;
+}
+
+function parseWorkerSalaryStepAnswer(text = "") {
+  const value = String(text || "").toLowerCase().replace(/(?:\+?977[-\s]*)?9[678]\d{8}\b/g, " ");
+
+  const single = value.trim().match(/^(\d{4,6})$/);
+  if (single) {
+    return {
+      min: Number(single[1]),
+      max: Number(single[1]),
+      currency: "NPR",
+      finalizedByBot: false,
+    };
+  }
+
+  if (/\b(negotiable|company anusar|market rate|jasto bhaye pani|jun sukai|junsukai)\b/i.test(value)) {
+    return {
+      note: titleCase(value),
+      currency: "NPR",
+      finalizedByBot: false,
+    };
+  }
+
+  return null;
+}
+
+function parseWorkerConfirmationStepAnswer(text = "") {
+  const value = normalizeGuardText(text);
+
+  if (/^(1|yes|ho|ok|okay|confirm|save|save garnus|thik|thik cha)$/i.test(value)) {
+    return "confirmed";
+  }
+
+  return null;
 }
 
 function parseWorkerAvailabilityStepAnswer(text = "") {
@@ -646,6 +821,50 @@ function buildWorkerDocumentStatusPrompt() {
 1. Chha, photo/file pathauna sakchhu
 2. Chhaina
 3. Kehi chha, kehi chhaina`;
+}
+
+function buildWorkerConfirmationPrompt(data = {}) {
+  return `Tapai ko details:
+- Kaam: ${data.jobType || "-"}
+- Area: ${data.location?.area || "-"}
+- District: ${data.location?.district || "-"}
+- Availability: ${formatWorkerAvailability(data.availability)}
+- Documents: ${workerDocumentLabel(data.documentStatus)}
+- Name: ${data.fullName || "-"}
+- Phone: ${data.providedPhone || data.phone || "-"}
+- Age: ${data.age || "-"}
+- Experience: ${formatWorkerExperience(data.experience)}
+- Expected salary: ${formatWorkerExpectedSalary(data.expectedSalary)}
+
+Yo details thik cha?
+1. Ho, save garnus
+2. Edit garnu cha`;
+}
+
+function formatWorkerAvailability(availability = null) {
+  if (!availability) return "-";
+  if (typeof availability === "string") return titleCase(availability);
+  return availability.label || availability.value || "-";
+}
+
+function formatWorkerExperience(experience = null) {
+  if (!experience) return "-";
+  if (typeof experience === "string") return experience;
+  if (experience.level === "none") return "no experience";
+  return experience.label || experience.level || "-";
+}
+
+function formatWorkerExpectedSalary(expectedSalary = null) {
+  if (!expectedSalary) return "-";
+  if (typeof expectedSalary === "string") return expectedSalary;
+  if (expectedSalary.note) return expectedSalary.note;
+
+  const min = Number(expectedSalary.min || 0);
+  const max = Number(expectedSalary.max || 0);
+  if (min && max && min !== max) return `${min}-${max}`;
+  if (min || max) return String(min || max);
+
+  return "-";
 }
 
 function parseExperience(text = "") {
@@ -903,9 +1122,9 @@ function isFieldSkipped(data = {}, field = "") {
 
 function workerDocumentLabel(status = "") {
   const labels = {
-    available: "available",
+    available: "yes",
     partial: "partial",
-    not_available: "not available",
+    not_available: "no",
   };
 
   return labels[status] || status;

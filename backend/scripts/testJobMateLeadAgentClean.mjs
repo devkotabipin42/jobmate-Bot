@@ -84,18 +84,28 @@ assert(
   '1. "job chahiyo" starts worker flow and asks details',
   out.result.handled &&
     out.result.state.flow === "worker" &&
-    /kun kaam|experience|available/i.test(out.result.reply),
+    /kasto kaam|kun kaam/i.test(out.result.reply),
   out.result.reply
 );
 
-// 2. Worker gives all details -> creates worker lead draft and task draft.
+// 2. Worker gives all details, then confirms -> creates worker lead draft and task draft.
 out = await turn(
   conversation,
   "mero naam Ram, phone 9840000000, age 24, waiter job Butwal ma, 2 years experience, immediate ready, expected salary 18000, documents cha, travel garna milcha"
 );
 conversation = out.conversation;
 assert(
-  "2. Worker details create worker lead draft and task draft",
+  "2a. Worker details ask confirmation before draft",
+  !out.result.leadDraft &&
+    out.result.state?.step === "confirmation" &&
+    /Yo details thik cha/i.test(out.result.reply),
+  JSON.stringify(out.result, null, 2)
+);
+
+out = await turn(conversation, "1");
+conversation = out.conversation;
+assert(
+  "2b. Worker confirmation creates worker lead draft and task draft",
   out.result.leadDraft?.type === "worker_lead" &&
     out.result.taskDraft?.type === "worker_lead_review" &&
     out.result.leadDraft?.approvalStatus === "pending_human_approval",
@@ -178,7 +188,7 @@ conversation = out.conversation;
 assert(
   '9. Worker flow "paisa lagcha?" answers free and returns to current step',
   /free/i.test(out.result.reply) &&
-    /kun kaam|experience|available/i.test(out.result.reply) &&
+    /kasto kaam|kun kaam/i.test(out.result.reply) &&
     out.result.state.flow === "worker" &&
     out.result.state.step === stepBefore,
   out.result.reply
