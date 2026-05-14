@@ -463,28 +463,14 @@ async function jobmateExtractor({ text, profile, conversation, lastAskedField, c
     currentState,
   });
 
-  if (activeWorkerRegistration && lastAskedField === "jobType") {
-    const jobType = parseJobTypeReply(cleanText, profile, {
+  if (activeWorkerRegistration) {
+    return extractWorkerActiveStateDetails({
+      text: cleanText,
+      profile,
       conversation,
       lastAskedField,
       currentState,
     });
-    if (jobType) {
-      updates.jobType = jobType;
-    }
-    return updates;
-  }
-
-  if (activeWorkerRegistration && lastAskedField === "district") {
-    const localLocation = resolveLocalLocationFromText(cleanText);
-    if (localLocation) {
-      Object.assign(updates, locationUpdatesFromResolved(localLocation));
-    }
-    return updates;
-  }
-
-  if (activeWorkerRegistration && lastAskedField === "documents") {
-    return updates;
   }
 
   if (isAaratiIdentityQuestion(cleanText)) {
@@ -618,6 +604,234 @@ async function jobmateExtractor({ text, profile, conversation, lastAskedField, c
   }
 
   return updates;
+}
+
+function extractWorkerActiveStateDetails({
+  text = "",
+  profile = {},
+  conversation,
+  lastAskedField,
+  currentState,
+} = {}) {
+  const updates = {};
+  const cleanText = String(text || "").trim();
+  const state = currentState || conversation?.currentState || "";
+  const activeField = lastAskedField || state.replace(/^ask_/, "");
+  const explicitlyChanging = getWorkerExplicitChangeSet(cleanText);
+
+  if (activeField === "jobType") {
+    const jobType = parseJobTypeReply(cleanText, profile, {
+      conversation,
+      lastAskedField,
+      currentState,
+    });
+    if (jobType) {
+      updates.jobType = jobType;
+    }
+  }
+
+  if (activeField !== "jobType" && explicitlyChanging.has("jobType")) {
+    const jobType = parseJobTypeReply(cleanText, profile, {
+      conversation,
+      lastAskedField: "jobType",
+      currentState: "ask_jobType",
+    });
+    if (jobType) {
+      updates.jobType = jobType;
+    }
+  }
+
+  if (activeField === "district") {
+    const localLocation = resolveLocalLocationFromText(cleanText);
+    if (localLocation) {
+      Object.assign(updates, locationUpdatesFromResolved(localLocation));
+    }
+  }
+
+  const mixed = parseWorkerMixedDetails(cleanText, { activeField });
+
+  if (
+    mixed.location &&
+    canUpdateWorkerField({ profile, field: "location", explicitChangeSet: explicitlyChanging })
+  ) {
+    Object.assign(updates, locationUpdatesFromResolved(mixed.location));
+  }
+
+  if (
+    mixed.availability &&
+    canUpdateWorkerField({ profile, field: "availability", explicitChangeSet: explicitlyChanging })
+  ) {
+    updates.availability = mixed.availability;
+  }
+
+  if (
+    mixed.documents &&
+    canUpdateWorkerField({ profile, field: "documents", explicitChangeSet: explicitlyChanging })
+  ) {
+    updates.documents = mixed.documents;
+  }
+
+  for (const key of ["fullName", "providedPhone", "phone", "age", "experience", "expectedSalary"]) {
+    if (mixed[key] && !profile[key]) updates[key] = mixed[key];
+  }
+
+  return updates;
+}
+
+function parseWorkerMixedDetails(text = "", { activeField = "" } = {}) {
+  const value = String(text || "");
+  const updates = {};
+
+  const localLocation = resolveLocalLocationFromText(value);
+  if (localLocation) updates.location = localLocation;
+
+  const name = parseWorkerNameDetail(value);
+  if (name) updates.fullName = name;
+
+  const phone = parseWorkerPhoneDetail(value);
+  if (phone) {
+    updates.providedPhone = phone;
+    updates.phone = phone;
+  }
+
+  const age = parseWorkerAgeDetail(value);
+  if (age) updates.age = age;
+
+  const experience = parseWorkerExperienceDetail(value);
+  if (experience) updates.experience = experience;
+
+  const expectedSalary = parseWorkerExpectedSalaryDetail(value);
+  if (expectedSalary) updates.expectedSalary = expectedSalary;
+
+  const availability = parseWorkerAvailabilityDetail(value);
+  if (availability) updates.availability = availability;
+
+  const documents = parseWorkerDocumentDetail(value, { activeField });
+  if (documents) updates.documents = documents;
+
+  return updates;
+}
+
+function parseWorkerDocumentDetail(text = "", { activeField = "" } = {}) {
+  const value = String(text || "").trim();
+  const normalized = normalizeSimpleText(value);
+
+  if (activeField === "documents") {
+    return parseDocuments(value, {});
+  }
+
+  const hasExplicitDocumentContext =
+    /\b(?:document|documents?|citizenship|nagarikta|cv|license|photo)\b/i.test(normalized) ||
+    /\bkehi\s+(?:xa|cha|chha)\s+kehi\s+(?:xaina|chaina|chhaina)\b/i.test(normalized) ||
+    /\bali\s+ali\s+(?:xa|cha|chha)\b/i.test(normalized) ||
+    /\bpachi\s+(?:dinchu|dinchhu|dina|pathaula|pathaunchu|pathaun?chu)\b/i.test(normalized) ||
+    /\bahile\s+(?:xaina|chaina|chhaina)\b/i.test(normalized);
+
+  return hasExplicitDocumentContext ? parseDocuments(value, {}) : null;
+}
+
+function getWorkerExplicitChangeSet(text = "") {
+  const value = normalizeSimpleText(text);
+  const fields = new Set();
+
+  if (/\b(?:change\s+kaam|kaam\s+change|kaam\s+change\s+garna|job\s+change|role\s+change)\b/i.test(value)) {
+    fields.add("jobType");
+  }
+
+  if (/\b(?:location\s+change|area\s+change|district\s+change|thau\s+change)\b/i.test(value)) {
+    fields.add("location");
+  }
+
+  if (/\b(?:availability\s+change|available\s+change|time\s+change)\b/i.test(value)) {
+    fields.add("availability");
+  }
+
+  if (/\b(?:document\s+status\s+change|documents?\s+change)\b/i.test(value)) {
+    fields.add("documents");
+  }
+
+  return fields;
+}
+
+function canUpdateWorkerField({ profile = {}, field = "", explicitChangeSet = new Set() } = {}) {
+  if (explicitChangeSet.has(field)) return true;
+
+  if (field === "location") {
+    return !profile.location && !profile.area && !profile.district;
+  }
+
+  return !profile[field];
+}
+
+function parseWorkerNameDetail(text = "") {
+  const match = String(text || "").match(/\b(?:name|naam|mero naam)\s*(?:is|ho|:)?\s*([a-z][a-z\s.'-]{1,35}?)(?=\s*(?:,|;|\n|phone|mobile|num|number|age|umer|experience|salary|availability|available|document|$))/i);
+  if (!match) return "";
+  return toDisplayTitle(match[1]);
+}
+
+function parseWorkerPhoneDetail(text = "") {
+  const match = String(text || "").match(/(?:\b(?:phone(?:\s*num(?:ber)?)?|mobile|number|num)\s*:?\s*)?(?:\+?977[-\s]*)?(9[678]\d{8})\b/i);
+  return match?.[1] || "";
+}
+
+function parseWorkerAgeDetail(text = "") {
+  const match = String(text || "").match(/\b(?:age|umer)\s*(?:is|ho|:)?\s*(\d{1,2})\b/i);
+  if (!match) return null;
+
+  const age = Number(match[1]);
+  return age >= 14 && age <= 80 ? age : null;
+}
+
+function parseWorkerExperienceDetail(text = "") {
+  const value = String(text || "").toLowerCase();
+
+  if (/\bexperience\s*:?\s*(?:no|none|0|chaina|chhaina|xaina)\b/i.test(value) ||
+    /\b(?:no|zero|0)\s+(?:experience|exp)\b/i.test(value) ||
+    /\bfresher\b/i.test(value)) {
+    return { level: "none", label: "No experience" };
+  }
+
+  const yearMatch = value.match(/\bexperience\s*:?\s*(\d{1,2})\s*(?:year|years|barsa|barsha|yrs?)\b/i) ||
+    value.match(/\b(\d{1,2})\s*(?:year|years|barsa|barsha|yrs?)\s*(?:experience|exp)\b/i);
+  if (yearMatch) {
+    const years = Number(yearMatch[1]);
+    return { years, label: `${years} year${years === 1 ? "" : "s"}` };
+  }
+
+  const monthMatch = value.match(/\bexperience\s*:?\s*(\d{1,2})\s*(?:month|months|mahina)\b/i) ||
+    value.match(/\b(\d{1,2})\s*(?:month|months|mahina)\s*(?:experience|exp)\b/i);
+  if (monthMatch) {
+    const months = Number(monthMatch[1]);
+    return { months, label: `${months} month${months === 1 ? "" : "s"}` };
+  }
+
+  return null;
+}
+
+function parseWorkerExpectedSalaryDetail(text = "") {
+  const value = String(text || "").toLowerCase().replace(/(?:\+?977[-\s]*)?9[678]\d{8}\b/g, " ");
+  const match = value.match(/\b(?:expected\s+salary|salary|talaab|talab|npr|rs)\s*:?\s*(\d{4,6})\b/i);
+  if (!match) return null;
+
+  return {
+    min: Number(match[1]),
+    max: Number(match[1]),
+    currency: "NPR",
+    finalizedByBot: false,
+  };
+}
+
+function parseWorkerAvailabilityDetail(text = "") {
+  const value = String(text || "").toLowerCase();
+
+  if (/\b(?:availability|available)\s*:?\s*full\s*-?\s*time\b/i.test(value)) return "full-time";
+  if (/\b(?:availability|available)\s*:?\s*part\s*-?\s*time\b/i.test(value)) return "part-time";
+  if (/\b(?:availability|available)\s*:?\s*shift\b/i.test(value)) return "shift";
+  if (/\b(?:availability|available)\s*:?\s*(?:jun sukai|junsukai|any)\b/i.test(value)) return "any";
+  if (/\bfull\s*-?\s*time\b/i.test(value)) return "full-time";
+  if (/\bpart\s*-?\s*time\b/i.test(value)) return "part-time";
+
+  return null;
 }
 
 async function generateAaratiAIReply({
