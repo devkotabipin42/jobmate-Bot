@@ -348,6 +348,64 @@ export async function receiveWhatsAppWebhook(req, res) {
 
     if (
       env.BOT_MODE === "jobmate_hiring" &&
+      isActiveAutomationWorkerRegistrationConversation(conversation)
+    ) {
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: {
+          intent: "worker_registration",
+          needsHuman: false,
+          priority: "low",
+          reason: "active_worker_flow_state_priority",
+        },
+      });
+
+      const flowResult = await handleWorkerRegistration({
+        contact,
+        conversation,
+        normalizedMessage: normalized,
+      });
+
+      const activeConversation = flowResult?.conversation || conversation;
+      const replyText = flowResult?.reply || flowResult?.messageToSend || "";
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: replyText,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation: activeConversation,
+        text: replyText,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      await updateConversationIntent({
+        conversation: activeConversation,
+        intent: "worker_registration",
+        state: flowResult?.currentState || activeConversation.currentState || "idle",
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "JobMate active worker flow handled message",
+        reason: "active_worker_flow_state_priority",
+        intent: "worker_registration",
+        replied: true,
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
+
+    if (
+      env.BOT_MODE === "jobmate_hiring" &&
       isActiveAutomationEmployerLeadConversation(conversation)
     ) {
       const inboundMessage = await saveInboundMessage({
@@ -2472,6 +2530,53 @@ function applyConversationIntentOverride({ intentResult, conversation, normalize
   }
 
   return intentResult;
+}
+
+const AUTOMATION_WORKER_ACTIVE_STATES = new Set([
+  "ask_job_type",
+  "ask_jobType",
+  "ask_district",
+  "ask_location",
+  "ask_availability",
+  "ask_document_status",
+  "ask_documents",
+  "ask_fullName",
+  "ask_providedPhone",
+  "ask_age",
+  "ask_experience",
+  "ask_expectedSalary",
+  "ask_confirmation",
+  "asked_register",
+]);
+
+const AUTOMATION_WORKER_ACTIVE_FIELDS = new Set([
+  "jobType",
+  "district",
+  "location",
+  "availability",
+  "documents",
+  "fullName",
+  "providedPhone",
+  "age",
+  "experience",
+  "expectedSalary",
+  "confirmation",
+]);
+
+function isActiveAutomationWorkerRegistrationConversation(conversation = {}) {
+  const currentState = String(conversation?.currentState || "");
+  const activeFlow = String(conversation?.metadata?.activeFlow || "");
+  const lastAskedField = String(conversation?.metadata?.lastAskedField || "");
+  const leadAgentFlow = conversation?.metadata?.jobmateLeadAgent?.flow;
+
+  if (leadAgentFlow) return false;
+  if (["", "idle", "completed"].includes(currentState)) return false;
+
+  return (
+    activeFlow === "worker_registration" ||
+    AUTOMATION_WORKER_ACTIVE_STATES.has(currentState) ||
+    AUTOMATION_WORKER_ACTIVE_FIELDS.has(lastAskedField)
+  );
 }
 
 const AUTOMATION_EMPLOYER_ACTIVE_STATES = new Set([

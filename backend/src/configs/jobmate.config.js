@@ -429,11 +429,41 @@ function jobmateWorkerFlowGuard({
   conversation,
   lastAskedField,
   currentState,
+  profile = {},
 } = {}) {
-  if (
-    !isWorkerRegistrationActiveContext({ conversation, lastAskedField, currentState }) ||
-    lastAskedField !== "jobType"
-  ) {
+  const activeWorkerContext = isWorkerRegistrationActiveContext({
+    conversation,
+    lastAskedField,
+    currentState,
+  });
+
+  if (!activeWorkerContext) {
+    return null;
+  }
+
+  if (lastAskedField === "availability" || currentState === "ask_availability") {
+    const availability = parseAvailability(text);
+    if (availability) {
+      const nextProfile = {
+        ...profile,
+        availability,
+      };
+
+      return {
+        messageToSend:
+          typeof MESSAGES.askDocuments === "function"
+            ? MESSAGES.askDocuments(nextProfile)
+            : MESSAGES.askDocuments,
+        profileUpdates: {
+          availability,
+        },
+        currentState: "ask_documents",
+        lastAskedField: "documents",
+      };
+    }
+  }
+
+  if (lastAskedField !== "jobType") {
     return null;
   }
 
