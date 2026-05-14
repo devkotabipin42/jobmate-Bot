@@ -346,68 +346,12 @@ export async function receiveWhatsAppWebhook(req, res) {
       });
     }
 
-    if (
-      env.BOT_MODE === "jobmate_hiring" &&
-      isActiveAutomationWorkerRegistrationConversation(conversation)
-    ) {
-      const inboundMessage = await saveInboundMessage({
-        contact,
-        conversation,
-        normalized,
-        intentResult: {
-          intent: "worker_registration",
-          needsHuman: false,
-          priority: "low",
-          reason: "active_worker_flow_state_priority",
-        },
-      });
+    const activeAutomationFlowRoute =
+      env.BOT_MODE === "jobmate_hiring"
+        ? getJobMateAutomationActiveFlowRoute(conversation)
+        : null;
 
-      const flowResult = await handleWorkerRegistration({
-        contact,
-        conversation,
-        normalizedMessage: normalized,
-      });
-
-      const activeConversation = flowResult?.conversation || conversation;
-      const replyText = flowResult?.reply || flowResult?.messageToSend || "";
-
-      const sendResult = await sendWhatsAppTextMessage({
-        to: contact.phone,
-        text: replyText,
-      });
-
-      const outboundMessage = await saveOutboundMessage({
-        contact,
-        conversation: activeConversation,
-        text: replyText,
-        providerMessageId: sendResult.providerMessageId,
-        status: "sent",
-      });
-
-      await updateConversationIntent({
-        conversation: activeConversation,
-        intent: "worker_registration",
-        state: flowResult?.currentState || activeConversation.currentState || "idle",
-        lastInboundMessageId: inboundMessage._id,
-        lastOutboundMessageId: outboundMessage._id,
-      });
-
-      await markMessageProcessed(processedMessageId);
-
-      return res.status(200).json({
-        success: true,
-        message: "JobMate active worker flow handled message",
-        reason: "active_worker_flow_state_priority",
-        intent: "worker_registration",
-        replied: true,
-        sendSkipped: sendResult.skipped || false,
-      });
-    }
-
-    if (
-      env.BOT_MODE === "jobmate_hiring" &&
-      isActiveAutomationEmployerLeadConversation(conversation)
-    ) {
+    if (activeAutomationFlowRoute === "employer") {
       const inboundMessage = await saveInboundMessage({
         contact,
         conversation,
@@ -458,6 +402,61 @@ export async function receiveWhatsAppWebhook(req, res) {
         message: "JobMate active employer flow handled message",
         reason: "active_employer_flow_state_priority",
         intent: "employer_lead",
+        replied: true,
+        sendSkipped: sendResult.skipped || false,
+      });
+    }
+
+    if (activeAutomationFlowRoute === "worker") {
+      const inboundMessage = await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: {
+          intent: "worker_registration",
+          needsHuman: false,
+          priority: "low",
+          reason: "active_worker_flow_state_priority",
+        },
+      });
+
+      const flowResult = await handleWorkerRegistration({
+        contact,
+        conversation,
+        normalizedMessage: normalized,
+      });
+
+      const activeConversation = flowResult?.conversation || conversation;
+      const replyText = flowResult?.reply || flowResult?.messageToSend || "";
+
+      const sendResult = await sendWhatsAppTextMessage({
+        to: contact.phone,
+        text: replyText,
+      });
+
+      const outboundMessage = await saveOutboundMessage({
+        contact,
+        conversation: activeConversation,
+        text: replyText,
+        providerMessageId: sendResult.providerMessageId,
+        status: "sent",
+      });
+
+      await updateConversationIntent({
+        conversation: activeConversation,
+        intent: "worker_registration",
+        state: flowResult?.currentState || activeConversation.currentState || "idle",
+        lastInboundMessageId: inboundMessage._id,
+        lastOutboundMessageId: outboundMessage._id,
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        message: "JobMate active worker flow handled message",
+        reason: "active_worker_flow_state_priority",
+        intent: "worker_registration",
         replied: true,
         sendSkipped: sendResult.skipped || false,
       });
@@ -2563,14 +2562,37 @@ const AUTOMATION_WORKER_ACTIVE_FIELDS = new Set([
   "confirmation",
 ]);
 
+export function getJobMateAutomationActiveFlowRoute(conversation = {}) {
+  if (isActiveAutomationEmployerLeadConversation(conversation)) {
+    return "employer";
+  }
+
+  if (isActiveAutomationWorkerRegistrationConversation(conversation)) {
+    return "worker";
+  }
+
+  return null;
+}
+
 function isActiveAutomationWorkerRegistrationConversation(conversation = {}) {
+  const currentIntent = String(conversation?.currentIntent || "");
   const currentState = String(conversation?.currentState || "");
   const activeFlow = String(conversation?.metadata?.activeFlow || "");
   const lastAskedField = String(conversation?.metadata?.lastAskedField || "");
   const leadAgentFlow = conversation?.metadata?.jobmateLeadAgent?.flow;
 
   if (leadAgentFlow) return false;
+  if (["employer_lead", "employer"].includes(currentIntent) || activeFlow === "employer_lead") {
+    return false;
+  }
   if (["", "idle", "completed"].includes(currentState)) return false;
+
+  const workerOwned =
+    currentIntent === "worker_registration" ||
+    activeFlow === "worker_registration" ||
+    AUTOMATION_WORKER_ACTIVE_FIELDS.has(lastAskedField);
+
+  if (!workerOwned) return false;
 
   return (
     activeFlow === "worker_registration" ||
@@ -2584,10 +2606,15 @@ const AUTOMATION_EMPLOYER_ACTIVE_STATES = new Set([
   "ask_business_name_after_ai",
   "ask_vacancy",
   "ask_vacancy_role",
+  "ask_role",
   "ask_location",
+  "ask_business_location",
+  "ask_area",
+  "ask_district",
   "ask_urgency",
   "ask_salary_range",
   "ask_work_type",
+  "completed",
 ]);
 
 function isActiveAutomationEmployerLeadConversation(conversation = {}) {

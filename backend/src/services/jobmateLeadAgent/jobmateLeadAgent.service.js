@@ -71,17 +71,17 @@ export async function handleJobMateLeadAgentMessage({
     });
   }
 
-  if (isAutomationWorkerFlowActive(conversation, currentState)) {
-    return {
-      handled: false,
-      reason: "active_automation_worker_flow_defer",
-    };
-  }
-
   if (isAutomationEmployerFlowActive(conversation, currentState)) {
     return {
       handled: false,
       reason: "active_automation_employer_flow_defer",
+    };
+  }
+
+  if (isAutomationWorkerFlowActive(conversation, currentState)) {
+    return {
+      handled: false,
+      reason: "active_automation_worker_flow_defer",
     };
   }
 
@@ -652,10 +652,15 @@ const AUTOMATION_EMPLOYER_ACTIVE_STATES = new Set([
   "ask_business_name_after_ai",
   "ask_vacancy",
   "ask_vacancy_role",
+  "ask_role",
   "ask_location",
+  "ask_business_location",
+  "ask_area",
+  "ask_district",
   "ask_urgency",
   "ask_salary_range",
   "ask_work_type",
+  "completed",
 ]);
 
 const AUTOMATION_WORKER_ACTIVE_STATES = new Set([
@@ -692,11 +697,22 @@ const AUTOMATION_WORKER_ACTIVE_FIELDS = new Set([
 function isAutomationWorkerFlowActive(conversation = {}, leadAgentState = {}) {
   if (isLeadAgentFlowActive(leadAgentState)) return false;
 
+  const currentIntent = String(conversation?.currentIntent || "");
   const currentState = String(conversation?.currentState || "");
   const activeFlow = String(conversation?.metadata?.activeFlow || "");
   const lastAskedField = String(conversation?.metadata?.lastAskedField || "");
 
+  if (["employer_lead", "employer"].includes(currentIntent) || activeFlow === "employer_lead") {
+    return false;
+  }
   if (["", "idle", "completed"].includes(currentState)) return false;
+
+  const workerOwned =
+    currentIntent === "worker_registration" ||
+    activeFlow === "worker_registration" ||
+    AUTOMATION_WORKER_ACTIVE_FIELDS.has(lastAskedField);
+
+  if (!workerOwned) return false;
 
   return (
     activeFlow === "worker_registration" ||
