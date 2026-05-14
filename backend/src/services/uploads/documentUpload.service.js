@@ -149,6 +149,18 @@ export function buildDocumentMetadata(normalized = {}) {
   };
 }
 
+export function buildSafeDocumentAttachmentMetadata(document = {}) {
+  return {
+    mediaType: document.metadata?.whatsappMessageType || "document",
+    mediaId: document.mediaId || "",
+    mimeType: document.mimeType || "",
+    source: document.source || "whatsapp",
+    status: document.status || "received",
+    uploadedAt: document.uploadedAt || new Date(),
+    providerMessageId: document.metadata?.providerMessageId || "",
+  };
+}
+
 
 async function downloadAndStoreWhatsAppDocument(document = {}) {
   if (!document.mediaId) {
@@ -284,22 +296,6 @@ export async function saveWorkerDocumentMetadata({ contact, normalized } = {}) {
   };
 }
 
-export function buildDocumentReceivedReply(document = {}) {
-  const labels = {
-    license: "license",
-    citizenship: "citizenship/nagarikta",
-    cv: "CV",
-    certificate: "certificate",
-    photo: "photo",
-    other: "document/photo",
-  };
-
-  const label = labels[document.type] || "document/photo";
-
-  return `Photo/document receive bhayo 🙏
-
-Maile tapai ko ${label} JobMate profile ma note gareko chhu.
-Hamro team le document check/verify garera zaruri pare sampark garchha.
-
-Aru document chha bhane yahi WhatsApp ma photo/file pathauna saknuhunchha.`;
+export function buildDocumentReceivedReply(_document = {}) {
+  return "Document receive bhayo. Ma JobMate team lai note gardinchhu.";
 }

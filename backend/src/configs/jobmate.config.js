@@ -33,6 +33,12 @@ import {
   parseCanonicalWorkerJobType,
   WORKER_JOB_TYPE_MAP,
 } from "../services/jobmate/workerJobTypeMenu.service.js";
+import {
+  buildDocumentMetadata,
+  buildSafeDocumentAttachmentMetadata,
+  isSupportedDocumentMedia,
+  saveWorkerDocumentMetadata,
+} from "../services/uploads/documentUpload.service.js";
 
 const ENABLE_AARATI_PERSONA = process.env.ENABLE_AARATI_PERSONA !== "false";
 const ENABLE_AARATI_LLM = process.env.ENABLE_AARATI_LLM !== "false";
@@ -424,9 +430,11 @@ function parseDistrictReply(text) {
   return resolved?.district || resolved?.canonical || t;
 }
 
-function jobmateWorkerFlowGuard({
+async function jobmateWorkerFlowGuard({
   text = "",
+  contact,
   conversation,
+  normalizedMessage,
   lastAskedField,
   currentState,
   profile = {},
@@ -439,6 +447,50 @@ function jobmateWorkerFlowGuard({
 
   if (!activeWorkerContext) {
     return null;
+  }
+
+  if (isSupportedDocumentMedia(normalizedMessage)) {
+    const documentMetadata = buildDocumentMetadata(normalizedMessage);
+    let savedDocument = documentMetadata;
+
+    try {
+      const saved = await saveWorkerDocumentMetadata({
+        contact,
+        normalized: normalizedMessage,
+      });
+      savedDocument = saved?.document || documentMetadata;
+    } catch (error) {
+      console.warn("Worker document metadata save failed:", error?.message);
+    }
+
+    const documentProfileUpdates = {
+      documentReceived: true,
+      documentStatus: "received",
+      documentAttachment: buildSafeDocumentAttachmentMetadata(savedDocument),
+    };
+
+    if (
+      lastAskedField === "documents" ||
+      currentState === "ask_documents" ||
+      currentState === "ask_document_status"
+    ) {
+      return {
+        messageToSend: "Document photo receive bhayo 🙏\nTapai ko naam pathaunus.",
+        profileUpdates: {
+          ...documentProfileUpdates,
+          documents: "yes",
+        },
+        currentState: "ask_fullName",
+        lastAskedField: "fullName",
+      };
+    }
+
+    return {
+      messageToSend: "Document receive bhayo. Ma JobMate team lai note gardinchhu.",
+      profileUpdates: documentProfileUpdates,
+      currentState: currentState || conversation?.currentState || "collecting",
+      lastAskedField,
+    };
   }
 
   if (lastAskedField === "availability" || currentState === "ask_availability") {

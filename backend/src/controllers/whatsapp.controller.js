@@ -95,6 +95,7 @@ import {
 import { WorkerProfile } from "../models/WorkerProfile.model.js";
 import {
   buildDocumentReceivedReply,
+  buildSafeDocumentAttachmentMetadata,
   isSupportedDocumentMedia,
   saveWorkerDocumentMetadata,
 } from "../services/uploads/documentUpload.service.js";
@@ -1669,8 +1670,23 @@ export async function receiveWhatsAppWebhook(req, res) {
       });
     }
 
-    const mediaIntentResult = {
-        intent: "document_upload",
+      const isWorkerDocumentMediaContext =
+        conversation?.currentIntent === "worker_registration" ||
+        conversation?.metadata?.activeFlow === "worker_registration";
+      const shouldAdvanceWorkerDocumentStep =
+        isWorkerDocumentMediaContext &&
+        (conversation?.currentState === "ask_document_status" ||
+          conversation?.currentState === "ask_documents" ||
+          conversation?.metadata?.lastAskedField === "documents");
+      const mediaConversationIntent = isWorkerDocumentMediaContext
+        ? "worker_registration"
+        : "document_upload";
+      let mediaConversationState = shouldAdvanceWorkerDocumentStep
+        ? "ask_fullName"
+        : conversation?.currentState || null;
+
+      const mediaIntentResult = {
+        intent: mediaConversationIntent,
         needsHuman: false,
         priority: "medium",
         reason: "WhatsApp media document received",
@@ -1692,25 +1708,18 @@ export async function receiveWhatsAppWebhook(req, res) {
         ...(conversation?.metadata?.collectedData || {}),
       };
 
-      const shouldCompleteProfile =
-        conversation?.currentState === "ask_documents" ||
-        conversation?.metadata?.lastAskedField === "documents";
-
       let replyText = buildDocumentReceivedReply(saved?.document);
 
-      if (shouldCompleteProfile) {
-        const completedProfile = {
+      if (shouldAdvanceWorkerDocumentStep) {
+        const nextProfile = {
           ...currentJobmateProfile,
           documents: "yes",
+          documentReceived: true,
+          documentStatus: "received",
+          ...(saved?.document
+            ? { documentAttachment: buildSafeDocumentAttachmentMetadata(saved.document) }
+            : {}),
         };
-
-        if (typeof jobmateConfig.onComplete === "function") {
-          await jobmateConfig.onComplete({
-            contact,
-            profile: completedProfile,
-            conversation,
-          });
-        }
 
         if (conversation?._id) {
           const Model = conversation.constructor;
@@ -1718,21 +1727,38 @@ export async function receiveWhatsAppWebhook(req, res) {
             { _id: conversation._id },
             {
               $set: {
-                currentState: "completed",
-                "metadata.collectedData": completedProfile,
-                "metadata.lastAskedField": null,
+                currentState: "ask_fullName",
+                "metadata.collectedData": nextProfile,
+                "metadata.lastAskedField": "fullName",
+                "metadata.activeFlow": "worker_registration",
               },
             },
             { runValidators: false }
           );
         }
 
-        const completionText =
-          typeof jobmateConfig.completionMessage === "function"
-            ? jobmateConfig.completionMessage(completedProfile)
-            : "Dhanyabaad 🙏 Tapai ko detail JobMate ma save bhayo.";
-
-        replyText = `${replyText}\n\n${completionText}`;
+        replyText = "Document photo receive bhayo 🙏\nTapai ko naam pathaunus.";
+      } else if (isWorkerDocumentMediaContext && conversation?._id) {
+        const nextProfile = {
+          ...currentJobmateProfile,
+          documentReceived: true,
+          documentStatus: "received",
+          ...(saved?.document
+            ? { documentAttachment: buildSafeDocumentAttachmentMetadata(saved.document) }
+            : {}),
+        };
+        const Model = conversation.constructor;
+        await Model.updateOne(
+          { _id: conversation._id },
+          {
+            $set: {
+              currentState: mediaConversationState,
+              "metadata.collectedData": nextProfile,
+              "metadata.activeFlow": "worker_registration",
+            },
+          },
+          { runValidators: false }
+        );
       }
 
       const sendResult = await sendWhatsAppTextMessage({
@@ -1750,7 +1776,8 @@ export async function receiveWhatsAppWebhook(req, res) {
 
       await updateConversationIntent({
         conversation,
-        intent: "document_upload",
+        intent: mediaConversationIntent,
+        state: mediaConversationState,
         lastInboundMessageId: inboundMessage._id,
         lastOutboundMessageId: outboundMessage._id,
       });
@@ -1760,7 +1787,7 @@ export async function receiveWhatsAppWebhook(req, res) {
       return res.status(200).json({
         success: true,
         message: "Document metadata captured",
-        intent: "document_upload",
+        intent: mediaConversationIntent,
         replied: true,
         workerId: saved?.worker?._id || null,
         documentType: saved?.document?.type || "other",
