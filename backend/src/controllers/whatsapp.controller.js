@@ -103,6 +103,9 @@ import {
   buildLeadAgentConversationPatch,
   handleJobMateLeadAgentMessage,
 } from "../services/jobmateLeadAgent/jobmateLeadAgent.service.js";
+import {
+  decideUnderstandingAction,
+} from "../services/aaratiUnderstanding/aaratiUnderstanding.service.js";
 
 /**
  * Meta WhatsApp webhook verification.
@@ -461,6 +464,69 @@ export async function receiveWhatsAppWebhook(req, res) {
         replied: true,
         sendSkipped: sendResult.skipped || false,
       });
+    }
+
+    if (env.BOT_MODE === "jobmate_hiring") {
+      const understandingText =
+        normalized.message.normalizedText ||
+        normalized.message.text ||
+        "";
+      const understandingAction = decideUnderstandingAction({
+        text: understandingText,
+        conversation,
+      });
+
+      if (
+        ["boundary", "reply_only"].includes(understandingAction.action) &&
+        understandingAction.reply
+      ) {
+        const understandingIntentResult = {
+          intent: "unknown",
+          needsHuman: false,
+          priority: "low",
+          reason: `aarati_understanding:${understandingAction.reason}`,
+        };
+
+        const inboundMessage = await saveInboundMessage({
+          contact,
+          conversation,
+          normalized,
+          intentResult: understandingIntentResult,
+        });
+
+        const sendResult = await sendWhatsAppTextMessage({
+          to: contact.phone,
+          text: understandingAction.reply,
+        });
+
+        const outboundMessage = await saveOutboundMessage({
+          contact,
+          conversation,
+          text: understandingAction.reply,
+          providerMessageId: sendResult.providerMessageId,
+          status: "sent",
+        });
+
+        await updateConversationIntent({
+          conversation,
+          intent: conversation.currentIntent || "unknown",
+          state: conversation.currentState || "idle",
+          lastInboundMessageId: inboundMessage._id,
+          lastOutboundMessageId: outboundMessage._id,
+        });
+
+        await markMessageProcessed(processedMessageId);
+
+        return res.status(200).json({
+          success: true,
+          message: "Aarati understanding handled message",
+          intent: understandingIntentResult.intent,
+          mappedFlow: understandingAction.mappedFlow,
+          reason: understandingAction.reason,
+          replied: true,
+          sendSkipped: sendResult.skipped || false,
+        });
+      }
     }
 
     if (env.BOT_MODE === "jobmate_hiring") {
