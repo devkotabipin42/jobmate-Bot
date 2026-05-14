@@ -7,6 +7,9 @@ process.env.GOOGLE_API_KEY = "";
 const { runConversationEngine } = await import("../src/services/automation/conversationEngine.js");
 const { jobmateConfig } = await import("../src/configs/jobmate.config.js");
 const {
+  handleWorkerLeadFlow,
+} = await import("../src/services/jobmateLeadAgent/workerLeadFlow.service.js");
+const {
   findReplyPolicyIssues,
 } = await import("../src/services/jobmateLeadAgent/replyFormatter.service.js");
 
@@ -40,9 +43,25 @@ const contact = {
 const tests = [];
 const replies = [];
 
+await test("cook availability numeric 1 asks documents without changing jobType", async () => {
+  const { result } = await runTurns(["1", "cook", "jimirbar", "1"]);
+  const profile = result.newMetadata.collectedData || {};
+  const reply = result.messageToSend || "";
+
+  assert(profile.jobType === "Hotel / Restaurant", `jobType changed: ${profile.jobType}`);
+  assert(profile.jobType !== "Driver / Transport", "availability 1 became Driver / Transport");
+  assert(profile.area === "Jimirbar" || profile.location === "Jimirbar", "Jimirbar not saved");
+  assert(profile.district === "Nawalparasi West", `district wrong: ${profile.district}`);
+  assert(profile.availability === "full-time", `availability wrong: ${profile.availability}`);
+  assert(result.newMetadata.currentState === "ask_documents", `expected ask_documents, got ${result.newMetadata.currentState}`);
+  assert(/document|Chha|Chhaina|Kehi/i.test(reply), "reply did not ask document status");
+  assert(!/kaam:\s*Driver \/ Transport/i.test(reply), `reply leaked Driver detail note: ${reply}`);
+});
+
 await test("availability numeric 1 keeps Sales / Marketing and asks documents", async () => {
   const { result } = await runTurns(["1", "marketing", "jimirbar", "1"]);
   const profile = result.newMetadata.collectedData || {};
+  const reply = result.messageToSend || "";
 
   assert(profile.jobType === "Sales / Marketing", `jobType changed: ${profile.jobType}`);
   assert(profile.jobType !== "Driver / Transport", "availability 1 became Driver / Transport");
@@ -50,7 +69,8 @@ await test("availability numeric 1 keeps Sales / Marketing and asks documents", 
   assert(profile.district === "Nawalparasi West", `district wrong: ${profile.district}`);
   assert(profile.availability === "full-time", `availability wrong: ${profile.availability}`);
   assert(result.newMetadata.currentState === "ask_documents", `expected ask_documents, got ${result.newMetadata.currentState}`);
-  assert(/document|Chha|Chhaina|Kehi/i.test(result.messageToSend || ""), "reply did not ask document status");
+  assert(/document|Chha|Chhaina|Kehi/i.test(reply), "reply did not ask document status");
+  assert(!/Driver \/ Transport/i.test(reply), `reply leaked Driver: ${reply}`);
 });
 
 await test("text availability keeps Sales / Marketing", async () => {
@@ -125,6 +145,39 @@ await test("availability numeric 2 is part-time and not Security Guard", async (
   assert(profile.jobType === "Sales / Marketing", `jobType changed: ${profile.jobType}`);
   assert(profile.jobType !== "Security Guard", "availability 2 became Security Guard");
   assert(profile.availability === "part-time", `availability wrong: ${profile.availability}`);
+});
+
+await test("availability numeric 4 is any and keeps jobType", async () => {
+  const { result } = await runTurns(["1", "marketing", "jimirbar", "4"]);
+  const profile = result.newMetadata.collectedData || {};
+
+  assert(profile.jobType === "Sales / Marketing", `jobType changed: ${profile.jobType}`);
+  assert(profile.availability === "any", `availability wrong: ${profile.availability}`);
+});
+
+await test("lead-agent active availability 1 bypasses generic detail note", async () => {
+  const result = leadAvailabilityTurn("1", {
+    jobType: "Hotel / Restaurant",
+  });
+  const data = result.state?.data || {};
+  const reply = result.reply || "";
+
+  assert(data.jobType === "Hotel / Restaurant", `jobType changed: ${data.jobType}`);
+  assert(data.availability?.value === "full-time", `availability wrong: ${JSON.stringify(data.availability)}`);
+  assert(result.state?.step === "documentStatus", `expected documentStatus, got ${result.state?.step}`);
+  assert(/document|Chha|Chhaina|Kehi/i.test(reply), "reply did not ask document status");
+  assert(!/Yo detail note gare/i.test(reply), `generic detail note returned: ${reply}`);
+  assert(!/Driver \/ Transport/i.test(reply), `reply leaked Driver: ${reply}`);
+});
+
+await test("lead-agent active availability 2 and 4 keep jobType", async () => {
+  const partTime = leadAvailabilityTurn("2");
+  const any = leadAvailabilityTurn("4");
+
+  assert(partTime.state?.data?.jobType === "Sales / Marketing", `jobType changed on 2: ${partTime.state?.data?.jobType}`);
+  assert(partTime.state?.data?.availability?.value === "part-time", `availability 2 wrong: ${JSON.stringify(partTime.state?.data?.availability)}`);
+  assert(any.state?.data?.jobType === "Sales / Marketing", `jobType changed on 4: ${any.state?.data?.jobType}`);
+  assert(any.state?.data?.availability?.value === "any", `availability 4 wrong: ${JSON.stringify(any.state?.data?.availability)}`);
 });
 
 await test("documents numeric 1 saves yes without overwriting locked fields", async () => {
@@ -267,6 +320,32 @@ async function documentTurn(text) {
   });
 
   return harness.turn(conversation, text);
+}
+
+function leadAvailabilityTurn(text, dataOverrides = {}) {
+  const result = handleWorkerLeadFlow({
+    contact,
+    state: {
+      flow: "worker",
+      step: "availability",
+      status: "collecting",
+      data: {
+        jobType: "Sales / Marketing",
+        location: {
+          area: "Jimirbar",
+          district: "Nawalparasi West",
+          province: "Lumbini",
+          country: "Nepal",
+        },
+        ...dataOverrides,
+      },
+    },
+    text,
+    startedByIntent: false,
+  });
+
+  replies.push(result.reply || "");
+  return result;
 }
 
 function applyResult(conversation, result) {

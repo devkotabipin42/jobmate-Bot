@@ -55,6 +55,17 @@ export function handleWorkerLeadFlow({
     });
   }
 
+  const activeAvailabilityStep = handleWorkerAvailabilityStep({
+    contact,
+    state,
+    text,
+    previousData,
+  });
+
+  if (activeAvailabilityStep) {
+    return activeAvailabilityStep;
+  }
+
   const rawExtracted = extractWorkerDetails({ text, contact, currentStep: state?.step });
   const extracted = normalizeWorkerStepExtraction({
     extracted: rawExtracted,
@@ -534,6 +545,107 @@ function parseLooseLocation(text = "") {
     province: "Lumbini",
     country: "Nepal",
   };
+}
+
+function handleWorkerAvailabilityStep({
+  contact = {},
+  state = {},
+  text = "",
+  previousData = {},
+} = {}) {
+  if (state?.flow !== "worker" || state?.step !== "availability") {
+    return null;
+  }
+
+  const availability = parseWorkerAvailabilityStepAnswer(text);
+  const data = normalizeWorkerLeadData(removeEmptyValues({
+    ...previousData,
+    availability,
+    phone: contact?.phone || previousData.phone || "",
+  }));
+
+  if (!availability) {
+    const nextState = {
+      ...state,
+      flow: "worker",
+      step: "availability",
+      status: "collecting",
+      data,
+      updatedAt: new Date().toISOString(),
+    };
+
+    return {
+      handled: true,
+      intent: "worker_lead",
+      conversationIntent: "worker_registration",
+      currentState: "jobmate_worker_availability",
+      state: nextState,
+      reply: formatReply(buildWorkerAvailabilityPrompt()),
+      needsHuman: false,
+      priority: "low",
+      reason: "worker_active_availability_retry",
+    };
+  }
+
+  const nextState = {
+    ...state,
+    flow: "worker",
+    step: "documentStatus",
+    status: "collecting",
+    data,
+    updatedAt: new Date().toISOString(),
+  };
+
+  return {
+    handled: true,
+    intent: "worker_lead",
+    conversationIntent: "worker_registration",
+    currentState: "jobmate_worker_documentStatus",
+    state: nextState,
+    reply: formatReply(buildWorkerDocumentStatusPrompt()),
+    needsHuman: false,
+    priority: "low",
+    reason: "worker_active_availability_captured",
+  };
+}
+
+function parseWorkerAvailabilityStepAnswer(text = "") {
+  const value = normalizeGuardText(text);
+
+  if (value === "1" || /\bfull\s*-?\s*time\b/i.test(value)) {
+    return { value: "full-time", label: "Full-time" };
+  }
+
+  if (value === "2" || /\bpart\s*-?\s*time\b/i.test(value)) {
+    return { value: "part-time", label: "Part-time" };
+  }
+
+  if (value === "3" || /\bshift\b/i.test(value)) {
+    return { value: "shift-based", label: "Shift based" };
+  }
+
+  if (value === "4" || /\b(jun\s+sukai|junsukai|any)\b/i.test(value)) {
+    return { value: "any", label: "Any" };
+  }
+
+  return null;
+}
+
+function buildWorkerAvailabilityPrompt() {
+  return `Tapai kati samaya kaam garna milchha?
+
+1. Full-time
+2. Part-time
+3. Shift based
+4. Jun sukai`;
+}
+
+function buildWorkerDocumentStatusPrompt() {
+  return `Tapai sanga document chha?
+
+1. Chha, photo/file pathauna sakchhu
+2. Chhaina
+3. Kehi chha, kehi chhaina`;
 }
 
 function parseExperience(text = "") {
