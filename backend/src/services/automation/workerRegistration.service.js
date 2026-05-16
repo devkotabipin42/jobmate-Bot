@@ -137,6 +137,24 @@ export async function handleWorkerRegistration({
       text: engineText,
     });
 
+    // pendingEmployerSwitch: user was shown "Staff khojna ho bhane '2' thichnus" — check if they confirmed
+    const pendingEmployerSwitch = conversation?.metadata?.pendingEmployerSwitch;
+    if (pendingEmployerSwitch && engineText.trim() === "2") {
+      return {
+        intent: "employer_lead",
+        messageToSend: "Thik cha! Staff khojna registration suru garau 🙏\n\nTapai ko business ko naam ke ho?",
+        currentState: "ask_business_name",
+        metadataUpdate: {
+          collectedData: {},
+          lastAskedField: null,
+          pendingEmployerSwitch: false,
+          activeFlow: "employer_lead",
+        },
+        nextStep: 0,
+        isComplete: false,
+      };
+    }
+
     const classification = await classifyWorkerMessage({
       text: engineText,
       currentState: engineState,
@@ -159,18 +177,30 @@ export async function handleWorkerRegistration({
     }
 
     if (classification?.type === "FILLER") {
-      const nudge = buildFillerNudge(
-        engineState,
-        conversation?.metadata?.lastQuestion || ""
-      );
+      let nudge;
+      if (classification?.reason === "local: job seeker in worker flow") {
+        const currentQ = buildFillerNudge(engineState, "");
+        nudge = `Tapai job khojna nai correct flow ma hunuhuncha! 😊\n\n${currentQ}`;
+      } else {
+        nudge = buildFillerNudge(engineState, conversation?.metadata?.lastQuestion || "");
+      }
       return preserveWorkerState(conversation, nudge);
     }
 
     if (classification?.type === "EMPLOYER_INTENT") {
-      return preserveWorkerState(
-        conversation,
-        "Staff khojna ho bhane '2' thichnus — yo flow worker registration ko lagi ho. 😊"
-      );
+      return {
+        intent: "worker_registration",
+        messageToSend: "Staff khojna ho bhane '2' thichnus — yo flow worker registration ko lagi ho. 😊",
+        nextStep: 0,
+        currentState: conversation?.currentState,
+        metadataUpdate: {
+          collectedData: conversation?.metadata?.collectedData || {},
+          lastAskedField: conversation?.metadata?.lastAskedField || null,
+          currentState: conversation?.currentState,
+          pendingEmployerSwitch: true,
+        },
+        isComplete: false,
+      };
     }
 
     if (classification?.type === "OFF_TOPIC") {

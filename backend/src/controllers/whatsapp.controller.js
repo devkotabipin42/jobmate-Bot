@@ -491,10 +491,21 @@ export async function receiveWhatsAppWebhook(req, res) {
         status: "sent",
       });
 
+      const workerFlowDoneIntent = flowResult?.intent === "employer_lead"
+        ? "employer_lead"
+        : "worker_registration";
+      const workerFlowDoneState = flowResult?.intent === "employer_lead"
+        ? "ask_business_name"
+        : flowResult?.currentState || activeConversation.currentState || "idle";
+      const workerFlowDoneMeta = flowResult?.intent === "employer_lead"
+        ? { collectedData: {}, lastAskedField: null, pendingEmployerSwitch: false }
+        : (flowResult?.metadataUpdate || {});
+
       await updateConversationIntent({
         conversation: activeConversation,
-        intent: "worker_registration",
-        state: flowResult?.currentState || activeConversation.currentState || "idle",
+        intent: workerFlowDoneIntent,
+        state: workerFlowDoneState,
+        metadata: workerFlowDoneMeta,
         lastInboundMessageId: inboundMessage._id,
         lastOutboundMessageId: outboundMessage._id,
       });
@@ -505,7 +516,7 @@ export async function receiveWhatsAppWebhook(req, res) {
         success: true,
         message: "JobMate active worker flow handled message",
         reason: "active_worker_flow_state_priority",
-        intent: "worker_registration",
+        intent: workerFlowDoneIntent,
         replied: true,
         sendSkipped: sendResult.skipped || false,
       });

@@ -275,4 +275,23 @@ export const adminService = {
       }`
     );
   },
+
+  sendMessage(contactId, message) {
+    return request(`/api/admin/conversations/${contactId}/send`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    });
+  },
+
+  takeoverConversation(contactId) {
+    return request(`/api/admin/conversations/${contactId}/takeover`, {
+      method: "POST",
+    });
+  },
+
+  releaseConversation(contactId) {
+    return request(`/api/admin/conversations/${contactId}/release`, {
+      method: "POST",
+    });
+  },
 };

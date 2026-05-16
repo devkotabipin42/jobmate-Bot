@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { RefreshCcw, Search } from "lucide-react";
+import { Bot, RefreshCcw, Search, UserCheck, UserX } from "lucide-react";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import ConversationListItem from "../components/conversations/ConversationListItem";
 import MessageBubble from "../components/conversations/MessageBubble";
@@ -7,6 +7,7 @@ import ConversationProfile from "../components/conversations/ConversationProfile
 import ReplyBox from "../components/conversations/ReplyBox";
 import { useConversations } from "../hooks/useConversations";
 import { useConversationMessages } from "../hooks/useConversationMessages";
+import { adminService } from "../services/adminService";
 
 export default function ConversationsPage() {
   const [filters, setFilters] = useState({
@@ -16,6 +17,8 @@ export default function ConversationsPage() {
 
   const { conversations, loading, error, refetch } = useConversations(filters);
   const [selectedContactId, setSelectedContactId] = useState("");
+  const [handoffLoading, setHandoffLoading] = useState(false);
+  const [handoffError, setHandoffError] = useState("");
 
   const activeContactId = selectedContactId || conversations[0]?.contactId || "";
   const {
@@ -23,6 +26,7 @@ export default function ConversationsPage() {
     messages,
     loading: messagesLoading,
     error: messagesError,
+    refetch: refetchMessages,
   } = useConversationMessages(activeContactId);
 
   const selectedConversation = useMemo(
@@ -30,11 +34,44 @@ export default function ConversationsPage() {
     [conversations, activeContactId]
   );
 
+  const botMode = conversationData?.contact?.botMode || selectedConversation?.botMode || "bot";
+  const isHumanPaused = botMode === "human_paused";
+
   function updateFilter(key, value) {
     setFilters((prev) => ({
       ...prev,
       [key]: value,
     }));
+  }
+
+  async function handleTakeover() {
+    if (!activeContactId) return;
+    try {
+      setHandoffLoading(true);
+      setHandoffError("");
+      await adminService.takeoverConversation(activeContactId);
+      await refetchMessages();
+      refetch();
+    } catch (err) {
+      setHandoffError(err.message || "Takeover failed");
+    } finally {
+      setHandoffLoading(false);
+    }
+  }
+
+  async function handleRelease() {
+    if (!activeContactId) return;
+    try {
+      setHandoffLoading(true);
+      setHandoffError("");
+      await adminService.releaseConversation(activeContactId);
+      await refetchMessages();
+      refetch();
+    } catch (err) {
+      setHandoffError(err.message || "Release failed");
+    } finally {
+      setHandoffLoading(false);
+    }
   }
 
   return (
@@ -103,13 +140,57 @@ export default function ConversationsPage() {
 
         <section className="min-h-[620px] rounded-3xl border border-slate-200 bg-slate-100/70 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/60">
           <div className="mb-4 rounded-3xl bg-white p-4 shadow-sm dark:bg-slate-900">
-            <h3 className="font-black text-slate-950 dark:text-white">
-              {selectedConversation?.displayName || "Select conversation"}
-            </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              {selectedConversation?.phone || "-"} •{" "}
-              {selectedConversation?.contactType || "-"}
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-black text-slate-950 dark:text-white">
+                  {selectedConversation?.displayName || "Select conversation"}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {selectedConversation?.phone || "-"} •{" "}
+                  {selectedConversation?.contactType || "-"}
+                </p>
+              </div>
+
+              {activeContactId && (
+                <div className="flex shrink-0 items-center gap-2">
+                  {isHumanPaused ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-100 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20">
+                      <UserCheck size={12} />
+                      Bot Paused
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20">
+                      <Bot size={12} />
+                      Bot Active
+                    </span>
+                  )}
+
+                  {isHumanPaused ? (
+                    <button
+                      onClick={handleRelease}
+                      disabled={handoffLoading}
+                      className="inline-flex items-center gap-1.5 rounded-2xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      <Bot size={13} />
+                      Release
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleTakeover}
+                      disabled={handoffLoading}
+                      className="inline-flex items-center gap-1.5 rounded-2xl bg-amber-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-600 disabled:opacity-50"
+                    >
+                      <UserX size={13} />
+                      Takeover
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {handoffError && (
+              <p className="mt-2 text-xs font-semibold text-red-500">{handoffError}</p>
+            )}
           </div>
 
           <div className="max-h-[calc(100vh-420px)] space-y-3 overflow-y-auto px-1">
@@ -126,7 +207,10 @@ export default function ConversationsPage() {
             )}
           </div>
 
-          <ReplyBox />
+          <ReplyBox
+            contactId={activeContactId}
+            onSend={refetchMessages}
+          />
         </section>
 
         <div className="hidden xl:block">
