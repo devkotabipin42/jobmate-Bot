@@ -1859,7 +1859,7 @@ export async function receiveWhatsAppWebhook(req, res) {
           );
         }
 
-        replyText = "Document photo receive bhayo 🙏\nTapai ko naam pathaunus.";
+        replyText = "Document photo receive bhayo 🙏\nTapai ko naam pathaunu hola.";
       } else if (isWorkerDocumentMediaContext && conversation?._id) {
         const nextProfile = {
           ...currentJobmateProfile,

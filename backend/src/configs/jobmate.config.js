@@ -410,7 +410,7 @@ function shouldRunWorkerRegistrationSearchStep({
   });
 }
 
-const OUTSIDE_LUMBINI_DISTRICT_MENU = `Maaf garnus, JobMate haalai Lumbini Province matra active cha 🙏
+const OUTSIDE_LUMBINI_DISTRICT_MENU = `Maaf garnu hola 🙏 JobMate Nepal ahile Lumbini Province ma matra active cha.
 
 Tapai in areas ma kaam garna milcha?
 
@@ -466,17 +466,17 @@ function buildWorkerEditMenuMessage() {
 
 function getEditFieldQuestion(field) {
   const questions = {
-    jobType: `Naya kaam/job type pathaunus.\n\n${CANONICAL_WORKER_JOB_TYPE_MENU}`,
+    jobType: `Naya kaam/job type pathaunu hola.\n\n${CANONICAL_WORKER_JOB_TYPE_MENU}`,
     district: `Kun district/area ma kaam garna milcha?\n\n1. Nawalparasi West\n2. Rupandehi\n3. Kapilvastu\n4. Palpa\n5. Dang\n6. Banke`,
     availability: `Tapai kati samaya kaam garna milchha?\n\n1. Full-time\n2. Part-time\n3. Shift based\n4. Jun sukai`,
     documents: `Document status ke ho?\n\n1. Chha, photo/file pathauna sakchhu\n2. Chhaina\n3. Kehi chha, kehi chhaina`,
-    fullName: "Tapai ko naam pathaunus.",
-    providedPhone: "Tapai ko phone/WhatsApp number pathaunus.",
+    fullName: "Tapai ko naam pathaunu hola.",
+    providedPhone: "Tapai ko phone/WhatsApp number pathaunu hola.",
     age: "Tapai ko age kati ho?",
     experience: "Tapai ko experience kati cha? Experience chaina bhane 'no experience' lekhnus.",
     expectedSalary: "Expected salary kati ho? (e.g., 15000, 15000-20000, negotiable)",
   };
-  return questions[field] || "Naya value pathaunus.";
+  return questions[field] || "Naya value pathaunu hola.";
 }
 
 async function jobmateWorkerFlowGuard({
@@ -541,7 +541,7 @@ async function jobmateWorkerFlowGuard({
 
   if (isWorkerJobNotIntendedText(text)) {
     return {
-      messageToSend: "Thik cha Mitra ji. Tapai staff khojna chahanu huncha ki main menu ma jana chahanu huncha?\n1. Staff khojna\n2. Main menu",
+      messageToSend: "Hajur, thik cha 🙏 Tapai staff khojna chahanu huncha ki main menu ma jana chahanu huncha?\n1. Staff khojna\n2. Main menu",
       profileUpdates: {
         workerFlowExitOffered: true,
       },
@@ -554,7 +554,7 @@ async function jobmateWorkerFlowGuard({
   if ((lastAskedField === "jobType" || currentState === "ask_jobType" || currentState === "ask_job_type") && isWorkerSmallTalkText(text)) {
     return {
       messageToSend: [
-        "Mitra ji, ma JobMate team bata ho 🙏 Aba registration agadi badhauna tapai kasto kaam khojna chahanu huncha?",
+        "Hajur 🙏 Ma Aarati, JobMate Nepal team bata. Aba registration agadi badhauna tapai kasto kaam khojna chahanu huncha?",
         CANONICAL_WORKER_JOB_TYPE_MENU,
       ].join("\n\n"),
       currentState: currentState || "ask_jobType",
@@ -588,7 +588,7 @@ async function jobmateWorkerFlowGuard({
       currentState === "ask_document_status"
     ) {
       return {
-        messageToSend: "Document photo receive bhayo 🙏\nTapai ko naam pathaunus.",
+        messageToSend: "Document photo receive bhayo 🙏\nTapai ko naam pathaunu hola.",
         profileUpdates: {
           ...documentProfileUpdates,
           documents: "received",
@@ -650,7 +650,7 @@ async function jobmateWorkerFlowGuard({
 
   return {
     messageToSend: [
-      "Mitra ji, yo kaam haru practical/verified job category bhitra pardaina jasto lagyo 🙏 JobMate ma driver, hotel/helper, security, shop/retail, construction/labor, agriculture, sales/marketing jasta real kaam ko lagi registration garna milcha. Tapai sachikai kun kaam khojna chahanu huncha?",
+      "Hajur 🙏 Yo kaam practical/verified job category bhitra naparna sakcha. JobMate Nepal ma driver, hotel/helper, security, shop/retail, construction/labor, agriculture, sales/marketing jasta real kaam ko lagi registration garna milcha. Tapai sachikai kun kaam khojna chahanu huncha?",
       CANONICAL_WORKER_JOB_TYPE_MENU,
     ].join("\n\n"),
     currentState: currentState || "ask_jobType",
@@ -1207,7 +1207,7 @@ function buildWorkerConfirmationMessage(profile = {}) {
 - Experience: ${formatWorkerExperienceValue(profile.experience)}
 - Expected salary: ${formatWorkerExpectedSalaryValue(profile.expectedSalary)}
 
-1. Ho, save garnus
+1. Ho, save garnu hola
 2. Edit garnu cha`;
 }
 
@@ -1499,9 +1499,9 @@ Aile document status choose garnu hola:
 3. Kehi chha, kehi chhaina`;
       },
 
-      askName: () => "Tapai ko naam pathaunus.",
+      askName: () => "Tapai ko naam pathaunu hola.",
 
-      askPhone: () => "Tapai ko phone/WhatsApp number pathaunus.",
+      askPhone: () => "Tapai ko phone/WhatsApp number pathaunu hola.",
 
       askAge: () => "Tapai ko age kati ho?",
 
@@ -1561,7 +1561,7 @@ export const jobmateConfig = {
       ask: () =>
         typeof MESSAGES.askName === "function"
           ? MESSAGES.askName()
-          : "Tapai ko naam pathaunus.",
+          : "Tapai ko naam pathaunu hola.",
       parse: parseWorkerFullNameReply,
     },
     {
@@ -1569,7 +1569,7 @@ export const jobmateConfig = {
       ask: () =>
         typeof MESSAGES.askPhone === "function"
           ? MESSAGES.askPhone()
-          : "Tapai ko phone/WhatsApp number pathaunus.",
+          : "Tapai ko phone/WhatsApp number pathaunu hola.",
       parse: parseWorkerPhoneReply,
     },
     {

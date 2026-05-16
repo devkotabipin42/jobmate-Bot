@@ -180,8 +180,8 @@ async function handleBusinessMenuOption({ text, conversation }) {
     return {
       intent: "price_inquiry",
       messageToSend: serviceList
-        ? `Hajur, hamra services haru:\n\n${serviceList}\n\nKun service ko detail bujhna chahanu huncha? Number pathaunus.`
-        : "Services list ahile update hudai cha. Kun service chahiyeko ho pathaunus, team le confirm garera reply garnuhuncha.",
+        ? `Hajur, hamra services haru:\n\n${serviceList}\n\nKun service ko detail bujhna chahanu huncha? Number pathaunu hola.`
+        : "Services list ahile update hudai cha. Kun service chahiyeko ho pathaunu hola, team le confirm garera reply garnuhuncha.",
       needsHuman: services.length === 0,
       priority: services.length === 0 ? "medium" : "low",
       reason: "Business menu services selected",
