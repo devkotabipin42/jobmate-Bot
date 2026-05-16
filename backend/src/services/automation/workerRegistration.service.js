@@ -8,6 +8,7 @@ import {
 import { extractJobSearchWithAI } from "../ai/jobmateJobSearchExtractionAI.service.js";
 import { runConversationEngine } from "./conversationEngine.js";
 import { jobmateConfig } from "../../configs/jobmate.config.js";
+import { handleMidFlowSideQuestion } from "../jobmateLeadAgent/midFlowSideQuestion.service.js";
 import { scheduleFollowup } from "../followups/followupScheduler.service.js";
 import { getActiveFlowSideReply } from "../../policies/aarati.rulebook.js";
 import { getAaratiActiveFlowSideReply } from "../aarati/aaratiActiveFlowSideReply.service.js";
@@ -124,11 +125,37 @@ export async function handleWorkerRegistration({
   normalizedMessage,
 }) {
   if (isNewEngineEnabled()) {
+    const engineText = normalizedMessage?.message?.normalizedText || "";
     console.log("🔧 [NEW ENGINE] handleWorkerRegistration called", {
       currentState: conversation?.currentState,
-        collectedData: conversation?.metadata?.collectedData,
-      text: normalizedMessage?.message?.normalizedText,
+      collectedData: conversation?.metadata?.collectedData,
+      text: engineText,
     });
+
+    const sideQuestion = await handleMidFlowSideQuestion({
+      text: engineText,
+      activeFlow: "worker",
+      state: {
+        step: conversation?.currentState,
+        data: conversation?.metadata?.collectedData || {},
+      },
+    });
+
+    if (sideQuestion.handled) {
+      return {
+        intent: "worker_registration",
+        messageToSend: sideQuestion.reply,
+        nextStep: 0,
+        currentState: conversation?.currentState,
+        metadataUpdate: {
+          collectedData: conversation?.metadata?.collectedData || {},
+          lastAskedField: conversation?.metadata?.lastAskedField || null,
+          currentState: conversation?.currentState,
+        },
+        isComplete: false,
+      };
+    }
+
     const result = await runConversationEngine({
       contact,
       conversation,
