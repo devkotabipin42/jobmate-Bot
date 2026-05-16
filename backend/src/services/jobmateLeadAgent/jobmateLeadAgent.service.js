@@ -35,6 +35,7 @@ import {
   isMixedIntentClarificationState,
   parseMixedIntentChoice,
 } from "./mixedIntent.service.js";
+import { handleMidFlowSideQuestion } from "./midFlowSideQuestion.service.js";
 
 export async function handleJobMateLeadAgentMessage({
   contact = {},
@@ -240,6 +241,27 @@ export async function handleJobMateLeadAgentMessage({
       reply: buildAreaRoleOpportunityReply(text),
       reason: "jobmate_lead_agent_area_role_inquiry",
     });
+  }
+
+  if (activeFlow) {
+    const sideQuestion = await handleMidFlowSideQuestion({
+      text,
+      activeFlow,
+      state: currentState,
+    });
+
+    if (sideQuestion.handled) {
+      return buildHandledResult({
+        intent: "knowledge_question",
+        conversationIntent: conversationIntentForFlow(activeFlow, conversation),
+        currentState: preserveCurrentState({ flow: activeFlow, conversation }),
+        state: currentState,
+        reply: sideQuestion.reply,
+        reason: "jobmate_mid_flow_side_question",
+        needsHuman: false,
+        priority: "low",
+      });
+    }
   }
 
   const geminiAssist = shouldUseGeminiAssist({
