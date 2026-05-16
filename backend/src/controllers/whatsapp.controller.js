@@ -182,6 +182,34 @@ export async function receiveWhatsAppWebhook(req, res) {
       channel: "whatsapp",
     });
 
+    // ── Human takeover guard ────────────────────────────────────────────────
+    // If an admin has taken over this conversation, save the inbound message
+    // for the conversation history but do NOT process or auto-reply.
+    if (
+      conversation?.botMode === "human_paused" ||
+      contact?.botMode === "human_paused"
+    ) {
+      await saveInboundMessage({
+        contact,
+        conversation,
+        normalized,
+        intentResult: {
+          intent: "human_handoff",
+          needsHuman: true,
+          priority: "high",
+          reason: "bot_paused_human_active",
+        },
+      });
+
+      await markMessageProcessed(processedMessageId);
+
+      return res.status(200).json({
+        success: true,
+        ignored: true,
+        reason: "bot_paused_human_active",
+      });
+    }
+
     const startMenuText =
       normalized.message.normalizedText ||
       normalized.message.text ||

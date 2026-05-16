@@ -36,6 +36,12 @@ import {
   getAdminConversationMessages,
 } from "../controllers/admin.controller.js";
 
+import {
+  adminSendMessage,
+  adminTakeoverConversation,
+  adminReleaseConversation,
+} from "../controllers/handoff.controller.js";
+
 const router = express.Router();
 
 router.post("/auth/login", adminLogin);
@@ -74,5 +80,8 @@ router.patch("/handoffs/:id/call", patchAdminHandoffCall);
 
 router.get("/conversations", listAdminConversations);
 router.get("/conversations/:contactId/messages", getAdminConversationMessages);
+router.post("/conversations/:contactId/send", adminSendMessage);
+router.post("/conversations/:contactId/takeover", adminTakeoverConversation);
+router.post("/conversations/:contactId/release", adminReleaseConversation);
 
 export default router;
