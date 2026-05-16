@@ -18,6 +18,9 @@ export async function handleMidFlowSideQuestion({
     return { handled: true, reply };
   }
 
+  const staticReply = buildStaticFallback(text, activeFlow, state);
+  if (staticReply) return { handled: true, reply: staticReply };
+
   const aiReply = await generateAiAnswer({ text, activeFlow, state });
   if (!aiReply) return { handled: false };
 
@@ -76,7 +79,7 @@ function isSideQuestion(text = "") {
 
   // Knowledge-seeking words (Nepali + English)
   if (
-    /\b(ke ho|k ho|kasari|kina|barema|about|what|where|who|why|bujhna|explain)\b/.test(
+    /\b(ke ho|k ho|kasari|kina|kaha|kata|kun|barema|about|what|where|who|why|bujhna|explain)\b/.test(
       value
     )
   )
@@ -233,6 +236,51 @@ function buildFlowContext(activeFlow, state) {
     description: "kura garirako cha",
     nudge: "Job ya staff ko kura garau — help garchu. 😊",
   };
+}
+
+function buildStaticFallback(text = "", activeFlow = null, state = {}) {
+  const value = String(text || "").trim().toLowerCase();
+  const nudge = buildNaturalNudge(activeFlow, state);
+
+  // Who is Aarati / about you
+  if (
+    (value.includes("about") && value.includes("you")) ||
+    /\b(timi\s*ko\s*ho|k\s*ho\s*tapai|tapai\s*k\s*ho|aarati\s*ko\s*ho|who\s*are\s*you)\b/.test(value)
+  ) {
+    const reply =
+      "Ma Aarati — JobMate Nepal ki WhatsApp assistant hun! Job khojna ya staff khojna — dui jana lai help garchu. 😊";
+    return nudge ? `${reply}\n\n${nudge}` : reply;
+  }
+
+  // Where is office / location query
+  if (
+    /\b(office|branch|center|sewa|service)\b/.test(value) &&
+    /\b(kaha|kata|where|cha|xa|kun)\b/.test(value)
+  ) {
+    const reply =
+      "JobMate ko main base Bardaghat, Nawalparasi — Lumbini zone ma cha. WhatsApp bata nai sewa dincha, physically aaunaparne hudaina. 📍";
+    return nudge ? `${reply}\n\n${nudge}` : reply;
+  }
+
+  // Where are you from / location of Aarati
+  if (
+    /\b(where|kaha|kata)\b/.test(value) &&
+    /\b(you|aarati|tapai|timi|from|bata|hun)\b/.test(value)
+  ) {
+    const reply =
+      "JobMate WhatsApp bata kaam garcha — Bardaghat, Nawalparasi, Lumbini area ko local base cha. 📍";
+    return nudge ? `${reply}\n\n${nudge}` : reply;
+  }
+
+  // Casual / funny
+  if (
+    /\b(funny|haha|lol|wow|cool|nice|great|awesome|interesting|bravo)\b/i.test(value)
+  ) {
+    const reply = "Haha, ramro cha! 😄 JobMate sanga kura garda ni mazza aaucha ni!";
+    return nudge ? `${reply}\n\n${nudge}` : reply;
+  }
+
+  return null;
 }
 
 function buildNaturalNudge(flow, state) {
