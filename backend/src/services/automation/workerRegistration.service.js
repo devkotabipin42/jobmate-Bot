@@ -9,6 +9,10 @@ import { extractJobSearchWithAI } from "../ai/jobmateJobSearchExtractionAI.servi
 import { runConversationEngine } from "./conversationEngine.js";
 import { jobmateConfig } from "../../configs/jobmate.config.js";
 import { handleMidFlowSideQuestion } from "../jobmateLeadAgent/midFlowSideQuestion.service.js";
+import {
+  classifyWorkerMessage,
+  buildFillerNudge,
+} from "./workerFlowClassifier.service.js";
 import { scheduleFollowup } from "../followups/followupScheduler.service.js";
 import { getActiveFlowSideReply } from "../../policies/aarati.rulebook.js";
 import { getAaratiActiveFlowSideReply } from "../aarati/aaratiActiveFlowSideReply.service.js";
@@ -126,36 +130,60 @@ export async function handleWorkerRegistration({
 }) {
   if (isNewEngineEnabled()) {
     const engineText = normalizedMessage?.message?.normalizedText || "";
+    const engineState = conversation?.currentState || "";
     console.log("🔧 [NEW ENGINE] handleWorkerRegistration called", {
-      currentState: conversation?.currentState,
+      currentState: engineState,
       collectedData: conversation?.metadata?.collectedData,
       text: engineText,
     });
 
-    const sideQuestion = await handleMidFlowSideQuestion({
+    const classification = await classifyWorkerMessage({
       text: engineText,
-      activeFlow: "worker",
-      state: {
-        step: conversation?.currentState,
-        data: conversation?.metadata?.collectedData || {},
-      },
+      currentState: engineState,
     });
+    console.log("🤖 [CLASSIFIER]", classification);
 
-    if (sideQuestion.handled) {
-      return {
-        intent: "worker_registration",
-        messageToSend: sideQuestion.reply,
-        nextStep: 0,
-        currentState: conversation?.currentState,
-        metadataUpdate: {
-          collectedData: conversation?.metadata?.collectedData || {},
-          lastAskedField: conversation?.metadata?.lastAskedField || null,
-          currentState: conversation?.currentState,
+    if (classification?.type === "SIDE_QUESTION") {
+      const sideResult = await handleMidFlowSideQuestion({
+        text: engineText,
+        activeFlow: "worker",
+        state: {
+          step: engineState,
+          data: conversation?.metadata?.collectedData || {},
         },
-        isComplete: false,
-      };
+      });
+      const reply = sideResult.handled
+        ? sideResult.reply
+        : "Maaf garnus, yo kura barema thik jaankari dina sakdina 🙏 Registration continue garau.";
+      return preserveWorkerState(conversation, reply);
     }
 
+    if (classification?.type === "FILLER") {
+      const nudge = buildFillerNudge(
+        engineState,
+        conversation?.metadata?.lastQuestion || ""
+      );
+      return preserveWorkerState(conversation, nudge);
+    }
+
+    if (classification?.type === "EMPLOYER_INTENT") {
+      return preserveWorkerState(
+        conversation,
+        "Staff khojna ho bhane '2' thichnus — yo flow worker registration ko lagi ho. 😊"
+      );
+    }
+
+    if (classification?.type === "OFF_TOPIC") {
+      const lastQ =
+        conversation?.metadata?.lastQuestion ||
+        "Kripaya worker registration details pathaunus.";
+      return preserveWorkerState(
+        conversation,
+        `Maaf garnus, yo kura JobMate ko kaam bhanda bahira cha 🙏\n\n${lastQ}`
+      );
+    }
+
+    // FLOW_ANSWER or null (AI unavailable) — normal processing
     const result = await runConversationEngine({
       contact,
       conversation,
@@ -369,6 +397,21 @@ export async function handleWorkerRegistration({
     needsHuman: isComplete,
     priority: isComplete ? "high" : "low",
     handoffReason: isComplete ? "qualified_worker" : "",
+  };
+}
+
+function preserveWorkerState(conversation, reply) {
+  return {
+    intent: "worker_registration",
+    messageToSend: reply,
+    nextStep: 0,
+    currentState: conversation?.currentState,
+    metadataUpdate: {
+      collectedData: conversation?.metadata?.collectedData || {},
+      lastAskedField: conversation?.metadata?.lastAskedField || null,
+      currentState: conversation?.currentState,
+    },
+    isComplete: false,
   };
 }
 
