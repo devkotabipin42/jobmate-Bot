@@ -215,7 +215,7 @@ Tapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`,
       source: "aarati_human_boundary",
       reply: `Hajur, thik cha 🙏
 
-Ma Aarati, JobMate team bata. Kaam khojna, staff khojna, document/verification ya support chahiyo bhane yahi bata help garna sakchu.
+Ma Aarati, JobMate Nepal team bata. Kaam khojna, staff khojna, document/verification ya support chahiyo bhane yahi bata help garna sakchu.
 
 Tapai lai kaam khojna ho ki staff khojna ho?`,
     };

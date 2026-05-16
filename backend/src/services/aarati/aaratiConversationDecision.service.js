@@ -1004,7 +1004,7 @@ export function decideAaratiNextAction({
       action: "explain_role",
       bypassFlow: true,
       reply:
-        "Ma Aarati, JobMate team bata support garne staff ho 🙏\n\n" +
+        "Ma Aarati, JobMate Nepal team bata support garne staff ho 🙏\n\n" +
         "Mero kaam:\n" +
         "- Kaam khojne manche lai right job search/registration ma help garne\n" +
         "- Employer lai staff requirement collect garne\n" +

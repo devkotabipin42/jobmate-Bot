@@ -235,7 +235,7 @@ function buildDeterministicFallbackReply(intent = "safe_unknown_question") {
       return `Hajur 🙏 Website/app banaune kaam JobMate ko main service bhitra pardaina.\n\nJobMate le job khojna, staff khojna, document/verification, pricing ra hiring support ma matra help garcha.\n\nTapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`;
 
     case "small_talk":
-      return `Hajur, thik cha 🙏\n\nMa Aarati, JobMate team bata. Small kura garna milcha, tara mero main kaam tapai lai job/hiring support dinu ho.\n\nKaam khojna ho bhane location ra kaam type pathaunu hola. Staff khojna ho bhane business/role pathaunu hola.`;
+      return `Hajur, thik cha 🙏\n\nMa Aarati, JobMate Nepal team bata. Small kura garna milcha, tara mero main kaam tapai lai job/hiring support dinu ho.\n\nKaam khojna ho bhane location ra kaam type pathaunu hola. Staff khojna ho bhane business/role pathaunu hola.`;
 
     case "safe_unknown_question":
     default:

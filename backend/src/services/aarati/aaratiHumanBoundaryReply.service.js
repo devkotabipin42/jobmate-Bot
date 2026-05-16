@@ -72,7 +72,7 @@ export function buildAaratiClassifiedReply({
     // ── Identity / capability ───────────────────────────────────────────
     case "identity_capability":
       return [
-        "Ma Aarati, JobMate team bata support garne staff ho 🙏",
+        "Ma Aarati, JobMate Nepal team bata support garne staff ho 🙏",
         "Mero kaam:\n- Kaam khojne manche lai right job search/registration ma help garne\n- Employer lai staff requirement collect garne\n- CV/document/verification ko guidance dine\n- Pricing/support ko basic answer dine\n- Zaruri paryo bhane human team samma kura puryaune",
       ].join("\n\n");
 

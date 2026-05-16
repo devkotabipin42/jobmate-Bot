@@ -227,7 +227,7 @@ function buildReplyForIntent(intent) {
     case "small_talk":
       return formatReply({
         opener: "Hajur, thik cha 🙏",
-        body: "Ma Aarati, JobMate team bata. Small kura garna milcha, tara mero main kaam tapai lai job/hiring support dinu ho.",
+        body: "Ma Aarati, JobMate Nepal team bata. Small kura garna milcha, tara mero main kaam tapai lai job/hiring support dinu ho.",
         nextStep: "Kaam khojna ho bhane location ra kaam type pathaunu hola. Staff khojna ho bhane business/role pathaunu hola.",
       });
 

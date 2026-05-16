@@ -193,7 +193,7 @@ export function buildHumanClarificationReply({ mode = "unclear", text = "", conv
     case "small_talk":
       return fmt(
         "Hajur, thik cha 🙏",
-        "Ma Aarati, JobMate team bata. Small kura garna milcha — tara mero main kaam tapai lai job ra hiring support dinu ho.",
+        "Ma Aarati, JobMate Nepal team bata. Small kura garna milcha — tara mero main kaam tapai lai job ra hiring support dinu ho.",
         "Kaam khojna ho bhane location ra kaam type pathaunu hola. Staff khojna ho bhane company name ra role pathaunu hola."
       );
 
