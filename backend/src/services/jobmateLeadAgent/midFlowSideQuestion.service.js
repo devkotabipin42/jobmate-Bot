@@ -1,9 +1,6 @@
 import axios from "axios";
 import { JOBMATE_KNOWLEDGE_TOPICS } from "../../data/knowledge/jobmateKnowledgePack.js";
 import { sanitizeReply } from "./replyFormatter.service.js";
-import { buildWorkerResumePrompt } from "./workerLeadFlow.service.js";
-import { buildEmployerResumePrompt } from "./employerLeadFlow.service.js";
-import { buildSahakariResumePrompt } from "./sahakariLeadFlow.service.js";
 
 export async function handleMidFlowSideQuestion({
   text = "",
@@ -14,101 +11,145 @@ export async function handleMidFlowSideQuestion({
   if (!isSideQuestion(text)) return { handled: false };
 
   const ragAnswer = findRagAnswer(text);
-  const baseReply = ragAnswer || (await generateAiAnswer(text));
 
-  if (!baseReply) return { handled: false };
+  if (ragAnswer) {
+    const nudge = buildNaturalNudge(activeFlow, state);
+    const reply = nudge ? `${ragAnswer}\n\n${nudge}` : ragAnswer;
+    return { handled: true, reply };
+  }
 
-  const resumePrompt = buildFlowResumePrompt({ flow: activeFlow, state });
-  const reply = resumePrompt ? `${baseReply}\n\n${resumePrompt}` : baseReply;
+  const aiReply = await generateAiAnswer({ text, activeFlow, state });
+  if (!aiReply) return { handled: false };
 
-  return { handled: true, reply };
+  return { handled: true, reply: aiReply };
 }
 
+// Liberal: if it is NOT a clear flow answer, treat it as a potential side question.
 function isSideQuestion(text = "") {
   const value = String(text || "").trim().toLowerCase();
 
-  if (!value || value.length < 5) return false;
+  if (!value || value.length < 4) return false;
 
-  // Single digit — numeric flow answer (menu selection, availability choice, etc.)
+  // Single digit — menu selection, availability choice, confirmation
   if (/^[1-9]$/.test(value)) return false;
 
   // Bare phone number
   if (/^9[78]\d{8}$/.test(value.replace(/[\s-]/g, ""))) return false;
 
-  // Bare numeric — salary, age, count
-  if (/^\d{1,6}$/.test(value)) return false;
+  // Bare numeric or salary range (e.g. 24, 18000, 18000-22000)
+  if (/^\d{1,6}(-\d{1,6})?$/.test(value)) return false;
 
-  // Simple yes/no/ok confirmations
-  if (/^(ho|haina|cha|chha|xa|xaina|ok|okay|yes|no|thik cha|theek cha|huncha|hunxa|pardaina|hajur|nai|hoo|sahi)$/.test(value)) return false;
+  // Simple yes/no/ok/availability confirmations
+  if (
+    /^(ho|haina|cha|chha|xa|xaina|ok|okay|yes|no|thik cha|theek cha|huncha|hunxa|pardaina|hajur|nai|hoo|sahi|full.?time|part.?time|immediate|available|unavailable)$/.test(
+      value
+    )
+  )
+    return false;
 
   // Single well-known role name
-  if (/^(waiter|driver|cook|helper|cleaner|security|guard|sales|receptionist|teacher|accountant|cashier|kitchen|electrician|plumber|mason|carpenter|nurse|sweeper|peon|watchman)$/.test(value)) return false;
+  if (
+    /^(waiter|driver|cook|helper|cleaner|security|guard|sales|receptionist|teacher|accountant|cashier|kitchen|electrician|plumber|mason|carpenter|nurse|sweeper|peon|watchman|marketing|manager|supervisor|housekeeper|barista|delivery|operator|technician|engineer|painter|tailor|chef|steward|admin|coordinator|farmer|labour|labor)$/.test(
+      value
+    )
+  )
+    return false;
 
   // Single well-known location name
-  if (/^(butwal|bardaghat|parasi|bhairahawa|jimirbar|sunwal|nawalpur|palpa|rupandehi|lumbini|pokhara|kathmandu|chitwan|lalitpur|butaha|tansen|byas|gaidakot|waling|damauli)$/.test(value)) return false;
+  if (
+    /^(butwal|bardaghat|parasi|bhairahawa|jimirbar|sunwal|nawalpur|palpa|rupandehi|lumbini|pokhara|kathmandu|chitwan|lalitpur|butaha|tansen|byas|gaidakot|waling|damauli|nawalparasi|hetauda|birgunj|biratnagar|dharan|itahari)$/.test(
+      value
+    )
+  )
+    return false;
 
-  // Multi-part data entry (≥ 2 commas = structured flow data, not a question)
-  const commaCount = (value.match(/,/g) || []).length;
-  if (commaCount >= 2) return false;
+  // Multi-part data entry — ≥ 2 commas means structured field answer, not a question
+  if ((value.match(/,/g) || []).length >= 2) return false;
 
-  // Long message with an embedded phone number = flow data entry
+  // Long message with an embedded Nepal phone number = data entry
   if (value.length > 60 && /9[78]\d{8}/.test(value.replace(/\s/g, ""))) return false;
 
-  // Must have an explicit question mark or a clear knowledge-seeking phrase
-  return (
-    value.includes("?") ||
-    /\b(ke ho|k ho|kasari|kina|barema|about|what|how|bujhna|explain)\b/.test(value) ||
-    /\b(jobmate|job\s*mate)\b/.test(value) ||
-    /\b(verified\s*badge|field\s*agent|pricing plan|plan k|plan ke)\b/.test(value)
-  );
+  // ---- Positive signals: anything below this line is treated as a side question ----
+
+  // Explicit question mark
+  if (value.includes("?")) return true;
+
+  // Knowledge-seeking words (Nepali + English)
+  if (
+    /\b(ke ho|k ho|kasari|kina|barema|about|what|where|who|why|bujhna|explain)\b/.test(
+      value
+    )
+  )
+    return true;
+
+  // Mentions of JobMate/Aarati by name
+  if (/\b(jobmate|job\s*mate|aarati)\b/.test(value)) return true;
+
+  // English conversational phrases — clearly not flow data
+  if (
+    /\b(you|funny|haha|lol|nice|cool|awesome|thanks|thank|bye|sorry|wow|great|bravo|interesting|really)\b/i.test(
+      value
+    )
+  )
+    return true;
+
+  // Feature/topic keywords
+  if (
+    /\b(verified\s*badge|field\s*agent|pricing|document\s*safe|privacy|support\s*email)\b/.test(
+      value
+    )
+  )
+    return true;
+
+  return false;
 }
 
 function findRagAnswer(text = "") {
   const value = String(text || "").toLowerCase();
-
   for (const topic of JOBMATE_KNOWLEDGE_TOPICS) {
-    if (topic.patterns.some((pattern) => pattern.test(value))) {
+    if (topic.patterns.some((p) => p.test(value))) {
       return topic.answer;
     }
   }
-
   return null;
 }
 
-async function generateAiAnswer(text = "") {
+async function generateAiAnswer({ text = "", activeFlow = null, state = {} } = {}) {
   const apiKey = String(
     process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || ""
   ).trim();
   if (!apiKey) return null;
 
-  try {
-    const mockEnv = process.env.JOBMATE_LEAD_AGENT_GEMINI_MOCK_JSON;
-    if (mockEnv) {
+  // Mock support for test environments
+  const mockEnv = process.env.JOBMATE_LEAD_AGENT_GEMINI_MOCK_JSON;
+  if (mockEnv) {
+    try {
       const parsed = JSON.parse(mockEnv);
-      const answer = String(parsed?.knowledgeAnswer || "").trim();
+      const answer = sanitizeReply(
+        String(parsed?.reply || parsed?.knowledgeAnswer || "").trim()
+      );
       return answer || null;
+    } catch {
+      return null;
     }
+  }
 
+  const flowCtx = buildFlowContext(activeFlow, state);
+  const prompt = buildAaratiPrompt(text, flowCtx);
+
+  try {
     const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-
-    const prompt = [
-      "Timi JobMate Nepal ko helpful assistant ho.",
-      "User le JobMate barema question gareko cha. Tyo question ko Roman Nepali ma short, clear, helpful answer deu.",
-      "Hindi words (nahi, kya, hai, aap, chahiye, kaise, accha) naprayu.",
-      "AI, Gemini, model, provider, ya kuno tech word naprayu.",
-      "Job guarantee, payment final, staff ready bhanera naprayu.",
-      "2-3 sentence ma answer deu. Natural Roman Nepali tone.",
-      'Return ONLY valid JSON: { "knowledgeAnswer": "<reply>" }',
-      "",
-      `User question: ${text}`,
-    ].join("\n");
 
     const response = await axios.post(
       url,
       {
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 256,
+          responseMimeType: "application/json",
+        },
       },
       { timeout: Number(process.env.AI_TIMEOUT_MS || 2500) }
     );
@@ -116,17 +157,84 @@ async function generateAiAnswer(text = "") {
     const raw =
       response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
     const parsed = JSON.parse(raw);
-    const answer = sanitizeReply(String(parsed?.knowledgeAnswer || "").trim());
-
-    return answer || null;
+    const reply = sanitizeReply(String(parsed?.reply || "").trim());
+    return reply || null;
   } catch {
     return null;
   }
 }
 
-function buildFlowResumePrompt({ flow = null, state = {} } = {}) {
-  if (flow === "worker") return buildWorkerResumePrompt({ state });
-  if (flow === "employer") return buildEmployerResumePrompt({ state });
-  if (flow === "sahakari") return buildSahakariResumePrompt({ state });
-  return "";
+function buildAaratiPrompt(text, flowCtx) {
+  return [
+    "Timi Aarati ho — JobMate Nepal ki WhatsApp assistant. Warm, friendly, helpful friend jasto kura garchau.",
+    "",
+    "Rules:",
+    "- Hamesha Roman Nepali ma reply garnu. English aayo bhane bujhnu tara Roman Nepali ma reply garnu.",
+    "- Hindi words kabhi naprayu: aap, hum, kijiye, nahi, kya, hai, accha, theek.",
+    "- AI, Gemini, Google, robot, language model — yo sab naprayu. Timi Aarati ho, JobMate team ki member.",
+    "- Max 2-3 short lines — WhatsApp jasto compact.",
+    "- Job guarantee, payment final, staff ready pakka cha — yo sab naprayu.",
+    "",
+    "Special scenarios:",
+    '- "whats about you" / "k ho tapai" / "timi ko ho" → warmly introduce: "Ma Aarati — JobMate Nepal ki WhatsApp assistant. Job khojna ya staff khojna help garchu!"',
+    '- "where are you" / "kaha cha" → "JobMate WhatsApp bata kaam garcha — Bardaghat, Nawalparasi, Lumbini area ko local base cha."',
+    "- Funny/random/casual message → light humor sanga reply, tarpachi gently guide back.",
+    "- General question about JobMate → short, helpful, conversational answer.",
+    "",
+    `Context: User ${flowCtx.description}.`,
+    `Reply ko last line ma yo warm nudge raknu: "${flowCtx.nudge}"`,
+    "",
+    'Return ONLY valid JSON: { "reply": "<Roman Nepali reply, max 3 lines, friendly tone>" }',
+    "",
+    `User message: "${text}"`,
+  ].join("\n");
+}
+
+function buildFlowContext(activeFlow, state) {
+  const step = state?.step || "";
+
+  if (activeFlow === "worker") {
+    const nudges = {
+      jobType: "Haina ta, kaam ko kura garau — kasto job khojna cha tapai lai? 😊",
+      district: "Kun district ma kaam khojna cha bataunu hola.",
+      location: "Kun area tira job khojna cha tapai?",
+      availability: "Full-time garnu cha ki part-time?",
+      documents: "License ya kochi document cha tapai sanga?",
+      fullName: "Tapai ko naam k ho ni?",
+      providedPhone: "Aba phone number pathaunus ta.",
+      age: "Tapai ko umar kati ho?",
+      experience: "Kati barsa experience cha tapai sanga?",
+      expectedSalary: "Kati salary expect garnu bhayo?",
+      confirmation: "Yo details thik lagcha? Confirm garnu hola.",
+    };
+    return {
+      description: "job khojna bhani worker registration ma cha",
+      nudge:
+        nudges[step] ||
+        "Haina ta, registration continue garau — details pathaunus hola. 😊",
+    };
+  }
+
+  if (activeFlow === "employer") {
+    return {
+      description: "staff khojna bhani employer requirement flow ma cha",
+      nudge: "Aba staff requirement ko kura garau — details pathaunus hola. 😊",
+    };
+  }
+
+  if (activeFlow === "sahakari") {
+    return {
+      description: "sahakari partnership flow ma cha",
+      nudge: "Haina ta, sahakari ko details pathaunus hola. 😊",
+    };
+  }
+
+  return {
+    description: "kura garirako cha",
+    nudge: "Job ya staff ko kura garau — help garchu. 😊",
+  };
+}
+
+function buildNaturalNudge(flow, state) {
+  return buildFlowContext(flow, state).nudge;
 }
