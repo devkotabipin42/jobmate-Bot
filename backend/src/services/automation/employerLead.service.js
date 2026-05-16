@@ -50,6 +50,7 @@ import {
   classifyEmployerMessage,
   buildEmployerFillerNudge,
 } from "./employerFlowClassifier.service.js";
+import { CANONICAL_WORKER_JOB_TYPE_MENU } from "../jobmate/workerJobTypeMenu.service.js";
 
 const URGENCY_MAP = {
   "1": {
@@ -147,11 +148,20 @@ export async function handleEmployerLead({
   }
 
   if (classification?.type === "WORKER_INTENT") {
-    return preserveEmployerState(
+    return {
+      intent: "worker_registration",
+      messageToSend: `Thik cha! Job khojna registration suru garau 🙏\n\nTapai kun kaam khojna chahanu huncha?\n\n${CANONICAL_WORKER_JOB_TYPE_MENU}`,
+      currentState: "ask_jobType",
+      isComplete: false,
+      needsHuman: false,
+      priority: "low",
       conversation,
-      "Kaam khojna ho bhane '1' thichnus — yo flow staff hiring ko lagi ho. 😊",
-      step
-    );
+      employerLead: null,
+      nextStep: step,
+      scoreAdd: 0,
+      urgencyLevel: "unknown",
+      handoffReason: "",
+    };
   }
 
   if (classification?.type === "OFF_TOPIC") {

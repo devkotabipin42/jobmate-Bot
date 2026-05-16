@@ -29,6 +29,8 @@ export function isStartRestartMenuCommand(text = "") {
     "menu",
     "hello",
     "hi",
+    "hey",
+    "namaste",
   ]).has(value);
 }
 

@@ -391,10 +391,27 @@ export async function receiveWhatsAppWebhook(req, res) {
         status: "sent",
       });
 
+      const employerFlowDoneIntent = flowResult?.isComplete
+        ? "unknown"
+        : flowResult?.intent === "worker_registration"
+          ? "worker_registration"
+          : "employer_lead";
+
+      const employerFlowDoneState = flowResult?.isComplete
+        ? "idle"
+        : flowResult?.intent === "worker_registration"
+          ? "ask_jobType"
+          : flowResult?.currentState || activeConversation.currentState || "idle";
+
+      const employerFlowDoneMeta = flowResult?.intent === "worker_registration"
+        ? { lastAskedField: "jobType", activeFlow: "worker_registration", collectedData: {} }
+        : {};
+
       await updateConversationIntent({
         conversation: activeConversation,
-        intent: "employer_lead",
-        state: flowResult?.currentState || activeConversation.currentState || "idle",
+        intent: employerFlowDoneIntent,
+        state: employerFlowDoneState,
+        metadata: employerFlowDoneMeta,
         lastInboundMessageId: inboundMessage._id,
         lastOutboundMessageId: outboundMessage._id,
       });
@@ -405,7 +422,7 @@ export async function receiveWhatsAppWebhook(req, res) {
         success: true,
         message: "JobMate active employer flow handled message",
         reason: "active_employer_flow_state_priority",
-        intent: "employer_lead",
+        intent: employerFlowDoneIntent,
         replied: true,
         sendSkipped: sendResult.skipped || false,
       });
@@ -2544,12 +2561,15 @@ function applyConversationIntentOverride({ intentResult, conversation, normalize
   // If the conversation is already collecting employer details,
   // short answers like "butwal" or "1" must continue employer flow,
   // not become jobseeker search/registration.
+  // Exclude "completed" and "idle" — those mean the flow is done and should not be locked.
+  const isPostFlowState = ["completed", "idle", ""].includes(conversation?.currentState || "");
   const isEmployerFlowActive =
-    activeEmployerStates.includes(conversation?.currentState) ||
+    !isPostFlowState &&
+    (activeEmployerStates.includes(conversation?.currentState) ||
     conversation?.currentIntent === "employer_lead" ||
     (Number(conversation?.metadata?.qualificationStep || 0) >= 1 &&
       Number(conversation?.metadata?.qualificationStep || 0) <= 4 &&
-      activeEmployerStates.includes(conversation?.currentState));
+      activeEmployerStates.includes(conversation?.currentState)));
 
   if (
     isEmployerFlowActive &&
@@ -2707,7 +2727,6 @@ const AUTOMATION_EMPLOYER_ACTIVE_STATES = new Set([
   "ask_urgency",
   "ask_salary_range",
   "ask_work_type",
-  "completed",
 ]);
 
 function isActiveAutomationEmployerLeadConversation(conversation = {}) {
