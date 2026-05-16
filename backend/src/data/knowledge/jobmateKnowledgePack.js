@@ -97,9 +97,23 @@ export const JOBMATE_KNOWLEDGE_TOPICS = [
     answer: JOBMATE_KNOWLEDGE_PACK.company.howItWorks,
   },
   {
+    key: "founder_info",
+    patterns: [/ceo|sanchalak|malik|company ko head|kasle chalauxa|kasle chalaauxa/i],
+    answer:
+      "JobMate Nepal ko team Lumbini Province focus garera kaam garcha. Detailed company info ko lagi hamro team sanga direct kura garnus — 'team' lekhnus.",
+  },
+  {
     key: "founder",
     patterns: [/founder|owner|bipin|kasle banayo|kun company/i],
     answer: JOBMATE_KNOWLEDGE_PACK.company.founder,
+  },
+  {
+    key: "data_privacy",
+    patterns: [
+      /katai.*leak|leak.*hudaina|detail.*safe|mero detail|katai.*share|sabai.*dekhauxa|gopya|data.*safe|secure.*data/i,
+    ],
+    answer:
+      "Tapai ko details 100% safe cha. JobMate le tapai ko personal information — naam, phone, document — sirf matching employer lai matra share garcha, ani tapai ko permission bina katai leak hudaina. Tapai ko data hamro secure system ma store huncha. 🔒",
   },
   {
     key: "document_privacy",
@@ -115,6 +129,14 @@ export const JOBMATE_KNOWLEDGE_TOPICS = [
     key: "field_agent",
     patterns: [/field agent|field visit|agent visit|ground operation|gps|visit business/i],
     answer: `${JOBMATE_KNOWLEDGE_PACK.fieldOps.summary}\n\n${JOBMATE_KNOWLEDGE_PACK.fieldOps.coverage}`,
+  },
+  {
+    key: "human_handoff",
+    patterns: [
+      /manager.*s[ai]nga|manager.*saga|team.*s[ai]nga|team.*saga|staff.*s[ai]nga|manche.*s[ai]nga|human.*s[ai]nga|kura garnu [xc]ha|kura garna [xc]ha|forward gari dinus|direct.*connect|connect gari dinus|human support|real person|real manche/i,
+    ],
+    answer:
+      "Thik cha! Hamro team lai message forward gardinchu. Tapai ko number note bhayo, chhittai contact garcha. 📞",
   },
   {
     key: "support",
