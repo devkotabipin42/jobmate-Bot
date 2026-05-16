@@ -74,6 +74,14 @@ export const JOBMATE_KNOWLEDGE_TOPICS = [
     answer: JOBMATE_KNOWLEDGE_PACK.pricing.jobseeker,
   },
   {
+    key: "operating_hours",
+    patterns: [
+      /kati\s*baje|baje\s*dekhi|baje\s*samma|kul\s*xa|kulxa|kholcha|khulcha|khulchha|khulincha|office\s*time|office\s*hour|opening\s*hour|operating\s*hour|kab\s*tak|kahile\s*samma|din\s*bhar.*available|available.*bela|timings?|schedule.*jobmate|jobmate.*schedule/i,
+    ],
+    answer:
+      "JobMate 24/7 WhatsApp bata available cha — din rat junai bela message garna milcha. 🕐\n\nHuman team le working hours (bihandev 9 baje dekhi beluka 6 baje samma, Monday–Saturday) matra reply garcha.",
+  },
+  {
     key: "pricing",
     patterns: [/price|pricing|paisa|kati|cost|plan|basic|premium|free|monthly|fee/i, /मूल्य|पैसा|शुल्क/i],
     answer: JOBMATE_KNOWLEDGE_PACK.pricing.employer,

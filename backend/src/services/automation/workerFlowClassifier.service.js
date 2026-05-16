@@ -74,17 +74,19 @@ User message: ${text}
 
 Classify this message as ONE of:
 - FLOW_ANSWER: direct answer to the current question (job type, district, availability, name, phone, etc.)
-- SIDE_QUESTION: question about JobMate, Aarati, office, pricing, identity, "about you", kaha cha, etc.
+- SIDE_QUESTION: question about JobMate, Aarati, office, pricing, identity, hours, "about you", kaha cha, etc.
 - FILLER: meaningless filler ("continue", "ok", "next", "haha", "lol", "thik") with no real registerable content
-- EMPLOYER_INTENT: user wants to hire staff, not find a job
+- EMPLOYER_INTENT: user wants to hire or recruit staff — they are an employer, not a job seeker
 - OFF_TOPIC: completely unrelated to job search (weather, politics, homework, personal chat)
 
 Rules:
 - Single digits (1-9) are almost always FLOW_ANSWER (menu selections).
-- Job type names (driver, waiter, cook, security, etc.) are FLOW_ANSWER.
+- Job type names alone (driver, waiter, cook, security, etc.) are FLOW_ANSWER.
 - District/location names as a standalone reply are FLOW_ANSWER.
 - "ok", "thik", "huncha" right after a question are FILLER (not confirmation yet).
-- Questions containing "kaha", "ke ho", "about you", "office", "price" are SIDE_QUESTION.
+- Questions containing "kaha", "ke ho", "about you", "office", "price", "hours", "time", "baje" are SIDE_QUESTION.
+- EMPLOYER_INTENT rule (highest priority): if the user says they NEED or WANT a person to work FOR them — phrases like "need hr manager", "need staff", "need driver", "hire garna", "staff chahiyo", "vacancy cha", "recruit garna", "looking for [role]", "i need [role]", "[role] chahiyo mero business ko lagi" — classify as EMPLOYER_INTENT even if it contains a role name.
+- The key distinction: job seeker says "I want a job as driver" → FLOW_ANSWER; employer says "I need a driver" → EMPLOYER_INTENT.
 
 Return ONLY valid JSON: { "type": "FLOW_ANSWER", "reason": "short reason" }`;
 }
