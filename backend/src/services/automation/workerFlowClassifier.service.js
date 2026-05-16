@@ -8,26 +8,61 @@ const VALID_TYPES = new Set([
   "OFF_TOPIC",
 ]);
 
+// ── Local rule-based classifier (no API needed) ───────────────────────────────
+const RE_QUESTION_WORD   = /^(what|where|who|how|why|ke|k|kaha|kasari|kina|kun|kasto|kahile|kata)\b/i;
+const RE_HUMAN_HANDOFF   = /staff\s*(?:sanga|singa|saga)|team\s*(?:sanga|singa|saga)|manager\s*(?:sanga|singa|saga)|manche\s*(?:sanga|singa|saga)|human\s*(?:sanga|singa|saga)|kura\s*garna?\s*[xc]ha|human\s*support/i;
+const RE_EMPLOYER_SIGNAL = /staff\s*chahiyo|worker\s*chahiyo|hire\s*garna|vacancy\s*cha|malai\s*staff|(?:need|chahiyo)\s+(?:staff|driver|worker|hr|manager)|recruit\s*garna/i;
+const RE_SINGLE_DIGIT    = /^\d$/;
+const RE_FILLER          = /^(ok|okay|thik|thik\s*cha|huncha|hunchha|next|continue|proceed|haha|lol)$/i;
+const RE_KNOWN_ROLE      = /^(driver|waiter|cook|helper|cleaner|security|guard|teacher|accountant|cashier|electrician|plumber|nurse|sweeper|barista|chef|tailor|receptionist|supervisor|marketing|sales|manager)$/i;
+const RE_KNOWN_DISTRICT  = /^(nawalparasi|bardaghat|butwal|bhairahawa|palpa|dang|banke|bardiya|kapilvastu|rupandehi|parasi|lumbini|pokhara|kathmandu|lalitpur|chitwan|butaha|sunwal|rampur)$/i;
+
+function localClassifyWorker(text) {
+  const lower = String(text || "").trim().toLowerCase();
+  if (!lower) return null;
+
+  if (RE_QUESTION_WORD.test(lower))   return { type: "SIDE_QUESTION",   reason: "local: question word" };
+  if (RE_HUMAN_HANDOFF.test(lower))   return { type: "SIDE_QUESTION",   reason: "local: human handoff" };
+  if (RE_EMPLOYER_SIGNAL.test(lower)) return { type: "EMPLOYER_INTENT", reason: "local: employer signal" };
+  if (RE_SINGLE_DIGIT.test(lower))    return { type: "FLOW_ANSWER",     reason: "local: single digit" };
+  if (RE_FILLER.test(lower))          return { type: "FILLER",          reason: "local: filler word" };
+  if (RE_KNOWN_ROLE.test(lower))      return { type: "FLOW_ANSWER",     reason: "local: known role" };
+  if (RE_KNOWN_DISTRICT.test(lower))  return { type: "FLOW_ANSWER",     reason: "local: known district" };
+
+  return null;
+}
+
+// ── Main classifier ───────────────────────────────────────────────────────────
+
 /**
- * Classify an incoming worker-flow message via AI before processing it.
- * Returns null when AI is unavailable — callers should treat null as FLOW_ANSWER.
+ * Classify an incoming worker-flow message.
+ * 1. Local rules (instant, no API) for obvious cases.
+ * 2. Gemini AI for ambiguous input (timeout 4000ms, 503 auto-retried once).
+ * 3. On Gemini failure → SIDE_QUESTION (safer than FLOW_ANSWER for unknowns).
  */
 export async function classifyWorkerMessage({ text = "", currentState = "" } = {}) {
   const message = String(text || "").trim();
   if (!message) return null;
 
-  const prompt = buildPrompt(message, currentState);
+  const local = localClassifyWorker(message);
+  if (local) {
+    console.log("🏠 [WORKER CLASSIFIER LOCAL]", local);
+    return local;
+  }
 
+  const prompt = buildPrompt(message, currentState);
   let result = null;
   try {
     result = await generateJSONWithAI({
       prompt,
       taskName: "worker_flow_classifier",
-      timeoutMs: 2500,
+      timeoutMs: 4000,
     });
   } catch {
     return null;
   }
+
+  if (!result) return null;
 
   const type = String(result?.type || "").toUpperCase().trim();
   if (!VALID_TYPES.has(type)) return null;

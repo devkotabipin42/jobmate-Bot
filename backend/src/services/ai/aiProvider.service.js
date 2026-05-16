@@ -39,18 +39,26 @@ async function callProviderSafely({ provider, prompt, taskName, timeoutMs }) {
     return null;
   }
 
-  try {
-    if (provider === "gemini") {
-      return await callGeminiJSON({ prompt, timeoutMs });
-    }
-
-    if (provider === "openai") {
-      return await callOpenAIJSON({ prompt, timeoutMs });
-    }
-
+  const attempt = async () => {
+    if (provider === "gemini") return await callGeminiJSON({ prompt, timeoutMs });
+    if (provider === "openai") return await callOpenAIJSON({ prompt, timeoutMs });
     console.warn(`⚠️ Unknown AI provider: ${provider}`);
     return null;
+  };
+
+  try {
+    return await attempt();
   } catch (error) {
+    if (error?.response?.status === 503) {
+      console.warn(`⚠️ ${provider} 503 for ${taskName} — retrying in 1s…`);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      try {
+        return await attempt();
+      } catch (retryError) {
+        handleAIError({ provider, taskName, error: retryError });
+        return null;
+      }
+    }
     handleAIError({ provider, taskName, error });
     return null;
   }
