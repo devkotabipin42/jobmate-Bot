@@ -104,7 +104,8 @@ await test("ask_documents xaina saves no without overwriting locked fields", asy
   const result = await documentTurn("xaina");
   const profile = result.newMetadata.collectedData || {};
 
-  assert(result.isComplete === true, "xaina did not complete");
+  assert(result.isComplete === false, "xaina completed before confirmation");
+  assert(result.newMetadata.currentState === "ask_fullName", `expected ask_fullName, got ${result.newMetadata.currentState}`);
   assert(profile.documents === "no", `documents wrong: ${profile.documents}`);
   assertLockedWorkerFields(profile);
 });
@@ -113,7 +114,8 @@ await test("ask_documents pachi dinchu saves no without overwriting locked field
   const result = await documentTurn("pachi dinchu");
   const profile = result.newMetadata.collectedData || {};
 
-  assert(result.isComplete === true, "pachi dinchu did not complete");
+  assert(result.isComplete === false, "pachi dinchu completed before confirmation");
+  assert(result.newMetadata.currentState === "ask_fullName", `expected ask_fullName, got ${result.newMetadata.currentState}`);
   assert(profile.documents === "no", `documents wrong: ${profile.documents}`);
   assertLockedWorkerFields(profile);
 });
@@ -137,7 +139,8 @@ await test("full happy path teacher Bardaghat full-time documents no", async () 
   const { result } = await runTurns(["1", "teacher", "maile bhardaghat ma", "maile full time", "xaina"]);
   const profile = result.newMetadata.collectedData || {};
 
-  assert(result.isComplete === true, "happy path did not complete");
+  assert(result.isComplete === false, "happy path completed before profile details");
+  assert(result.newMetadata.currentState === "ask_fullName", `expected ask_fullName, got ${result.newMetadata.currentState}`);
   assert(profile.jobType === "Teacher", `jobType wrong: ${profile.jobType}`);
   assert(profile.location === "Bardaghat" || profile.area === "Bardaghat", "Bardaghat missing");
   assert(profile.district === "Nawalparasi West", `district wrong: ${profile.district}`);

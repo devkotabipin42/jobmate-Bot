@@ -45,6 +45,11 @@ import {
   parseSalaryRange as mapperParseSalaryRange,
   parseWorkType as mapperParseWorkType,
 } from "./employer/employerLeadMapper.service.js";
+import { handleMidFlowSideQuestion } from "../jobmateLeadAgent/midFlowSideQuestion.service.js";
+import {
+  classifyEmployerMessage,
+  buildEmployerFillerNudge,
+} from "./employerFlowClassifier.service.js";
 
 const URGENCY_MAP = {
   "1": {
@@ -112,6 +117,55 @@ export async function handleEmployerLead({
     };
   }
 
+  const classification = await classifyEmployerMessage({
+    text: rawText || text,
+    currentState: conversation?.currentState || "",
+  });
+  console.log("🤖 [EMPLOYER CLASSIFIER]", classification);
+
+  if (classification?.type === "SIDE_QUESTION") {
+    const sideResult = await handleMidFlowSideQuestion({
+      text: rawText || text,
+      activeFlow: "employer",
+      state: {
+        step: conversation?.currentState,
+        data: conversation?.metadata?.collectedData || {},
+      },
+    });
+    const reply = sideResult.handled
+      ? sideResult.reply
+      : "Maaf garnus, yo kura barema thik jaankari dina sakdina 🙏 Staff hiring continue garau.";
+    return preserveEmployerState(conversation, reply, step);
+  }
+
+  if (classification?.type === "FILLER") {
+    const nudge = buildEmployerFillerNudge(
+      conversation?.currentState || "",
+      conversation?.metadata?.lastQuestion || ""
+    );
+    return preserveEmployerState(conversation, nudge, step);
+  }
+
+  if (classification?.type === "WORKER_INTENT") {
+    return preserveEmployerState(
+      conversation,
+      "Kaam khojna ho bhane '1' thichnus — yo flow staff hiring ko lagi ho. 😊",
+      step
+    );
+  }
+
+  if (classification?.type === "OFF_TOPIC") {
+    const lastQ =
+      conversation?.metadata?.lastQuestion ||
+      "Kripaya staff hiring details pathaunus.";
+    return preserveEmployerState(
+      conversation,
+      `Maaf garnus, yo kura JobMate ko kaam bhanda bahira cha 🙏\n\n${lastQ}`,
+      step
+    );
+  }
+
+  // FLOW_ANSWER or null (AI unavailable) — proceed with normal employer flow
   const aaratiBrain = await understandEmployerMessage({
     text: rawText || text,
     state: conversation?.currentState || "idle",
@@ -779,6 +833,23 @@ Aba company/business ko naam pathaunu hola.`;
   };
 }
 
+
+function preserveEmployerState(conversation, reply, step) {
+  return {
+    intent: "employer_lead",
+    messageToSend: reply,
+    nextStep: step,
+    currentState: conversation?.currentState,
+    employerLead: null,
+    conversation,
+    scoreAdd: 0,
+    urgencyLevel: "unknown",
+    isComplete: false,
+    needsHuman: false,
+    priority: "low",
+    handoffReason: "",
+  };
+}
 
 function buildVacancyFromAI(ai) {
   return {
