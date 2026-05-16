@@ -99,7 +99,7 @@ function isSafeReply(reply = "") {
 
 function fallbackReplyForDetectedIntent(detectedIntent = "safe_unknown") {
   if (detectedIntent === "frustration_or_abuse") {
-    return `Sorry Mitra ji 🙏
+    return `Maaf garnu hola 🙏
 
 Aghi ko reply ramro bhayena jasto lagyo. Ma JobMate team bata kaam khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.
 
@@ -107,7 +107,7 @@ Tapai ko main kura ekchoti short ma pathaunu hola, ma sidha answer dinchhu.`;
   }
 
   if (detectedIntent === "personal_money_request") {
-    return `Bujhe Mitra ji 🙏
+    return `Hajur, bujhe 🙏
 
 JobMate loan/paisa dine service haina. JobMate le kaam khojna, staff khojna, document/verification ra hiring support ma help garcha.
 
@@ -115,7 +115,7 @@ Tapai lai income/kaam chahiyeko ho bhane location ra kasto kaam chahiyo pathaunu
   }
 
   if (detectedIntent === "regulated_or_unrelated_product") {
-    return `Mitra ji, yo JobMate le provide garne service haina 🙏
+    return `Hajur 🙏 Yo JobMate le provide garne main service haina.
 
 JobMate ko kaam job khojna, staff khojna, document/verification ra hiring support ho.
 
@@ -130,7 +130,7 @@ JobMate le legal, safe ra voluntary employment/hiring process matra support garc
 Legal business ko lagi staff chahiyeko ho bhane business name, location, role ra salary detail pathaunu hola.`;
   }
 
-  return `Bujhe Mitra ji 🙏
+  return `Hajur, bujhe 🙏
 
 Yo kura ma ma JobMate ko rule bhitra basera help garna sakchu. JobMate le job khojna, staff khojna, document/verification, pricing ra support ma sahayog garcha.
 
@@ -175,71 +175,71 @@ function detectAaratiDeterministicIntent(normalizedText = "") {
 function buildDeterministicFallbackReply(intent = "safe_unknown_question") {
   switch (intent) {
     case "frustration_or_abuse":
-      return `Sorry Mitra ji 🙏\n\nAghi ko reply ramro bhayena jasto lagyo. Ma JobMate team bata kaam khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.\n\nTapai ko main kura ekchoti short ma pathaunu hola, ma sidha answer dinchhu.`;
+      return `Maaf garnu hola 🙏\n\nAghi ko reply ramro bhayena jasto lagyo. Ma JobMate team bata kaam khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.\n\nTapai ko main kura ekchoti short ma pathaunu hola, ma sidha answer dinchhu.`;
 
     case "unsafe_illegal_request":
       return `Yo request JobMate rules anusar mildaina 🙏\n\nJobMate le legal, safe ra voluntary employment/hiring process matra support garcha.\n\nLegal business ko lagi staff chahiyeko ho bhane business name, location, role ra salary detail pathaunu hola.`;
 
     case "personal_money_request":
-      return `Bujhe Mitra ji 🙏\n\nJobMate loan/paisa dine service haina. JobMate le kaam khojna, staff khojna, document/verification ra hiring support ma help garcha.\n\nTapai lai income/kaam chahiyeko ho bhane location ra kasto kaam chahiyo pathaunu hola.`;
+      return `Hajur, bujhe 🙏\n\nJobMate loan/paisa dine service haina. JobMate le kaam khojna, staff khojna, document/verification ra hiring support ma help garcha.\n\nTapai lai income/kaam chahiyeko ho bhane location ra kasto kaam chahiyo pathaunu hola.`;
 
     case "weather":
       return `Ma live weather update herna sakdina 🙏\n\nTara JobMate ko kaam ma help garna sakchu — kaam khojna, staff khojna, document verification ya support.\n\nTapai kun location ko job/staff ko lagi sodhdai hunuhunchha?`;
 
     case "homework_or_math":
-      return `Mitra ji, yo kura JobMate ko kaam bhanda bahira parcha 🙏\n\nMa yaha math/homework solve garna bhanda pani job khojna, staff khojna, document/verification ra support ma help garna sakchu.\n\nTapai lai JobMate ma kun kura chahiyeko ho?`;
+      return `Hajur 🙏 Yo kura JobMate ko main service bhitra direct pardaina.\n\nMa yaha math/homework solve garna bhanda pani job khojna, staff khojna, document/verification ra support ma help garna sakchu.\n\nTapai lai JobMate ma kun kura chahiyeko ho?`;
 
     case "trust_question":
-      return `Bujhe Mitra ji 🙏\n\nJobMate Nepal ma registered ra operated service ho. Tapai ko data safe rakhcha, fake job/employer use gardaina, ra registered employer sanga matra connect garcha.\n\nKaam khojna ho bhane location ra job type pathaunu hola.`;
+      return `Hajur, bujhe 🙏\n\nJobMate Nepal ma registered ra operated service ho. Tapai ko data safe rakhcha, fake job/employer use gardaina, ra registered employer sanga matra connect garcha.\n\nKaam khojna ho bhane location ra job type pathaunu hola.`;
 
     case "memory_question":
-      return `Mitra ji, ma haru ko purana conversation remember garna sakdina 🙏\n\nTara tapai ko naulo message bata ma pheri help garna tauyyar chu.\n\nTapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`;
+      return `Maaf garnu hola 🙏 Purano conversation ko sabai detail automatically remember garna sakdina.\n\nTara tapai ko naulo message bata ma pheri help garna tauyyar chu.\n\nTapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`;
 
     case "call_request":
-      return `Mitra ji, ma yahi WhatsApp bata text support dinu ho 🙏\n\nPhone/call support ko lagi JobMate team lai message garnu hola. Complex case bhaye team le contact garcha.\n\nTapai ko problem short ma pathaunu hola, ma try garchu.`;
+      return `Hajur 🙏 Ma yahi WhatsApp bata text support dinchhu.\n\nPhone/call support ko lagi JobMate team lai message garnu hola. Complex case bhaye team le contact garcha.\n\nTapai ko problem short ma pathaunu hola, ma try garchu.`;
 
     case "salary_choice_question":
-      return `Mitra ji, salary negotiation tapai ra employer ko beech ma hune kura ho 🙏\n\nJobMate le salary fix gardaina — tara tapai ko expectation employer lai forward garna sakcha.\n\nTapai kasto job ma interested hunuhunchha? Location ra job type pathaunu hola.`;
+      return `Hajur 🙏 Salary negotiation tapai ra employer ko beech ma hune kura ho.\n\nJobMate le salary fix gardaina — tara tapai ko expectation employer lai forward garna sakcha.\n\nTapai kasto job ma interested hunuhunchha? Location ra job type pathaunu hola.`;
 
     case "job_speed_question":
-      return `Mitra ji, job milne speed depend garcha — role, location, ra employer ko response ma 🙏\n\nJobMate le job guarantee ya speed guarantee gardaina, tara match bhayema jaldi connect garcha.\n\nTapai ko location ra job type pathaunu hola, ma search garchu.`;
+      return `Hajur 🙏 Job milne speed role, location ra employer response ma depend garcha.\n\nJobMate le job guarantee ya speed guarantee gardaina, tara match bhayema jaldi connect garcha.\n\nTapai ko location ra job type pathaunu hola, ma search garchu.`;
 
     case "interview_question":
-      return `Mitra ji, interview ko process employer le decide garcha 🙏\n\nSamai, format ra kura kunai employer le set garcha. JobMate le match confirmed bhayema detail share garcha.\n\nTapai kasto job ma interested hunuhunchha?`;
+      return `Hajur 🙏 Interview process employer le decide garcha.\n\nSamai, format ra kura kunai employer le set garcha. JobMate le match confirmed bhayema detail share garcha.\n\nTapai kasto job ma interested hunuhunchha?`;
 
     case "cv_help_question":
-      return `Mitra ji, ma full CV banaune service haina 🙏\n\nTara tapai ko basic profile save garna, document upload garna, ra employer lai forward garna help garna sakchu.\n\nProfile save garna chahanu huncha bhane location ra job type pathaunu hola.`;
+      return `Hajur 🙏 Ma full CV banaune service chai haina.\n\nTara tapai ko basic profile save garna, document upload garna, ra employer lai forward garna help garna sakchu.\n\nProfile save garna chahanu huncha bhane location ra job type pathaunu hola.`;
 
     case "parttime_question":
-      return `Hajur Mitra ji 🙏\n\nPart-time kaam JobMate ma pani available huna sakcha. Location ra kasto kaam chahiyo pathaunu hola, ma available options herna sakchu.\n\nStudent hunu bhane flexible timing role pani available huncha kahi.`;
+      return `Hajur 🙏\n\nPart-time kaam JobMate ma pani available huna sakcha. Location ra kasto kaam chahiyo pathaunu hola, ma available options herna sakchu.\n\nStudent hunu bhane flexible timing role pani available huncha kahi.`;
 
     case "sensitive_unrelated":
-      return `Mitra ji, yo topic ma ma answer dina sakdina 🙏\n\nMa JobMate ko rule bhitra basera job, hiring, worker, employer, document/verification, pricing ra support ko kura ma matra help garchu.\n\nTapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`;
+      return `Maaf garnu hola 🙏 Yo topic ma JobMate ko rule bhitra basera help garna mildaina.\n\nMa JobMate ko rule bhitra basera job, hiring, worker, employer, document/verification, pricing ra support ko kura ma matra help garchu.\n\nTapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`;
 
     case "identity":
       return `Ma Aarati ho, JobMate team bata 🙏\n\nMa tapai lai kaam khojna, staff khojna, profile save garna, document/verification ra support ma help garna sakchu.\n\nTapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`;
 
     case "job_guarantee":
-      return `Mitra ji, JobMate le job guarantee ya salary guarantee gardaina 🙏\n\nJobMate le jobseeker ra employer lai connect garna, profile/application manage garna ra verification support garna help garcha.\n\nTapai kaam khojdai hunuhunchha bhane location ra kaam type pathaunu hola.`;
+      return `Hajur 🙏 JobMate le job guarantee ya salary guarantee gardaina.\n\nJobMate le jobseeker ra employer lai connect garna, profile/application manage garna ra verification support garna help garcha.\n\nTapai kaam khojdai hunuhunchha bhane location ra kaam type pathaunu hola.`;
 
     case "document_privacy_unknown":
-      return `Mitra ji, document compulsory haina 🙏\n\nDocument verification/hiring process ko lagi matra use huncha. Tapai comfortable hunuhunna bhane document bina pani profile save garna milcha.\n\nDocument bina profile save garna 2 lekhnu hola.`;
+      return `Hajur 🙏 Document compulsory haina.\n\nDocument verification/hiring process ko lagi matra use huncha. Tapai comfortable hunuhunna bhane document bina pani profile save garna milcha.\n\nDocument bina profile save garna 2 lekhnu hola.`;
 
     case "pricing_unknown":
-      return `Mitra ji, jobseeker ko basic profile/application support generally free ho 🙏\n\nEmployer pricing/service plan chai business need anusar confirm garna parcha.\n\nTapai jobseeker ho bhane kaam type ra location pathaunu hola.`;
+      return `Hajur 🙏 Jobseeker ko basic profile/application support generally free ho.\n\nEmployer pricing/service plan chai business need anusar confirm garna parcha.\n\nTapai jobseeker ho bhane kaam type ra location pathaunu hola.`;
 
     case "support_unknown":
-      return `Mitra ji, JobMate support ko lagi ma yahi WhatsApp ma basic help garna sakchu 🙏\n\nComplex kura bhaye team lai forward garna milcha.\n\nTapai ko problem short ma pathaunu hola, ma sidha help garne try garchu.`;
+      return `Hajur 🙏 JobMate support ko lagi ma yahi WhatsApp ma basic help garna sakchu.\n\nComplex kura bhaye team lai forward garna milcha.\n\nTapai ko problem short ma pathaunu hola, ma sidha help garne try garchu.`;
 
     case "out_of_scope_tech":
-      return `Mitra ji, website/app banaune kaam JobMate ko scope bhanda baahira parcha 🙏\n\nJobMate le job khojna, staff khojna, document/verification, pricing ra hiring support ma matra help garcha.\n\nTapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`;
+      return `Hajur 🙏 Website/app banaune kaam JobMate ko main service bhitra pardaina.\n\nJobMate le job khojna, staff khojna, document/verification, pricing ra hiring support ma matra help garcha.\n\nTapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`;
 
     case "small_talk":
-      return `Hajur Mitra ji, thik cha 🙏\n\nMa Aarati, JobMate team bata. Small kura garna milcha, tara mero main kaam tapai lai job/hiring support dinu ho.\n\nKaam khojna ho bhane location ra kaam type pathaunu hola. Staff khojna ho bhane business/role pathaunu hola.`;
+      return `Hajur, thik cha 🙏\n\nMa Aarati, JobMate team bata. Small kura garna milcha, tara mero main kaam tapai lai job/hiring support dinu ho.\n\nKaam khojna ho bhane location ra kaam type pathaunu hola. Staff khojna ho bhane business/role pathaunu hola.`;
 
     case "safe_unknown_question":
     default:
-      return `Bujhe Mitra ji 🙏\n\nYo kura ma ma exact answer confirm garna sakdina, tara JobMate bhitra ma job khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.\n\nTapai ko question JobMate/job/hiring sanga related ho bhane ekchoti short ma detail pathaunu hola.`;
+      return `Hajur, bujhe 🙏\n\nYo kura ma ma exact answer confirm garna sakdina, tara JobMate bhitra ma job khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.\n\nTapai ko question JobMate/job/hiring sanga related ho bhane ekchoti short ma detail pathaunu hola.`;
   }
 }
 

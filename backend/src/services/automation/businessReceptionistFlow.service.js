@@ -134,7 +134,7 @@ async function handleBusinessMenuOption({ text, conversation }) {
       return {
         intent: "service_inquiry",
         messageToSend:
-          "Tyo number ko service list ma chaina. Kripaya list bata valid number choose garnuhola.",
+          "Yo number service list ma dekhiiyena 🙏 Service list bata milne number pathaunu hola.",
         needsHuman: false,
         priority: "low",
         reason: "Invalid service selection",
@@ -200,7 +200,7 @@ async function handleBusinessMenuOption({ text, conversation }) {
     return {
       intent: "booking_request",
       messageToSend:
-        "Booking garna milcha 🙏\n\nKripaya kun service ko lagi booking garna khojnu bhayeko ho? Ani preferred date/time pani pathaunuhola.",
+        "Booking garna milcha 🙏\n\nKun service ko lagi booking garna khojnu bhayeko ho? Ani preferred date/time pani pathaunu hola.",
       needsHuman: false,
       priority: "low",
       reason: "Business menu booking selected",
@@ -361,7 +361,7 @@ async function handleNameCapture({ text, conversation }) {
     return {
       intent: "lead_capture",
       messageToSend:
-        "Kripaya tapai ko naam matra pathaunuhola, booking note garna sajilo huncha 🙏",
+        "Tapai ko naam matra pathaunu hola, booking note garna sajilo huncha 🙏",
       needsHuman: false,
       priority: "low",
       reason: "Waiting for customer name",

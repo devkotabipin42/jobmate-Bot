@@ -137,12 +137,12 @@ export async function handleWorkerRegistration({
       text: engineText,
     });
 
-    // pendingEmployerSwitch: user was shown "Staff khojna ho bhane '2' thichnus" — check if they confirmed
+    // pendingEmployerSwitch: user was shown staff/employer switch prompt — check if they confirmed
     const pendingEmployerSwitch = conversation?.metadata?.pendingEmployerSwitch;
     if (pendingEmployerSwitch && engineText.trim() === "2") {
       return {
         intent: "employer_lead",
-        messageToSend: "Thik cha! Staff khojna registration suru garau 🙏\n\nTapai ko business ko naam ke ho?",
+        messageToSend: "Hajur 🙏 Staff/worker hiring registration suru garau.\n\nTapai ko business/company ko naam pathaunu hola.",
         currentState: "ask_business_name",
         metadataUpdate: {
           collectedData: {},
@@ -172,7 +172,7 @@ export async function handleWorkerRegistration({
       });
       const reply = sideResult.handled
         ? sideResult.reply
-        : "Maaf garnus, yo kura barema thik jaankari dina sakdina 🙏 Registration continue garau.";
+        : "Maaf garnu hola 🙏 Tapai ko kura bujhe. Aba job registration ko yo step continue garau hai.";
       return preserveWorkerState(conversation, reply);
     }
 

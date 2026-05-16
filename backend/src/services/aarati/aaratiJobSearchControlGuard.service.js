@@ -117,7 +117,7 @@ export function handleAaratiJobSearchControlGuard({ text, conversation }) {
       intent: "restart",
       reason: "job_search_start_command",
       replyText:
-        "Namaste 🙏 JobMate ma swagat cha.\n\nKripaya choose garnuhos:\n1. Ma job khojdai chu\n2. Malai staff/worker chahiyo\n3. Human support chahiyo",
+        "Namaste 🙏 JobMate ma swagat cha.\n\nTapai kun help chahanu huncha?\n1. Ma job khojdai chu\n2. Malai staff/worker chahiyo\n3. Human support chahiyo\n\nMilne number pathaunu hola.",
       statePatch: {
         currentIntent: "unknown",
         currentState: "idle",

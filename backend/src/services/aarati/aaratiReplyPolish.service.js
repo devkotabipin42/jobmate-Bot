@@ -87,7 +87,7 @@ JobMate le safe, legal ra fair hiring matra support गर्छ.
 Ramro worker/staff khojna company name, location ra role pathaunu hola.`;
   }
 
-  return `Mitra ji, yo kura JobMate ko kaam bhanda bahira parcha 🙏
+  return `Hajur 🙏 Yo kura JobMate ko main service bhitra direct pardaina.
 
 Ma yaha job khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.
 
@@ -139,13 +139,13 @@ export function polishAaratiReply({
   compactReply = compactReply
     .replace(/please/gi, "kripaya")
     .replace(/thank you/gi, "dhanyabad")
-    .replace(/\bdear user\b/gi, "Mitra ji")
+    .replace(/\bdear user\b/gi, "Hajur")
     .replace(/\buser\b/gi, "tapai")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
   if (!/^namaste|^mitra ji|^bujh/i.test(compactReply)) {
-    compactReply = `Bujhe Mitra ji 🙏\n\n${compactReply}`;
+    compactReply = `Hajur, bujhe 🙏\n\n${compactReply}`;
   }
 
   return {

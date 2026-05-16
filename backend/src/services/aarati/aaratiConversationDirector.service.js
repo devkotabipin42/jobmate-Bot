@@ -153,14 +153,14 @@ export function buildHumanClarificationReply({ mode = "unclear", text = "", conv
 
     case "document_question":
       return fmt(
-        "Bujhe Mitra ji 🙏",
+        "Hajur, bujhe 🙏",
         "Document compulsory haina. Document verification ra hiring ko lagi matra use huncha — bahar share gardaina. Tapai comfortable hunuhunna bhane document bina profile save garna milcha.",
         "Document bina profile save garna 2 lekhnu hola. Document chha bhane yahi WhatsApp ma photo/file pathauna saknuhunchha."
       );
 
     case "pricing_question":
       return fmt(
-        "Bujhe Mitra ji 🙏",
+        "Hajur, bujhe 🙏",
         "Jobseeker ko basic profile/application support generally free ho. Employer ko pricing/service plan chai business need anusar confirm garna parcha.",
         lastMode === "employer_question"
           ? "Tapai ko business name ra location pathaunu hola, ma pricing bare connect garchu."
@@ -169,7 +169,7 @@ export function buildHumanClarificationReply({ mode = "unclear", text = "", conv
 
     case "support_request":
       return fmt(
-        "Bujhe Mitra ji 🙏",
+        "Hajur, bujhe 🙏",
         "JobMate support ko lagi ma yahi WhatsApp ma basic help garna sakchu. Complex case bhaye team lai forward garna milcha.",
         "Tapai ko issue short ma pathaunu hola, ma sidha try garchu."
       );
@@ -192,14 +192,14 @@ export function buildHumanClarificationReply({ mode = "unclear", text = "", conv
 
     case "small_talk":
       return fmt(
-        "Hajur Mitra ji, thik cha 🙏",
+        "Hajur, thik cha 🙏",
         "Ma Aarati, JobMate team bata. Small kura garna milcha — tara mero main kaam tapai lai job ra hiring support dinu ho.",
         "Kaam khojna ho bhane location ra kaam type pathaunu hola. Staff khojna ho bhane company name ra role pathaunu hola."
       );
 
     case "frustration":
       return fmt(
-        "Sorry Mitra ji 🙏",
+        "Maaf garnu hola 🙏",
         "Aghi ko kura ramro bhayena jasto lagyo. Ma JobMate team bata kaam khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.",
         "Tapai ko main problem short ma pathaunu hola, ma sidha answer dinchhu."
       );
@@ -213,7 +213,7 @@ export function buildHumanClarificationReply({ mode = "unclear", text = "", conv
 
     case "out_of_scope":
       return fmt(
-        "Mitra ji, yo kura JobMate ko scope bhanda baahira parcha 🙏",
+        "Hajur 🙏 Yo kura JobMate ko main service bhitra direct pardaina.",
         "Ma job khojna, staff khojna, document/verification, pricing ra support ko kura ma matra help garna sakchu.",
         "Tapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?"
       );
@@ -221,7 +221,7 @@ export function buildHumanClarificationReply({ mode = "unclear", text = "", conv
     case "unclear":
     default:
       return fmt(
-        "Bujhe Mitra ji 🙏",
+        "Hajur, bujhe 🙏",
         "Yo kura ma ma exact answer confirm garna sakdina, tara JobMate bhitra ma job khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.",
         "Tapai ko question JobMate/job/hiring sanga related ho bhane ekchoti short ma detail pathaunu hola."
       );
@@ -244,7 +244,7 @@ export function reduceMenuRepetition({ reply = "", conversation = {} } = {}) {
   if (!lastWasAlsoMenu) return reply;
 
   // Two consecutive generic menus — use human alternate
-  return "Tapai jobseeker ho ki employer? Ma tyesai anusar sidha help garchu 🙏\n\nJobseeker: location ra job type pathaunu hola.\nEmployer: company name ra role pathaunu hola.";
+  return "Hajur 🙏 Tapai job khojna chahanu huncha ki staff/worker khojna?\n\nJob khojna ho bhane location ra kaam type pathaunu hola.\nStaff khojna ho bhane company name ra role pathaunu hola.";
 }
 
 // ---------------------------------------------------------------------------

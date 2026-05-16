@@ -40,14 +40,14 @@ export function buildAaratiClassifiedReply({
         ].join("\n\n");
       }
       return [
-        "Yo kura JobMate ko main service bhitra pardaina Mitra ji 🙏",
+        "Hajur 🙏 Yo kura JobMate ko main service bhitra direct pardaina.",
         "Ma JobMate team bata job khojna, staff khojna, CV/document guidance, pricing/support ra human team connect garne kura ma help garna sakchu.",
       ].join("\n\n");
 
     // ── CV privacy / support ────────────────────────────────────────────
     case "cv_privacy_support":
       return [
-        "Dar lagnu normal ho Mitra ji 🙏",
+        "Dar lagnu normal ho 🙏",
         "JobMate ma tapai ko CV/document hiring purpose ko lagi matra use garincha. Pahila CV pathauna compulsory chaina.",
         "Tapai comfortable hunuhunchha bhane basic detail bata suru garna milcha:\n- Naam\n- Location\n- Kasto kaam khojdai hunuhunchha\n- Available kahile dekhi",
         "CV/document pachi matra share garda huncha.",
@@ -63,7 +63,7 @@ export function buildAaratiClassifiedReply({
         ].join("\n\n");
       }
       return [
-        "Sorry Mitra ji 🙏 Aghi ko reply clear bhayena jasto lagyo.",
+        "Maaf garnu hola 🙏 Aghi ko reply clear bhayena jasto lagyo.",
         "Ma JobMate team bata job khojna, staff khojna, CV/document, pricing/support ko kura ma help garna sakchu.",
         "Tapai ko main kura ek line ma pathaunu hola, ma sidha answer dinchhu.",
       ].join("\n\n");
@@ -80,25 +80,25 @@ export function buildAaratiClassifiedReply({
     case "small_talk_boundary":
       if (/how old|timro.*age|timi.*umar|timro umar/i.test(rawLower)) {
         return [
-          "Ma personal age share garne profile ma chaina Mitra ji 🙏",
+          "Ma personal age share garne profile ma chaina 🙏",
           "Tara JobMate ko kaam, staff hiring, job search, CV/document support ma help garna sakchu.",
         ].join("\n\n");
       }
       if (/where.*live|timro.*ghar|ghar.*kata/i.test(rawLower)) {
         return [
-          "Ma JobMate ko WhatsApp support system bata hu, ghar/address hune profile haina Mitra ji 🙏",
+          "Ma JobMate ko WhatsApp support system bata ho, ghar/address hune profile haina 🙏",
           "Job khojna, staff khojna, CV/document support ma help garna sakchu.",
         ].join("\n\n");
       }
       return [
-        "Hajur Mitra ji 🙏 Ma JobMate team bata yahi help garna ready chu.",
+        "Hajur 🙏 Ma JobMate team bata yahi help garna ready chu.",
         "Personal kura bhanda JobMate ko kaam ma focus garum hai — job khojna, staff khojna, CV/document, pricing/support ma help garna sakchu.",
       ].join("\n\n");
 
     // ── Respect / trust ───────────────────────────────────────────────
     case "respect_trust":
       return [
-        "Hajur Mitra ji, ma tapai sanga samman sanga kura garchu 🙏",
+        "Hajur, ma tapai sanga samman sanga kura garchu 🙏",
         "Aghi ko reply rude/unclear jasto lagyo bhane sorry. Tapai ko kura short ma pathaunu hola, ma calm bhayera sidha help garchu.",
       ].join("\n\n");
 
@@ -113,7 +113,7 @@ export function buildAaratiClassifiedReply({
     // ── Out of region location ─────────────────────────────────────────
     case "out_of_region_location":
       return [
-        "Ahile JobMate ko main focus Lumbini Province ho Mitra ji 🙏",
+        "Ahile JobMate ko main focus Lumbini Province ho 🙏",
         "Kathmandu/Pokhara/Chitwan ko job aaile confirm garera dekhaina, wrong job dekhaunu mildaina.",
         "Tapai Lumbini area, jastai Butwal/Bhairahawa/Bardaghat/Parasi tira job khojna chahanu huncha?",
       ].join("\n\n");
@@ -121,7 +121,7 @@ export function buildAaratiClassifiedReply({
     // ── Ambiguous location ─────────────────────────────────────────────
     case "ambiguous_location":
       return [
-        "Kun area bata khojnu parcha Mitra ji? 🙏",
+        "Kun area bata khojnu parcha? 🙏",
         "Location clear bhayo bhane wrong job dekhaudina.",
         "Example: Butwal, Bhairahawa, Bardaghat, Parasi, Sunwal, Devdaha.",
       ].join("\n\n");
@@ -129,7 +129,7 @@ export function buildAaratiClassifiedReply({
     // ── Command (restart/menu) ─────────────────────────────────────────
     case "command":
       return [
-        "Namaste Mitra ji! JobMate Nepal ma swagatam 🙏",
+        "Namaste 🙏 JobMate Nepal ma swagat cha.",
         "Tapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?",
       ].join("\n\n");
 

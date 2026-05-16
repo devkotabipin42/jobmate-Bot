@@ -68,7 +68,7 @@ const INVALID_LOCATION_SET = new Set([
 
 // ---------------------------------------------------------------------------
 // HELPER 0 — getDisplayName (NEW 19E)
-// Reads conversation.metadata.displayName and returns "FirstName ji" or "Mitra ji".
+// Reads conversation.metadata.displayName and returns a polite display name.
 // ---------------------------------------------------------------------------
 
 function getDisplayName(conversationState) {
@@ -81,7 +81,7 @@ function getDisplayName(conversationState) {
     const firstName = name.split(" ")[0];
     return `${firstName} ji`;
   }
-  return "Mitra ji";
+  return "Hajur";
 }
 
 // ---------------------------------------------------------------------------
@@ -258,7 +258,7 @@ function buildStepQuestionReply(val, state) {
     );
   }
 
-  return "Tapai ko prashna bujhe Mitra ji 🙏\n\nMa help garna sakchu, tara aghi sodheko step ko answer pathaunu hola.";
+  return "Tapai ko prashna bujhe 🙏\n\nMa help garna sakchu, tara aghi sodheko step ko answer pathaunu hola.";
 }
 
 // ---------------------------------------------------------------------------
@@ -616,7 +616,7 @@ export function decideAaratiNextAction({
       action: "show_greeting",
       bypassFlow: true,
       reply:
-        "Namaste Mitra ji! JobMate Nepal ma swagatam 🙏\n\nTapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?",
+        "Namaste 🙏 JobMate Nepal ma swagat cha.\n\nTapai kaam khojna chahanu huncha ki staff khojna?",
       reason: "restart_command",
     });
     logDecision({ ...d, state, normalizedText: val });
@@ -896,8 +896,8 @@ export function decideAaratiNextAction({
       preserveCollectedData: true,
       blockLocationExtraction: true,
       reply: hasContext
-        ? `Thik cha Mitra ji, ma aghi ko ${existingLocation} + ${existingJobType} search lai feri check garne process ma rakhdai chu 🙏\n\nLocation '${existingLocation}' nai rahanchha; 'recheck' location ko rup ma save hudaina.`
-        : "Recheck garna actual location ra kaam type chahinchha Mitra ji 🙏\n\nKun area ra kasto kaam ho? Example: Butwal ma driver job.",
+        ? `Hajur, ma aghi ko ${existingLocation} + ${existingJobType} search lai feri check garne process ma rakhdai chu 🙏\n\nLocation '${existingLocation}' nai rahanchha; 'recheck' location ko rup ma save hudaina.`
+        : "Recheck garna actual location ra kaam type chahinchha 🙏\n\nKun area ra kasto kaam ho? Example: Butwal ma driver job.",
       nextStatePatch: {
         "metadata.collectedData.location": existingLocation || undefined,
         "metadata.collectedData.jobType": existingJobType || undefined,

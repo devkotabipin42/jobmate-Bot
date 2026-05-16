@@ -46,7 +46,7 @@ Legal salary ra proper contract sanga staff khojna ho bhane business name, locat
       intent: "unknown",
       source: "aarati_hard_safety_boundary",
       detectedIntent: "cv_privacy_question",
-      reply: `Bujhe Mitra ji 🙏
+      reply: `Hajur, bujhe 🙏
 
 Tapai ko CV/document sabai company lai automatically share gardaina. Relevant employer sanga match bhaye matra — ra tapai ko permission anusar matra — share huncha. Baher pathauune, leak garauune, wa sell garauune kaam JobMate le gardaina.
 
@@ -60,7 +60,7 @@ Document bina profile save garna pani milcha. Comfortable nahunuhunna bhane docu
       intent: "frustrated",
       source: "aarati_hard_safety_boundary",
       detectedIntent: "frustration_or_abuse",
-      reply: `Sorry Mitra ji 🙏
+      reply: `Maaf garnu hola 🙏
 
 Aghi ko reply ramro bhayena jasto lagyo. Ma JobMate team bata kaam khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.
 

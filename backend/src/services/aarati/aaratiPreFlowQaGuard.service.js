@@ -32,7 +32,7 @@ function isActiveFlow(conversation = {}) {
   ].includes(state);
 }
 
-function format({ opener = "Bujhe Mitra ji 🙏", body, next }) {
+function format({ opener = "Hajur, bujhe 🙏", body, next }) {
   return `${opener}
 
 ${body}

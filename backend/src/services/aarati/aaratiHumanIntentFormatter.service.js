@@ -143,7 +143,7 @@ function detectIntent(text = "") {
   return null;
 }
 
-function formatReply({ opener = "Bujhe Mitra ji 🙏", body, nextStep }) {
+function formatReply({ opener = "Hajur, bujhe 🙏", body, nextStep }) {
   return `${opener}
 
 ${body}
@@ -155,7 +155,7 @@ function buildReplyForIntent(intent) {
   switch (intent) {
     case "frustration_or_abuse":
       return formatReply({
-        opener: "Sorry Mitra ji 🙏",
+        opener: "Maaf garnu hola 🙏",
         body: "Aghi ko reply ramro bhayena jasto lagyo. Ma JobMate team bata kaam khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.",
         nextStep: "Tapai ko main kura ekchoti short ma pathaunu hola, ma sidha answer dinchhu.",
       });
@@ -181,14 +181,14 @@ function buildReplyForIntent(intent) {
 
     case "homework_or_math":
       return formatReply({
-        opener: "Mitra ji, yo kura JobMate ko kaam bhanda bahira parcha 🙏",
+        opener: "Hajur 🙏 Yo kura JobMate ko main service bhitra direct pardaina.",
         body: "Ma yaha math/homework solve garna bhanda pani job khojna, staff khojna, document/verification ra support ma help garna sakchu.",
         nextStep: "Tapai lai JobMate ma kun kura chahiyeko ho?",
       });
 
     case "sensitive_unrelated":
       return formatReply({
-        opener: "Mitra ji, yo topic ma ma answer dina sakdina 🙏",
+        opener: "Maaf garnu hola 🙏 Yo topic ma JobMate ko rule bhitra basera help garna mildaina.",
         body: "Ma JobMate ko rule bhitra basera job, hiring, worker, employer, document/verification, pricing ra support ko kura ma matra help garchu.",
         nextStep: "Tapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?",
       });
@@ -226,7 +226,7 @@ function buildReplyForIntent(intent) {
 
     case "small_talk":
       return formatReply({
-        opener: "Hajur Mitra ji, thik cha 🙏",
+        opener: "Hajur, thik cha 🙏",
         body: "Ma Aarati, JobMate team bata. Small kura garna milcha, tara mero main kaam tapai lai job/hiring support dinu ho.",
         nextStep: "Kaam khojna ho bhane location ra kaam type pathaunu hola. Staff khojna ho bhane business/role pathaunu hola.",
       });
@@ -234,7 +234,7 @@ function buildReplyForIntent(intent) {
     case "safe_unknown_question":
     default:
       return formatReply({
-        body: "Yo kura ma ma exact answer confirm garna sakdina, tara JobMate bhitra ma job khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.",
+        body: "Yo kura ma exact confirm garna team check chahina sakcha, tara JobMate bhitra job khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.",
         nextStep: "Tapai ko question JobMate/job/hiring sanga related ho bhane ekchoti short ma detail pathaunu hola.",
       });
   }
