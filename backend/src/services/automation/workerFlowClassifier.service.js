@@ -81,9 +81,9 @@ export function buildFillerNudge(currentState = "", lastQuestion = "") {
 
   const nudges = {
     ask_job_type:
-      "Tapai kun kaam khojdai hunuhunchha? Euta number pathaunus hola.",
+      "Tapai kun kaam khojna chahanu huncha? Milne option ko number pathaunu hola.",
     ask_jobType:
-      "Tapai kun kaam khojdai hunuhunchha? Euta number pathaunus hola.",
+      "Tapai kun kaam khojna chahanu huncha? Milne option ko number pathaunu hola.",
     ask_district:
       "Tapai kun district ma kaam garna milcha bataunu hola.",
     ask_availability:
@@ -98,10 +98,10 @@ export function buildFillerNudge(currentState = "", lastQuestion = "") {
     ask_experience: "Tapai sanga kati barsa ko experience chha?",
     ask_expectedSalary: "Tapai ko expected salary kati ho?",
     ask_confirmation:
-      "Details thik chha bhane 'ho' ya 'yes' pathaunus, natrabhane change garna bataunu hola.",
+      "Details thik cha bhane 'ho' ya 'yes' pathaunu hola. Kehi edit garnu cha bhane kun detail change garne ho pathaunu hola.",
   };
 
-  return nudges[currentState] || "Kripaya jaankari pathaunus ta 🙏";
+  return nudges[currentState] || "Hajur 🙏 Baki jaankari pathaunu hola.";
 }
 
 function buildPrompt(text, currentState) {

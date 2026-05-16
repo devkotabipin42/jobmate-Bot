@@ -153,7 +153,7 @@ Yedi tapai lai legal business ko lagi staff chahiyeko ho bhane business name, lo
     return {
       intent: "unknown",
       source: "aarati_human_boundary",
-      reply: `Bujhe Mitra ji 🙏
+      reply: `Hajur, bujhe 🙏
 
 JobMate loan/paisa dine service haina. JobMate le kaam khojna, staff khojna, document/verification ra hiring support ma help garcha.
 
@@ -165,7 +165,7 @@ Tapai lai income/kaam chahiyeko ho bhane location ra kasto kaam chahiyo pathaunu
     return {
       intent: "frustrated",
       source: "aarati_human_boundary",
-      reply: `Sorry Mitra ji 🙏
+      reply: `Maaf garnu hola 🙏
 
 Aghi ko reply ramro bhayena jasto lagyo. Ma JobMate team bata kaam khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.
 
@@ -189,7 +189,7 @@ Tapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`,
     return {
       intent: "unknown",
       source: "aarati_human_boundary",
-      reply: `Mitra ji, ma live weather update herna sakdina 🙏
+      reply: `Maaf garnu hola 🙏 Ma live weather update herna sakdina.
 
 Tara JobMate ko kaam ma help garna sakchu — kaam khojna, staff khojna, document verification, pricing ya support.
 
@@ -201,7 +201,7 @@ Tapai kun location ko job/staff ko lagi sodhdai hunuhunchha?`,
     return {
       intent: "unknown",
       source: "aarati_human_boundary",
-      reply: `Mitra ji, yo kura JobMate ko kaam bhanda bahira parcha 🙏
+      reply: `Hajur 🙏 Yo kura JobMate ko main service bhitra direct pardaina.
 
 Ma yaha job khojna, staff khojna, document/verification, pricing ra support ko kura ma help garna sakchu.
 
@@ -213,7 +213,7 @@ Tapai kaam khojdai hunuhunchha ki staff khojdai hunuhunchha?`,
     return {
       intent: "unknown",
       source: "aarati_human_boundary",
-      reply: `Hajur Mitra ji, thik cha 🙏
+      reply: `Hajur, thik cha 🙏
 
 Ma Aarati, JobMate team bata. Kaam khojna, staff khojna, document/verification ya support chahiyo bhane yahi bata help garna sakchu.
 

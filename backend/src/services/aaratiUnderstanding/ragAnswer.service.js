@@ -19,7 +19,7 @@ export function getAaratiUnderstandingRagAnswer({
   }
 
   if (intent === "support_jobmate_trust") {
-    return "Mitra ji, JobMate fake hoina. Hami local job seeker ra staff chahine employer lai connect garne hiring support service ho. Worker registration free cha. Job guarantee chai hudaina. Tapai lai kaam khojna ho ki staff khojna?";
+    return "Hajur 🙏 JobMate fake hoina. Hami local job seeker ra staff chahine employer lai connect garne hiring support service ho. Worker registration free cha. Job guarantee chai hudaina.\n\nTapai lai kaam khojna ho ki staff khojna?";
   }
 
   if (intent === "support_worker_fee") {

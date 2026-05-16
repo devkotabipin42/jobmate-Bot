@@ -78,9 +78,9 @@ export function buildEmployerFillerNudge(currentState = "", lastQuestion = "") {
 
   const nudges = {
     ask_business_name:
-      "Business ya company ko naam pathaunus hola (e.g., 'Hotel Annapurna', 'ABC Traders').",
+      "Tapai ko business/company ko naam pathaunu hola. Example: Hotel Annapurna, ABC Traders.",
     ask_business_name_after_ai:
-      "Business ya company ko naam pathaunus hola.",
+      "Tapai ko business/company ko naam pathaunu hola.",
     ask_vacancy:
       "Kati jana staff chahiyo ra kun role ho bataunu hola (e.g., '2 jana waiter', '1 driver').",
     ask_vacancy_role:
@@ -95,7 +95,7 @@ export function buildEmployerFillerNudge(currentState = "", lastQuestion = "") {
       "Full-time ho ki part-time? Work schedule bataunu hola.",
   };
 
-  return nudges[currentState] || "Kripaya details pathaunus ta 🙏";
+  return nudges[currentState] || "Hajur 🙏 Baki detail pathaunu hola.";
 }
 
 function buildPrompt(text, currentState) {

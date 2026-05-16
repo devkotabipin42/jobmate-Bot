@@ -28,7 +28,7 @@ function getReminderForState({ state = "", lastAskedField = "" } = {}) {
 
   if (key === "location" || state === "ask_location" || state === "ask_district") {
     return `Aile location step ma cha.
-Kripaya tapai kun area/district ma kaam khojdai hunuhunchha, jastai Butwal, Bardaghat, Bhairahawa, Parasi pathaunu hola.`;
+Tapai kun area/district ma kaam khojna chahanu huncha? Example: Butwal, Bardaghat, Bhairahawa, Parasi.`;
   }
 
   if (key === "availability" || state === "ask_availability") {
@@ -54,21 +54,21 @@ Document chha bhane yahi WhatsApp ma photo/file pathauna saknuhunchha.`;
 
   if (state === "ask_business_name" || state === "ask_business_name_after_ai") {
     return `Aile employer/business detail step ma cha.
-Kripaya business/company name pathaunu hola.`;
+Tapai ko business/company name pathaunu hola.`;
   }
 
   if (state === "ask_vacancy" || state === "ask_vacancy_role") {
     return `Aile required staff role step ma cha.
-Kripaya kasto staff chahiyeko ho, role pathaunu hola.`;
+Tapai lai kasto staff chahiyeko ho, role pathaunu hola.`;
   }
 
   if (state === "ask_salary_range") {
     return `Aile salary/work detail step ma cha.
-Kripaya salary range ra work time pathaunu hola.`;
+Salary range ra work time pathaunu hola.`;
   }
 
   return `Aile JobMate ko form/process chaldai cha.
-Kripaya aghi sodheko kura ko answer short ma pathaunu hola.`;
+Aghi sodheko kura ko answer short ma pathaunu hola.`;
 }
 
 function isInformationalQuestionInsideFlow(value = "") {
@@ -135,7 +135,7 @@ export function getAaratiActiveFlowSideReply({ text = "", conversation = {} } = 
   // Employer flow: user sends a clear jobseeker job search query (e.g. "butwal ma driver job xa")
   if (isStrongJobseekerSearchInEmployerFlow(value, state)) {
     return formatActiveReply({
-      opener: "Bujhe Mitra ji 🙏",
+      opener: "Hajur, bujhe 🙏",
       body: "Tapai staff khojdai hunuhunthyo, tara yo message job khojna jasto lagyo. Kaam khojna ho bhane location ra kaam type clear ma pathaunu hola.",
       reminder,
     });
@@ -146,7 +146,7 @@ export function getAaratiActiveFlowSideReply({ text = "", conversation = {} } = 
     const body = buildInformationalSideBody(value);
     if (body) {
       return formatActiveReply({
-        opener: "Bujhe Mitra ji 🙏",
+        opener: "Hajur, bujhe 🙏",
         body,
         reminder,
       });
@@ -155,7 +155,7 @@ export function getAaratiActiveFlowSideReply({ text = "", conversation = {} } = 
 
   if (isAaratiSmallTalkText(value)) {
     return formatActiveReply({
-      opener: "Hajur Mitra ji, thik cha 🙏",
+      opener: "Hajur, thik cha 🙏",
       body: "Ma yahi chu. Tapai ko JobMate process bich mai cha, tesaile step skip nagari help garchu.",
       reminder,
     });
@@ -163,7 +163,7 @@ export function getAaratiActiveFlowSideReply({ text = "", conversation = {} } = 
 
   if (isAaratiFrustrationText(value)) {
     return formatActiveReply({
-      opener: "Sorry Mitra ji 🙏",
+      opener: "Maaf garnu hola 🙏",
       body: "Aghi ko reply ramro bhayena jasto lagyo. Ma tapai ko process bigarna dinna, yahi step bata help garchu.",
       reminder,
     });
@@ -171,8 +171,8 @@ export function getAaratiActiveFlowSideReply({ text = "", conversation = {} } = 
 
   if (isAaratiWeatherText(value) || isAaratiMathHomeworkText(value)) {
     return formatActiveReply({
-      opener: "Bujhe Mitra ji 🙏",
-      body: "Yo kura JobMate process bhanda bahira parcha, tara tapai ko form bich mai cha.",
+      opener: "Hajur, bujhe 🙏",
+      body: "Yo kura JobMate ko main service bhitra direct pardaina, tara tapai ko form bich mai cha.",
       reminder,
     });
   }
@@ -187,7 +187,7 @@ export function getAaratiActiveFlowSideReply({ text = "", conversation = {} } = 
 
   if (isAaratiPersonalMoneyText(value)) {
     return formatActiveReply({
-      opener: "Bujhe Mitra ji 🙏",
+      opener: "Hajur, bujhe 🙏",
       body: "JobMate loan/paisa dine service haina. Tara kaam khojna help garna sakchu.",
       reminder,
     });

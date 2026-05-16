@@ -136,7 +136,7 @@ function getStepReminder(conversation = {}) {
     return `Aile kaam type choose garne step ma cha:\n${CANONICAL_WORKER_JOB_TYPE_MENU}`;
   }
   if (key === "location" || state === "ask_location" || state === "ask_district") {
-    return `Aile location step ma cha.\nKripaya tapai kun area/district ma kaam khojdai hunuhunchha, jastai Butwal, Bardaghat, Bhairahawa, Parasi pathaunu hola.`;
+    return `Aile location step ma cha.\nTapai kun area/district ma kaam khojna chahanu huncha? Example: Butwal, Bardaghat, Bhairahawa, Parasi.`;
   }
   if (key === "availability" || state === "ask_availability") {
     return `Aile availability step ma cha:\n1. Full-time\n2. Part-time\n3. Shift based\n4. Jun sukai`;
@@ -148,27 +148,27 @@ function getStepReminder(conversation = {}) {
     return `Aile profile register garne step ma cha:\n1. Ho, register garchhu\n2. Pachhi try garchhu`;
   }
   if (state === "ask_business_name" || state === "ask_business_name_after_ai") {
-    return `Aile employer/business detail step ma cha.\nKripaya business/company name pathaunu hola.`;
+    return `Aile employer/business detail step ma cha.\nTapai ko business/company name pathaunu hola.`;
   }
   if (state === "ask_vacancy" || state === "ask_vacancy_role") {
-    return `Aile required staff role step ma cha.\nKripaya kasto staff chahiyeko ho, role pathaunu hola.`;
+    return `Aile required staff role step ma cha.\nTapai lai kasto staff chahiyeko ho, role pathaunu hola.`;
   }
   if (state === "ask_salary_range") {
-    return `Aile salary/work detail step ma cha.\nKripaya salary range ra work time pathaunu hola.`;
+    return `Aile salary/work detail step ma cha.\nSalary range ra work time pathaunu hola.`;
   }
-  return `Aile JobMate ko form/process chaldai cha.\nKripaya aghi sodheko kura ko answer short ma pathaunu hola.`;
+  return `Aile JobMate ko form/process chaldai cha.\nAghi sodheko kura ko answer short ma pathaunu hola.`;
 }
 
 function buildTrapOpener(trap = "out_of_scope") {
   switch (trap) {
     case "frustration":
-      return "Sorry Mitra ji 🙏\n\nAghi ko kura ramro bhayena jasto lagyo. Ma kaam khojna, staff khojna, document/verification ra support ko kura ma help garna sakchu.";
+      return "Maaf garnu hola 🙏\n\nAghi ko kura ramro bhayena jasto lagyo. Ma kaam khojna, staff khojna, document/verification ra support ko kura ma help garna sakchu.";
 
     case "cv_privacy":
-      return "Bujhe Mitra ji 🙏\n\nTapai ko CV/document sabai company lai automatically pathauning haina. Relevant employer sanga match bhaye matra, ra tapai ko permission anusar matra share huncha. Document bina profile save garna pani milcha.";
+      return "Hajur, bujhe 🙏\n\nTapai ko CV/document sabai company lai automatically pathauning haina. Relevant employer sanga match bhaye matra, ra tapai ko permission anusar matra share huncha. Document bina profile save garna pani milcha.";
 
     case "cv_help":
-      return "Bujhe Mitra ji 🙏\n\nCV/resume chaina bhane pani profile save garna milcha — name, location, kasto kaam chahiyo, experience ra availability matra pugcha. CV banaune support ko lagi JobMate team lai forward garna milcha.";
+      return "Hajur, bujhe 🙏\n\nCV/resume chaina bhane pani profile save garna milcha — name, location, kasto kaam chahiyo, experience ra availability matra pugcha. CV banaune support ko lagi JobMate team lai forward garna milcha.";
 
     case "fair_labor":
       return "Yo request JobMate rules anusar mildaina 🙏\n\nJobMate le minimum wage ra legal salary anusar matra hiring support garcha. Bina paisa/salary kaam garaunus bhanera match garna mildaina — yo Nepal Labour Act anusar illegal ho.";
@@ -183,7 +183,7 @@ function buildTrapOpener(trap = "out_of_scope") {
       return "Tapai ko chinta thik ho 🙏\n\nJobMate Nepal ma registered ra verified service ho. Tapai ko data safe rakhcha, fake job use gardaina, ra registered employer sanga matra connect garcha.";
 
     case "memory":
-      return "Mitra ji, ma conversation bhitra tapai le pathaeko kura herera help garna sakchu 🙏\n\nTara ma personal memory jasto sabai kura yaad rakhchu bhanera guarantee gardaina.";
+      return "Hajur 🙏 Conversation bhitra tapai le pathaeko kura herera help garna sakchu.\n\nTara ma personal memory jasto sabai kura yaad rakhchu bhanera guarantee gardaina.";
 
     case "call_request":
       return "Ma yahi WhatsApp bata text support dinu ho 🙏\n\nPhone call chahiyo bhane JobMate team lai request forward garna milcha.";
@@ -199,7 +199,7 @@ function buildTrapOpener(trap = "out_of_scope") {
 
     case "out_of_scope":
     default:
-      return "Mitra ji, yo kura JobMate ko scope bhanda baahira parcha 🙏\n\nMa kaam khojna, staff khojna, document/verification, pricing ra support ko kura ma matra help garna sakchu.";
+      return "Hajur 🙏 Yo kura JobMate ko main service bhitra direct pardaina.\n\nMa kaam khojna, staff khojna, document/verification, pricing ra support ko kura ma matra help garna sakchu.";
   }
 }
 

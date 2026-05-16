@@ -9,7 +9,7 @@ export function buildJobMateMainMenuReply() {
 }
 
 export function buildUnavailableMainMenuSelectionReply() {
-  return "Mitra ji, ahile JobMate ma 1. Job khojna ra 2. Staff khojna matra available cha. Kripaya 1 ya 2 channus.";
+  return "Namaste 🙏 JobMate ma swagat cha.\n\nTapai job khojna chahanu huncha ki staff/worker khojna?\n\n1. Job khojna\n2. Staff khojna\n\nTapai 1 ya 2 pathaunu hola.";
 }
 
 export function normalizeStartRestartMenuText(text = "") {

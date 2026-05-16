@@ -103,7 +103,7 @@ export async function handleEmployerLead({
     return {
       intent: "employer_lead",
       messageToSend:
-        "Mitra ji, JobMate website design service hoina 🙏 JobMate le job khojne worker ra staff khojne employer lai connect garne kaam garcha. Tapai lai staff hire garna ho bhane business ko naam pathaunus.",
+        "Hajur 🙏 JobMate website design service chai haina. JobMate le job khojne worker ra staff khojne employer lai connect garna help garcha.\n\nTapai staff/worker hire garna chahanu huncha bhane business/company ko naam pathaunu hola.",
       nextStep: step || 1,
       currentState: conversation?.currentState || "ask_business_name",
       employerLead: null,
@@ -135,7 +135,7 @@ export async function handleEmployerLead({
     });
     const reply = sideResult.handled
       ? sideResult.reply
-      : "Maaf garnus, yo kura barema thik jaankari dina sakdina 🙏 Staff hiring continue garau.";
+      : "Maaf garnu hola 🙏 Tapai ko kura bujhe. Aba staff hiring ko yo step continue garau hai.";
     return preserveEmployerState(conversation, reply, step);
   }
 
@@ -150,7 +150,7 @@ export async function handleEmployerLead({
   if (classification?.type === "WORKER_INTENT") {
     return {
       intent: "worker_registration",
-      messageToSend: `Thik cha! Job khojna registration suru garau 🙏\n\nTapai kun kaam khojna chahanu huncha?\n\n${CANONICAL_WORKER_JOB_TYPE_MENU}`,
+      messageToSend: `Hajur 🙏 Job khojna registration suru garau.\n\nTapai kun kaam khojna chahanu huncha?\n\n${CANONICAL_WORKER_JOB_TYPE_MENU}`,
       currentState: "ask_jobType",
       isComplete: false,
       needsHuman: false,

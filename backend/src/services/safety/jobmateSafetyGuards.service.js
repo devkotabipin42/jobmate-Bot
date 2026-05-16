@@ -41,7 +41,7 @@ export function isUnsafeHiringRequest(text = "") {
 }
 
 export function buildUnsafeHiringReply() {
-  return `Ma yasto request ma sahayog garna sakdina.
+  return `Maaf garnu hola 🙏 Yo request ma JobMate ko rule bhitra basera help garna mildaina.
 
 JobMate le sirf legal, safe ra voluntary employment/hiring process ma matra sahayog garchha.
 

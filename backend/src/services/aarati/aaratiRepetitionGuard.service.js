@@ -20,7 +20,7 @@ export function reduceRepeatedAaratiReply({
 
   if (!same && !menuLike) return reply;
 
-  return `Mitra ji, ma repeat nagari sidha help garchu 🙏
+  return `Hajur 🙏 Ma repeat nagari sidha help garchu.
 
 Tapai jobseeker ho bhane location ra kaam type pathaunu hola.
 Employer ho bhane business name, location ra kasto staff chahiyo pathaunu hola.
