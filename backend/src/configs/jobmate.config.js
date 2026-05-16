@@ -250,7 +250,7 @@ function parseDocuments(text, profile = {}) {
     /\b(?:document|documents?|citizenship|nagarikta|cv|license)\s+(?:xa|cha|chha|छ)\b/i.test(normalized) ||
     /\bphoto\s+pathauna\s+sak(?:chu|chhu|xu|xhu)\b/i.test(normalized)
   ) {
-    return "yes";
+    return "declared_not_uploaded";
   }
 
   if (
@@ -260,7 +260,7 @@ function parseDocuments(text, profile = {}) {
     /\bahile\s+(?:xaina|chaina|chhaina)\b/i.test(normalized) ||
     /\bpachi\s+(?:dinchu|dinchhu|dina|pathaula|pathaunchu|pathaun?chu)\b/i.test(normalized)
   ) {
-    return "no";
+    return "none";
   }
 
   return null;
@@ -410,6 +410,18 @@ function shouldRunWorkerRegistrationSearchStep({
   });
 }
 
+const OUTSIDE_LUMBINI_DISTRICT_MENU = `Maaf garnus, JobMate haalai Lumbini Province matra active cha 🙏
+
+Tapai in areas ma kaam garna milcha?
+
+1. Nawalparasi West
+2. Rupandehi
+3. Kapilvastu
+4. Palpa
+5. Dang
+6. Banke
+7. Aru area (Lumbini Province)`;
+
 function parseDistrictReply(text) {
   const t = String(text || "").trim();
   const map = {
@@ -419,6 +431,7 @@ function parseDistrictReply(text) {
     "4": "Palpa",
     "5": "Dang",
     "6": "Banke",
+    "7": "Other (Lumbini)",
   };
 
   if (map[t]) return map[t];
@@ -429,7 +442,12 @@ function parseDistrictReply(text) {
   }
 
   const resolved = resolveLumbiniLocation(t);
-  return resolved?.district || resolved?.canonical || t;
+  if (resolved?.district || resolved?.canonical) {
+    return resolved.district || resolved.canonical;
+  }
+
+  // Unrecognized — don't save; engine will re-ask the question
+  return null;
 }
 
 function buildWorkerEditMenuMessage() {
@@ -573,7 +591,7 @@ async function jobmateWorkerFlowGuard({
         messageToSend: "Document photo receive bhayo 🙏\nTapai ko naam pathaunus.",
         profileUpdates: {
           ...documentProfileUpdates,
-          documents: "yes",
+          documents: "received",
         },
         currentState: "ask_fullName",
         lastAskedField: "fullName",
@@ -586,6 +604,18 @@ async function jobmateWorkerFlowGuard({
       currentState: currentState || conversation?.currentState || "collecting",
       lastAskedField,
     };
+  }
+
+  if (lastAskedField === "district" || currentState === "ask_district") {
+    const outsideAlias = detectOutsideLumbiniLocation(text);
+    if (outsideAlias) {
+      return {
+        messageToSend: OUTSIDE_LUMBINI_DISTRICT_MENU,
+        currentState: "ask_district",
+        lastAskedField: "district",
+        profileUpdates: {},
+      };
+    }
   }
 
   if (lastAskedField === "availability" || currentState === "ask_availability") {
@@ -1150,6 +1180,19 @@ function formatWorkerExpectedSalaryValue(expectedSalary) {
   return "-";
 }
 
+function formatDocumentLabel(documents) {
+  const labels = {
+    received: "Chha ✅",
+    declared_not_uploaded: "Chha (file pathayeko chhaina)",
+    none: "Chhaina",
+    partial: "Kehi Chha",
+    privacy_concern: "not provided (privacy concern)",
+    yes: "Chha",
+    no: "Chhaina",
+  };
+  return labels[documents] || documents || "-";
+}
+
 function buildWorkerConfirmationMessage(profile = {}) {
   return `Yo details thik cha?
 
@@ -1157,7 +1200,7 @@ function buildWorkerConfirmationMessage(profile = {}) {
 - Area: ${profile.area || profile.location || "-"}
 - District: ${profile.district || "-"}
 - Availability: ${profile.availability || "-"}
-- Documents: ${profile.documents || "-"}
+- Documents: ${formatDocumentLabel(profile.documents)}
 - Naam: ${profile.fullName || "-"}
 - Phone: ${profile.providedPhone || profile.phone || "-"}
 - Age: ${profile.age || "-"}
@@ -1181,7 +1224,7 @@ function buildWorkerCompletionMessage(profile = {}) {
 - Area: ${profile.area || profile.location || "-"}
 - District: ${profile.district || "-"}
 - Availability: ${profile.availability || "-"}
-- Documents: ${profile.documents === "privacy_concern" ? "not provided due to privacy concern" : profile.documents || "-"}
+- Documents: ${formatDocumentLabel(profile.documents)}
 - Naam: ${profile.fullName || "-"}
 - Phone: ${profile.providedPhone || profile.phone || "-"}
 - Age: ${profile.age || "-"}

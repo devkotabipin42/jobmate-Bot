@@ -11,7 +11,7 @@ const VALID_TYPES = new Set([
 // ── Local rule-based classifier (no API needed) ───────────────────────────────
 const RE_QUESTION_WORD     = /^(what|where|who|how|why|ke|k|kaha|kasari|kina|kun|kasto|kahile|kata)\b/i;
 const RE_HUMAN_HANDOFF     = /staff\s*(?:sanga|singa|saga)|team\s*(?:sanga|singa|saga)|manager\s*(?:sanga|singa|saga)|manche\s*(?:sanga|singa|saga)|human\s*(?:sanga|singa|saga)|kura\s*garna?\s*[xc]ha|human\s*support/i;
-const RE_WORKER_JOB_SIGNAL = /kaam\s*chahiyo|job\s*chahiyo|malai\s*job|i\s*need\s*(?:a\s*)?job|mero\s*lagi\s*job|job\s*khojna/i;
+const RE_WORKER_JOB_SIGNAL = /kaam\s*chahiyo|job\s*chahiyo|kaam\s*chayako|kam\s*chayako|malai\s*kaam|malai\s*job|mero\s*lagi\s*(?:kaam|job)|i\s*need\s*(?:a\s*)?job|job\s*khojna|sorry.*kaam|galti.*bhayo.*kaam/i;
 const RE_SINGLE_DIGIT      = /^\d$/;
 const RE_FILLER            = /^(ok|okay|thik|thik\s*cha|huncha|hunchha|next|continue|proceed|haha|lol)$/i;
 const RE_KNOWN_ROLE        = /^(driver|waiter|cook|helper|cleaner|security|guard|teacher|accountant|cashier|electrician|plumber|nurse|sweeper|barista|chef|tailor|receptionist|supervisor|marketing|sales|manager)$/i;
