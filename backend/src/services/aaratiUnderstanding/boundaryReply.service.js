@@ -12,7 +12,7 @@ export function buildRiskyReply(reason = "") {
   }
 
   if (reason === "risky_illegal_work") {
-    return "Mitra ji, illegal ya unsafe kaam ko lagi JobMate le support gardaina 🙏 Legal, safe ra verified job/hiring kura ma matra help garna milcha.";
+    return "Yo illegal/unsafe kaam JobMate le support gardaina 🙏 JobMate le legal, safe ra fair hiring matra support garcha.\n\nTapai lai kun help chahiyo?\n1. Job khojna\n2. Staff khojna";
   }
 
   return "Mitra ji, bina salary/free labor worker match garna mildaina 🙏 JobMate le legal ra fair salary bhayeko hiring matra support garcha.";

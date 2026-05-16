@@ -42,11 +42,20 @@ export function sanitizeReply(reply = "") {
     value = value.replace(pattern, replacement);
   }
 
+  value = repairBrokenReplyPrefix(value);
+
   return value
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .replace(/[ \t]{2,}/g, " ")
     .trim();
+}
+
+function repairBrokenReplyPrefix(value = "") {
+  return String(value || "")
+    .replace(/^\s*aste\b/i, "Namaste")
+    .replace(/^\s*i\s+kasto\s+kaam/i, "Tapai kasto kaam")
+    .replace(/^\s*quest\s+JobMate\s+rules/i, "Yo request JobMate rules");
 }
 
 export function findReplyPolicyIssues(reply = "") {

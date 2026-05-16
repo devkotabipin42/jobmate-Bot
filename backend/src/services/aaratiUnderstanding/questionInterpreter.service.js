@@ -88,6 +88,15 @@ export function interpretQuestion({ text = "", conversation = {} } = {}) {
     };
   }
 
+  if (/manxe\s*marne|manche\s*marne|manxe\s*maar|manche\s*maar|kill\s*(job|work)|murder/i.test(normalized)) {
+    return {
+      simpleMeaning: "asks about illegal or unsafe work",
+      possibleIntent: "risky_illegal_work",
+      confidence: 0.98,
+      entities,
+    };
+  }
+
   if (/underage|child\s*(worker|labor|labour)|bal\s*shram|bachcha\s*worker|minor/i.test(normalized)) {
     return {
       simpleMeaning: "asks about underage worker",
@@ -111,6 +120,15 @@ export function interpretQuestion({ text = "", conversation = {} } = {}) {
       simpleMeaning: "asks about illegal work",
       possibleIntent: "risky_illegal_work",
       confidence: 0.95,
+      entities,
+    };
+  }
+
+  if (/jobmate.*(fake|fack|scam|fraud)|(fake|fack|scam|fraud).*jobmate/i.test(normalized)) {
+    return {
+      simpleMeaning: "asks whether JobMate is trustworthy",
+      possibleIntent: "support_jobmate_trust",
+      confidence: 0.94,
       entities,
     };
   }

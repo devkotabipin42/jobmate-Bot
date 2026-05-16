@@ -22,6 +22,7 @@ function getActiveFlow(conversation = {}) {
 function isSafeMetaSupportIntent(intent = "") {
   return [
     "support_job_guarantee",
+    "support_jobmate_trust",
     "support_worker_fee",
     "support_document_privacy",
     "support_sahakari_info",

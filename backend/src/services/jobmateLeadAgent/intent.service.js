@@ -72,7 +72,7 @@ export function classifyLeadAgentIntent({ text = "", state = {} } = {}) {
   }
 
   if (value === "3") {
-    return { intent: "sahakari_start", confidence: 0.9, reason: "main_menu_sahakari_selection" };
+    return { intent: "disabled_menu_option", confidence: 0.9, reason: "disabled_main_menu_selection" };
   }
 
   if (isSahakariStart(value)) {

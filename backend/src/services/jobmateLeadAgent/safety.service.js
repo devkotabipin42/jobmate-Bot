@@ -20,6 +20,10 @@ export function detectLeadAgentSafetyQuestion({ text = "", activeFlow = null } =
     return { type: "company_owner", preserveFlow: Boolean(activeFlow) };
   }
 
+  if (/\bjobmate\b.*\b(fake|fack|scam|fraud)\b|\b(fake|fack|scam|fraud)\b.*\bjobmate\b/i.test(value)) {
+    return { type: "jobmate_trust", preserveFlow: Boolean(activeFlow) };
+  }
+
   if (/\btimi ko ho\b|\bko ho\b.*\btimi\b|\bwho are you\b|\btimi\s+ai\s+ho\b|\bai\s+ho\b|\bgemini\b.*\b(use|garchau|chalauchau)\b/i.test(value)) {
     return { type: "identity", preserveFlow: Boolean(activeFlow) };
   }
@@ -151,6 +155,12 @@ function detectHardSafetyRefusal(value = "") {
   }
 
   if (
+    /manxe\s+marne|manche\s+marne|manxe\s+maar|manche\s+maar|kasaile?\s+marne|kill\s+(job|work)|murder/i.test(text)
+  ) {
+    return "illegal_work_refusal";
+  }
+
+  if (
     /worker\s+lai\s+free\s+ma|free\s+ma\s+worker|free\s+ma\s+kaam|free\s+ma.*(manche|manxe|helper|staff|worker)|salary\s+nadine|salary\s+nadi|unpaid\s+trial|bina\s+salary|paisa\s+nadi.*worker|paisa\s+nadi.*helper/i.test(text)
   ) {
     return "free_labor_refusal";
@@ -222,20 +232,26 @@ function safetyReplyByType(type, activeFlow, safety = {}) {
     case "discriminatory_request_refusal":
       return "Exploitative ya discriminatory worker request support garna mildaina. Role, salary, timing, safety, ra fair requirement clear bhaye human approval pachi suitable verified profiles share garna sakincha.";
 
+    case "illegal_work_refusal":
+      return "Yo illegal/unsafe kaam JobMate le support gardaina 🙏 JobMate le legal, safe ra fair hiring matra support garcha.\n\nTapai lai kun help chahiyo?\n1. Job khojna\n2. Staff khojna";
+
     case "identity":
-      return "Ma Aarati, JobMate team ko digital sahayogi ho. Ma job khojne worker, staff chahine employer, ra sahakari pilot inquiry ma help garchu.";
+      return "Ma Aarati, JobMate team ko digital sahayogi ho. Ma job khojne worker ra staff chahine employer lai help garchu.";
 
     case "company_owner":
       return "JobMate Nepal Bipin Devkota ko team le operate gariraheko local hiring support service ho. Ma Aarati, JobMate team ko digital sahayogi ho.";
 
+    case "jobmate_trust":
+      return "Mitra ji, JobMate fake hoina. Hami local job seeker ra staff chahine employer lai connect garne hiring support service ho. Worker registration free cha. Job guarantee chai hudaina. Tapai lai kaam khojna ho ki staff khojna?";
+
     case "out_of_scope":
-      return "Ma JobMate ko hiring support ko lagi ho. Website/love letter ma help garna mildaina. Job, staff, ya sahakari pilot sambandhi kura bhaye help garchu.";
+      return "Ma JobMate ko hiring support ko lagi ho. Website/love letter ma help garna mildaina. Job khojna ya staff khojna sambandhi kura bhaye help garchu.";
 
     case "confusion":
-      return "Maaf garnus, ma clear bujhna khojdai chu. Tapai job khojdai hunuhuncha, staff chahiyeko ho, ki sahakari pilot barema kura garna chahanu huncha?";
+      return "Maaf garnus, ma clear bujhna khojdai chu. Tapai job khojdai hunuhuncha ki staff chahiyeko ho?";
 
     case "help_menu":
-      return "Tapai lai kun help chahiyo?\n1. Job khojna\n2. Staff khojna\n3. Sahakari pilot\nDaya garera 1, 2, ya 3 type garnus.";
+      return "Tapai lai kun help chahiyo?\n1. Job khojna\n2. Staff khojna\nDaya garera 1 ya 2 type garnus.";
 
     case "worker_free":
       return "Worker registration ra job search JobMate ma free ho. Tapai bata registration fee linna.";

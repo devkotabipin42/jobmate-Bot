@@ -55,6 +55,10 @@ export async function runConversationEngine({
           guardResult.lastAskedField !== undefined
             ? guardResult.lastAskedField
             : lastAskedField;
+        const guardedActiveFlow =
+          guardResult.activeFlow !== undefined
+            ? guardResult.activeFlow
+            : metadata.activeFlow;
 
         if (conversation && conversation._id) {
           try {
@@ -66,6 +70,7 @@ export async function runConversationEngine({
                   currentState: guardedState,
                   "metadata.collectedData": profile,
                   "metadata.lastAskedField": guardedLastAskedField || null,
+                  "metadata.activeFlow": guardedActiveFlow || null,
                 },
               },
               { runValidators: false }
@@ -81,6 +86,7 @@ export async function runConversationEngine({
             collectedData: profile,
             lastAskedField: guardedLastAskedField || null,
             currentState: guardedState,
+            activeFlow: guardedActiveFlow || null,
           },
           isComplete: false,
         };

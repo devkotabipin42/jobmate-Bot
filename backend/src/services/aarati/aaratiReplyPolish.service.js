@@ -53,6 +53,13 @@ function removeProviderMentions(text = "") {
     .replace(/provider/gi, "system");
 }
 
+function repairBrokenReplyPrefix(text = "") {
+  return normalizeText(text)
+    .replace(/^aste\b/i, "Namaste")
+    .replace(/^i\s+kasto\s+kaam/i, "Tapai kasto kaam")
+    .replace(/^quest\s+JobMate\s+rules/i, "Yo request JobMate rules");
+}
+
 function isQuestionLikelyUnrelated(userText = "") {
   const value = String(userText || "").toLowerCase();
 
@@ -94,7 +101,7 @@ export function polishAaratiReply({
   maxWords = 85,
 } = {}) {
   const cleanUserText = normalizeText(userText);
-  let cleanReply = removeProviderMentions(reply);
+  let cleanReply = repairBrokenReplyPrefix(removeProviderMentions(reply));
 
   if (!cleanReply) return null;
 
@@ -121,7 +128,7 @@ export function polishAaratiReply({
   }
 
   const sentences = splitSentences(cleanReply);
-  let compactReply = sentences.slice(0, 5).join("\n");
+  let compactReply = repairBrokenReplyPrefix(sentences.slice(0, 5).join("\n"));
 
   compactReply = limitWords(compactReply, maxWords);
 

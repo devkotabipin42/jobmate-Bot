@@ -57,21 +57,16 @@ export function parseMixedIntentChoice(text = "") {
     return "employer";
   }
 
-  if (/^(3|three)$/i.test(value) || /\b(sahakari pilot|sahakari|cooperative)\b/i.test(value)) {
-    return "sahakari";
-  }
-
   return "";
 }
 
 export function buildMixedIntentClarificationReply() {
   return [
-    "Hajur, duita kura aayo: job registration ra staff demand.",
+    "Hajur, duita kura aayo: job khojna ra staff khojna.",
     "Pahila kun handle garum?",
-    "1. Job registration",
-    "2. Staff demand",
-    "3. Sahakari pilot",
-    "Daya garera 1, 2, ya 3 type garnus.",
+    "1. Job khojna",
+    "2. Staff khojna",
+    "Daya garera 1 ya 2 type garnus.",
   ].join("\n");
 }
 

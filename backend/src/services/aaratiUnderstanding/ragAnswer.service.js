@@ -18,6 +18,10 @@ export function getAaratiUnderstandingRagAnswer({
     return buildJobGuaranteeReply();
   }
 
+  if (intent === "support_jobmate_trust") {
+    return "Mitra ji, JobMate fake hoina. Hami local job seeker ra staff chahine employer lai connect garne hiring support service ho. Worker registration free cha. Job guarantee chai hudaina. Tapai lai kaam khojna ho ki staff khojna?";
+  }
+
   if (intent === "support_worker_fee") {
     return buildWorkerFeeReply();
   }
@@ -27,7 +31,7 @@ export function getAaratiUnderstandingRagAnswer({
   }
 
   if (intent === "support_sahakari_info") {
-    return "Sahakari pilot bare JobMate team le 30-day zero-investment employment support pilot discuss garna sakcha. Ahile main menu ma job khojna ra staff khojna matra available cha.";
+    return "Sahakari partnership bare JobMate team le 30-day zero-investment employment support pilot discuss garna sakcha. Ahile main menu ma job khojna ra staff khojna matra available cha.";
   }
 
   if (intent === "support_answer") {

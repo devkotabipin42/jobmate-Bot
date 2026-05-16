@@ -16,6 +16,7 @@ const INSIDE_INTENTS = new Set([
   "job_search",
   "support_answer",
   "support_job_guarantee",
+  "support_jobmate_trust",
   "support_worker_fee",
   "support_document_privacy",
   "support_sahakari_info",
