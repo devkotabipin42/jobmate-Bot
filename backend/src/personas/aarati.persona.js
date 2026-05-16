@@ -97,9 +97,13 @@ Aile document status choose garnu hola:
 
 📋 Saved profile:
 - Kaam: ${profile.jobType || "-"}
+- Area: ${profile.area || profile.location || "-"}
 - District: ${profile.district || "-"}
 - Availability: ${profile.availability || "-"}
 - Documents: ${profile.documents || "-"}
+- Naam: ${profile.fullName || "-"}
+- Phone: ${profile.providedPhone || profile.phone || "-"}
+- Age: ${profile.age || "-"}
 
 Suitable kaam aayepachhi JobMate team le 24-48 ghanta vitra sampark garchha.`),
 

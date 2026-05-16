@@ -432,6 +432,35 @@ function parseDistrictReply(text) {
   return resolved?.district || resolved?.canonical || t;
 }
 
+function buildWorkerEditMenuMessage() {
+  return `Kun field edit garnu cha?
+
+1. Kaam / Job type
+2. Area / Location
+3. Availability
+4. Documents
+5. Naam
+6. Phone
+7. Age
+8. Experience
+9. Expected salary`;
+}
+
+function getEditFieldQuestion(field) {
+  const questions = {
+    jobType: `Naya kaam/job type pathaunus.\n\n${CANONICAL_WORKER_JOB_TYPE_MENU}`,
+    district: `Kun district/area ma kaam garna milcha?\n\n1. Nawalparasi West\n2. Rupandehi\n3. Kapilvastu\n4. Palpa\n5. Dang\n6. Banke`,
+    availability: `Tapai kati samaya kaam garna milchha?\n\n1. Full-time\n2. Part-time\n3. Shift based\n4. Jun sukai`,
+    documents: `Document status ke ho?\n\n1. Chha, photo/file pathauna sakchhu\n2. Chhaina\n3. Kehi chha, kehi chhaina`,
+    fullName: "Tapai ko naam pathaunus.",
+    providedPhone: "Tapai ko phone/WhatsApp number pathaunus.",
+    age: "Tapai ko age kati ho?",
+    experience: "Tapai ko experience kati cha? Experience chaina bhane 'no experience' lekhnus.",
+    expectedSalary: "Expected salary kati ho? (e.g., 15000, 15000-20000, negotiable)",
+  };
+  return questions[field] || "Naya value pathaunus.";
+}
+
 async function jobmateWorkerFlowGuard({
   text = "",
   contact,
@@ -449,6 +478,47 @@ async function jobmateWorkerFlowGuard({
 
   if (!activeWorkerContext) {
     return null;
+  }
+
+  if (
+    (lastAskedField === "confirmation" || currentState === "ask_confirmation") &&
+    normalizeSimpleText(text) === "2"
+  ) {
+    return {
+      messageToSend: buildWorkerEditMenuMessage(),
+      currentState: "ask_edit_select",
+      lastAskedField: "editFieldSelection",
+      profileUpdates: {},
+    };
+  }
+
+  if (lastAskedField === "editFieldSelection" || currentState === "ask_edit_select") {
+    const EDIT_FIELD_MAP = {
+      "1": "jobType",
+      "2": "district",
+      "3": "availability",
+      "4": "documents",
+      "5": "fullName",
+      "6": "providedPhone",
+      "7": "age",
+      "8": "experience",
+      "9": "expectedSalary",
+    };
+    const fieldToEdit = EDIT_FIELD_MAP[normalizeSimpleText(text)];
+    if (fieldToEdit) {
+      return {
+        messageToSend: getEditFieldQuestion(fieldToEdit),
+        currentState: `ask_${fieldToEdit}`,
+        lastAskedField: fieldToEdit,
+        profileUpdates: { [fieldToEdit]: null, confirmation: null },
+      };
+    }
+    return {
+      messageToSend: buildWorkerEditMenuMessage(),
+      currentState: "ask_edit_select",
+      lastAskedField: "editFieldSelection",
+      profileUpdates: {},
+    };
   }
 
   if (isWorkerJobNotIntendedText(text)) {
@@ -1098,6 +1168,29 @@ function buildWorkerConfirmationMessage(profile = {}) {
 2. Edit garnu cha`;
 }
 
+function buildWorkerCompletionMessage(profile = {}) {
+  const privacyNote =
+    profile.documents === "privacy_concern"
+      ? `\n\nTapai ko chinta thik ho 🙏 Document pathaunu compulsory haina. JobMate team le document sirf verification/hiring process ko lagi herchha. Ahile document bina profile save gareko chhu; pachhi trust bhaye yahi WhatsApp ma pathauna saknuhunchha.`
+      : "";
+
+  return `Dhanyabaad 🙏 Tapai ko vivaran JobMate ma save bhayo.
+
+📋 Saved profile:
+- Kaam: ${profile.jobType || "-"}
+- Area: ${profile.area || profile.location || "-"}
+- District: ${profile.district || "-"}
+- Availability: ${profile.availability || "-"}
+- Documents: ${profile.documents === "privacy_concern" ? "not provided due to privacy concern" : profile.documents || "-"}
+- Naam: ${profile.fullName || "-"}
+- Phone: ${profile.providedPhone || profile.phone || "-"}
+- Age: ${profile.age || "-"}
+- Experience: ${formatWorkerExperienceValue(profile.experience)}
+- Expected salary: ${formatWorkerExpectedSalaryValue(profile.expectedSalary)}${privacyNote}
+
+Suitable kaam aayepachhi JobMate team le 24-48 ghanta vitra sampark garchha.`;
+}
+
 async function generateAaratiAIReply({
   userText,
   profile,
@@ -1477,7 +1570,7 @@ export const jobmateConfig = {
     }
     return null;
   },
-  completionMessage: (profile) => MESSAGES.completion(profile),
+  completionMessage: (profile) => buildWorkerCompletionMessage(profile),
   onComplete: async ({ contact, profile }) => {
     if (profile?.confirmation !== "confirmed") {
       console.warn("onComplete skipped: worker profile not confirmed");
