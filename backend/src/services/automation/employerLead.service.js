@@ -167,10 +167,11 @@ export async function handleEmployerLead({
   if (classification?.type === "OFF_TOPIC") {
     const lastQ =
       conversation?.metadata?.lastQuestion ||
-      "Kripaya staff hiring details pathaunus.";
+      "Aba staff hiring detail continue garau hai. Tapai ko baki detail pathaunu hola.";
+
     return preserveEmployerState(
       conversation,
-      `Maaf garnus, yo kura JobMate ko kaam bhanda bahira cha 🙏\n\n${lastQ}`,
+      `Maaf garnu hola 🙏\n\nTapai staff/worker hiring flow ma hunuhuncha. Yedi job khojna chahanu bhako ho bhane "job khojna" lekhnuhola.\n\nStaff hiring continue garne ho bhane, yo detail pathaunu hola:\n\n${lastQ}`,
       step
     );
   }

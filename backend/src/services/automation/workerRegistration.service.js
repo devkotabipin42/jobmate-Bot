@@ -190,7 +190,8 @@ export async function handleWorkerRegistration({
     if (classification?.type === "EMPLOYER_INTENT") {
       return {
         intent: "worker_registration",
-        messageToSend: "Staff khojna ho bhane '2' thichnus — yo flow worker registration ko lagi ho. 😊",
+        messageToSend:
+          "Hajur 🙏 Tapai staff/worker khojna chahanu bhako ho bhane employer registration suru garna '2' pathaunu hola.\n\nYedi tapai job khojna chahanu huncha bhane, kaam ko type pathaunu hola.",
         nextStep: 0,
         currentState: conversation?.currentState,
         metadataUpdate: {
@@ -206,10 +207,11 @@ export async function handleWorkerRegistration({
     if (classification?.type === "OFF_TOPIC") {
       const lastQ =
         conversation?.metadata?.lastQuestion ||
-        "Kripaya worker registration details pathaunus.";
+        "Aba job registration continue garau hai. Tapai ko baki detail pathaunu hola.";
+
       return preserveWorkerState(
         conversation,
-        `Maaf garnus, yo kura JobMate ko kaam bhanda bahira cha 🙏\n\n${lastQ}`
+        `Maaf garnu hola 🙏\n\nTapai job registration ko flow ma hunuhuncha. Aba detail continue garau hai.\n\n${lastQ}`
       );
     }
 
