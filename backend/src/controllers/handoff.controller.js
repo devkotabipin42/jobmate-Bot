@@ -60,11 +60,12 @@ export async function adminSendMessage(req, res) {
 
 /**
  * POST /admin/conversations/:contactId/takeover
- * Pauses the bot and notifies the user that a human is joining.
+ * Pauses the bot. Optionally notifies the user if sendNotification === true.
  */
 export async function adminTakeoverConversation(req, res) {
   try {
     const { contactId } = req.params;
+    const { sendNotification = false } = req.body || {};
 
     const { contact, conversation } = await resolveContactAndConversation(contactId);
 
@@ -79,6 +80,10 @@ export async function adminTakeoverConversation(req, res) {
         ? pauseConversationForHuman({ conversation, reason: "human_handoff" })
         : Promise.resolve(),
     ]);
+
+    if (!sendNotification) {
+      return res.status(200).json({ success: true, botMode: "human_paused", sent: false });
+    }
 
     const text = "Hamro team member tapai sanga kura garna aaucha 🙏 Kehiछin parkhanu hola.";
     const sendResult = await sendWhatsAppTextMessage({ to: contact.phone, text });
@@ -104,7 +109,7 @@ export async function adminTakeoverConversation(req, res) {
 
 /**
  * POST /admin/conversations/:contactId/release
- * Resumes the bot and notifies the user.
+ * Silently resumes the bot — no WhatsApp message sent to the user.
  */
 export async function adminReleaseConversation(req, res) {
   try {
@@ -131,22 +136,7 @@ export async function adminReleaseConversation(req, res) {
         : Promise.resolve(),
     ]);
 
-    const text = "Bot feri active bhayo 🤖\nJob khojna '1', staff khojna '2' thichnus.";
-    const sendResult = await sendWhatsAppTextMessage({ to: contact.phone, text });
-
-    await saveOutboundMessage({
-      contact,
-      conversation,
-      text,
-      providerMessageId: sendResult.providerMessageId || null,
-      status: sendResult.skipped ? "skipped" : "sent",
-    });
-
-    return res.status(200).json({
-      success: true,
-      botMode: "bot",
-      sent: !sendResult.skipped,
-    });
+    return res.status(200).json({ success: true, botMode: "bot" });
   } catch (error) {
     console.error("❌ adminReleaseConversation failed:", error);
     return res.status(500).json({ success: false, message: error.message || "Failed to release conversation" });

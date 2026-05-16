@@ -283,9 +283,10 @@ export const adminService = {
     });
   },
 
-  takeoverConversation(contactId) {
+  takeoverConversation(contactId, { sendNotification = true } = {}) {
     return request(`/api/admin/conversations/${contactId}/takeover`, {
       method: "POST",
+      body: JSON.stringify({ sendNotification }),
     });
   },
 
