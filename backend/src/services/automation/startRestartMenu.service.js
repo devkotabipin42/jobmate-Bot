@@ -2,14 +2,14 @@ export const JOBMATE_MAIN_MENU_CONTEXT = "jobmate_main_menu";
 
 export function buildJobMateMainMenuReply() {
   return [
-    "Namaste. JobMate ma tapai job khojna ya staff khojna saknuhunchha.",
+    "Namaskar 🙏\nMa Aarati, JobMate Nepal team bata.",
     "1. Job khojna",
     "2. Staff khojna",
   ].join("\n");
 }
 
 export function buildUnavailableMainMenuSelectionReply() {
-  return "Namaste 🙏 JobMate ma swagat cha.\n\nTapai job khojna chahanu huncha ki staff/worker khojna?\n\n1. Job khojna\n2. Staff khojna\n\nTapai 1 ya 2 pathaunu hola.";
+  return "Namaskar 🙏\nMa Aarati, JobMate Nepal team bata.\n\nTapai job khojna chahanu huncha ki staff/worker khojna?\n\n1. Job khojna\n2. Staff khojna\n\nTapai 1 ya 2 pathaunu hola.";
 }
 
 export function normalizeStartRestartMenuText(text = "") {

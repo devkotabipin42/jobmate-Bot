@@ -46,8 +46,8 @@ Safety:
 `.trim();
 
 export const AARATI_SAMPLE_REPLIES = {
-  greeting: sanitizeAaratiOutput(`Namaste 🙏 JobMate ma swagat cha.
-Ma Aarati, JobMate team bata.
+  greeting: sanitizeAaratiOutput(`Namaskar 🙏
+Ma Aarati, JobMate Nepal team bata.
 
 Tapai lai kaam khojna ho ki staff/worker khojna ho?`),
 

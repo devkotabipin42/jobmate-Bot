@@ -55,7 +55,7 @@ export async function handleJobMateLeadAgentMessage({
       currentState: "idle",
       state: resetState,
       reply:
-        "Namaste. JobMate ma tapai job khojna ya staff khojna saknuhunchha.\n\n1. Job khojna\n2. Staff khojna",
+        "Namaskar 🙏\nMa Aarati, JobMate Nepal team bata.\n\nTapai job khojna chahanu huncha ki staff/worker khojna?\n\n1. Job khojna\n2. Staff khojna",
       reason: "jobmate_lead_agent_reset",
     });
   }
@@ -79,7 +79,7 @@ export async function handleJobMateLeadAgentMessage({
       currentState: conversation.currentState || "idle",
       state: currentState,
       reply:
-        "Namaste 🙏 JobMate ma swagat cha. Tapai job khojdai hunuhuncha ki staff chahiyeko ho?",
+        "Namaskar 🙏\nMa Aarati, JobMate Nepal team bata.\n\nTapai job khojna chahanu huncha ki staff/worker khojna?",
       reason: "jobmate_lead_agent_greeting",
     });
   }

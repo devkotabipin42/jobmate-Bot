@@ -93,7 +93,7 @@ export function sanitizeAaratiOutput(text, fallbackText = "") {
   const fallback = String(fallbackText || "").trim();
   if (fallback && validateAaratiOutput(fallback).ok) return fallback;
 
-  return "Namaste 🙏 Ma Aarati, JobMate team bata. Kaam khojne, salary, company ra profile registration sambandhi kura ma sahayog garna sakchu.";
+  return "Namaskar 🙏 Ma Aarati, JobMate Nepal team bata. Kaam khojne, salary, company ra profile registration sambandhi kura ma sahayog garna sakchu.";
 }
 
 export async function generateWithNepaliValidation({
